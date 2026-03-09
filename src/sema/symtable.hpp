@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "scope.hpp"
+#include "../sema/scope.hpp"
 
 #include "../frontend/ast.hpp"
 #include "../support/error.hpp"

@@ -2,7 +2,7 @@
 // types.cpp
 // =============================================================================
 
-#include "types.hpp"
+#include "../sema/types.hpp"
 
 namespace ZedLang {
 

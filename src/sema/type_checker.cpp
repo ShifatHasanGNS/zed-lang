@@ -2,7 +2,7 @@
 // type_checker.cpp
 // =============================================================================
 
-#include "type_checker.hpp"
+#include "../sema/type_checker.hpp"
 
 #include "../frontend/ast.hpp"         // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"    // stable TOK_* constants
@@ -113,6 +113,13 @@ void TypeChecker::check_var_decl(VarDecl* vd, bool is_global) {
         declared = sym_.arena().ty_error();
     }
 
+    // '_' is the discard variable — type-check the init but don't register
+    // the name in the symbol table so it cannot be read back.
+    if (vd->var_name == "_") {
+        var_types_[vd] = declared;
+        return;
+    }
+
     if (!is_global) {
         // Insert into current (local) scope
         Symbol sym(Symbol::Kind::VAR, vd->var_name, declared, vd->range.begin);
@@ -176,12 +183,22 @@ void TypeChecker::check_stmt(Stmt* s) {
             if (!sym_.in_loop())
                 err_.error(s->range.begin, "'continue' outside of loop");
             break;
+        case Stmt::BREAK_LABEL:
+        case Stmt::CONTINUE_LABEL:
+            // Label validation would require a label stack — for now just verify
+            // we are inside some loop. Full label resolution is a future pass.
+            if (!sym_.in_loop())
+                err_.error(s->range.begin,
+                    (s->kind() == Stmt::BREAK_LABEL ? "'break'" : "'continue'")
+                    + std::string(" outside of loop"));
+            break;
         case Stmt::FOR_RANGE:      check_for_range(static_cast<ForRangeStmt*>(s));          break;
         case Stmt::DEFER:          check_defer(static_cast<DeferStmt*>(s));                 break;
         case Stmt::MATCH:          check_match(static_cast<MatchStmt*>(s));                 break;
         case Stmt::WHEN:           check_when(static_cast<WhenStmt*>(s));                   break;
         case Stmt::COMPOUND_ASSIGN:check_compound_assign(static_cast<CompoundAssignStmt*>(s)); break;
         case Stmt::INC_DEC:        check_inc_dec(static_cast<IncDecStmt*>(s));              break;
+        case Stmt::HASH_ASSERT:    check_hash_assert(static_cast<HashAssertStmt*>(s));       break;
     }
 }
 
@@ -610,14 +627,22 @@ TypeRef TypeChecker::check_struct_lit(StructLitExpr* e) {
     sem::StructType* st = sym_.lookup_struct(e->type_name);
     if (!st) {
         if (has_cimports_) {
-            // C type (struct/union/enum) — check field values for side-effects
-            // but skip field validation since we have no schema for C types.
+            if (e->base) check_expr(e->base);
             for (const FieldInit& fi : e->fields) check_expr(fi.value);
             return sym_.arena().make_foreign_named(e->type_name);
         }
         err_.error(e->range.begin,
             "unknown struct type '" + e->type_name + "'");
         return sym_.arena().ty_error();
+    }
+
+    // Struct update: Type{ ..base, field = val }
+    // The base expression must be the same struct type.
+    if (e->base) {
+        TypeRef bty = check_expr(e->base);
+        if (!bty->is_error() && !bty->is_any_foreign() && bty != TypeRef(st))
+            expect_type(bty, st, e->base->range.begin,
+                        "spread base of '" + e->type_name + "'");
     }
 
     for (const FieldInit& fi : e->fields) {
@@ -675,6 +700,14 @@ TypeRef TypeChecker::resolve_type(Type* t) {
         case Type::SLICE: {
             auto* st = static_cast<ZedLang::SliceType*>(t);
             return sym_.arena().make_slice(resolve_type(st->elem));
+        }
+        case Type::PROC_TYPE: {
+            auto* pt = static_cast<ZedLang::ProcTypeAST*>(t);
+            std::vector<sem::ProcParam> params;
+            for (Type* ptype : pt->param_types)
+                params.push_back({"", resolve_type(ptype)});
+            TypeRef ret = pt->return_type ? resolve_type(pt->return_type) : nullptr;
+            return sym_.arena().make_proc(std::move(params), ret);
         }
     }
     return sym_.arena().ty_error();
@@ -807,6 +840,17 @@ void TypeChecker::check_inc_dec(IncDecStmt* s) {
         err_.error(s->range.begin,
             std::string(s->inc ? "'++'" : "'--'") +
             " requires numeric type, got '" + ty->to_string() + "'");
+}
+
+// ---------------------------------------------------------------------------
+// HashAssertStmt  (#assert <const-expr>)
+// ---------------------------------------------------------------------------
+void TypeChecker::check_hash_assert(HashAssertStmt* s) {
+    // Evaluate the condition expression — it must be bool or integer (truthy).
+    TypeRef ty = check_expr(s->cond);
+    if (!ty->is_bool() && !ty->is_integer() && !ty->is_error() && !ty->is_any_foreign())
+        err_.error(s->cond->range.begin,
+            "'#assert' condition must be bool or integer, got '" + ty->to_string() + "'");
 }
 
 } // namespace ZedLang

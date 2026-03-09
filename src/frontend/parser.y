@@ -3,9 +3,9 @@
 // =============================================================================
 
 %{
-#include "ast.hpp"
-#include "token.hpp"
-#include "lexer_extra.hpp"   // defines yyscan_t and LexerExtra at global scope
+#include "../frontend/ast.hpp"
+#include "../frontend/token.hpp"
+#include "../frontend/lexer_extra.hpp"   // defines yyscan_t and LexerExtra at global scope
 
 #include "../support/error.hpp"
 
@@ -50,6 +50,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
     ZedLang::Expr*   expr;
     std::vector<ZedLang::Expr*>* expr_list;
     ZedLang::Type*   type;
+    std::vector<ZedLang::Type*>* type_list;
     ZedLang::BlockStmt* block;
     ZedLang::VarDecl* var_decl;
     ZedLang::ConstDecl* const_decl;
@@ -161,6 +162,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_INC            "'++'"
 %token TOK_DEC            "'--'"
 %token TOK_HASH_ASSERT    "'#assert'"
+%token TOK_DOTDOT     "'..'"
 
 // Non-terminals
 %type <decl>          top_decl
@@ -173,7 +175,8 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr>          expr expr_no_struct expr_or expr_and expr_cmp expr_bitor expr_bitxor expr_bitand
 %type <expr>          expr_shift expr_add expr_mul expr_unary expr_postfix expr_primary
 %type <expr>          struct_lit cast_expr
-%type <type>          type named_type ptr_type array_type slice_type
+%type <type>          type named_type ptr_type array_type slice_type proc_type
+%type <type_list>     type_list opt_type_list
 %type <ident_list>    ident_list
 %type <field>         field_group
 %type <field_list>    field_group_list
@@ -422,6 +425,7 @@ type
     | ptr_type       { $$ = $1; }
     | array_type     { $$ = $1; }
     | slice_type     { $$ = $1; }
+    | proc_type      { $$ = $1; }
     ;
 
 named_type
@@ -463,7 +467,42 @@ slice_type
         }
     ;
 
-// Statements
+// proc(T1, T2) -> RetType   — first-class proc type annotation
+// proc(T1, T2)              — void return
+proc_type
+    : TOK_KW_PROC TOK_LPAREN opt_type_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            std::vector<Type*> pts = $3 ? *$3 : std::vector<Type*>();
+            $$ = new ProcTypeAST(r, std::move(pts), nullptr);
+            delete $3;
+        }
+    | TOK_KW_PROC TOK_LPAREN opt_type_list TOK_RPAREN TOK_ARROW type
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            std::vector<Type*> pts = $3 ? *$3 : std::vector<Type*>();
+            $$ = new ProcTypeAST(r, std::move(pts), $6);
+            delete $3;
+        }
+    ;
+
+opt_type_list
+    : /* empty */ { $$ = nullptr; }
+    | type_list   { $$ = $1; }
+    ;
+
+type_list
+    : type
+        {
+            $$ = new std::vector<Type*>();
+            $$->push_back($1);
+        }
+    | type_list TOK_COMMA type
+        {
+            $1->push_back($3);
+            $$ = $1;
+        }
+    ;
 stmt
     : var_decl
         {
@@ -537,6 +576,19 @@ for_stmt
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new LoopStmt(r, $2, $3);
+        }
+    // ── labeled infinite loop ─────────────────────────────────────────────
+    | TOK_IDENT TOK_COLON TOK_KW_FOR block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new LoopStmt(r, $4);
+            s->label = *$1; delete $1; $$ = s;
+        }
+    | TOK_IDENT TOK_COLON TOK_KW_FOR expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new LoopStmt(r, $4, $5);
+            s->label = *$1; delete $1; $$ = s;
         }
     // ── exclusive range ───────────────────────────────────────────────────
     | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr_no_struct block
@@ -694,6 +746,12 @@ break_stmt
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new BreakStmt(r);
         }
+    | TOK_KW_BREAK TOK_IDENT
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new LabeledBreakStmt(r, *$2);
+            delete $2;
+        }
     ;
 
 continue_stmt
@@ -701,6 +759,12 @@ continue_stmt
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ContinueStmt(r);
+        }
+    | TOK_KW_CONTINUE TOK_IDENT
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new LabeledContinueStmt(r, *$2);
+            delete $2;
         }
     ;
 
@@ -1025,9 +1089,23 @@ struct_lit
     : TOK_IDENT TOK_LBRACE field_init_list TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new StructLitExpr(r, *$1, *$3);
+            $$ = new StructLitExpr(r, *$1, *$3, nullptr);
             delete $1;
             delete $3;
+        }
+    // Struct update: TypeName{ ..base_expr, field = val, ... }
+    | TOK_IDENT TOK_LBRACE TOK_DOTDOT expr TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new StructLitExpr(r, *$1, {}, $4);
+            delete $1;
+        }
+    | TOK_IDENT TOK_LBRACE TOK_DOTDOT expr TOK_COMMA field_init_list TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new StructLitExpr(r, *$1, *$6, $4);
+            delete $1;
+            delete $6;
         }
     ;
 

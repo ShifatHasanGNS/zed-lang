@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "symtable.hpp"
+#include "../sema/symtable.hpp"
 
 #include "../frontend/ast.hpp"
 #include "../support/error.hpp"
@@ -67,6 +67,7 @@ private:
     void check_when(WhenStmt* s);
     void check_compound_assign(CompoundAssignStmt* s);
     void check_inc_dec(IncDecStmt* s);
+    void check_hash_assert(HashAssertStmt* s);
 
     // ---- Expression checkers (return resolved type) -----------------------
     TypeRef check_expr(Expr* e);

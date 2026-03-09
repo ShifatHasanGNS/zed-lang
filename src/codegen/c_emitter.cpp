@@ -2,7 +2,7 @@
 // codegen/c_emitter.cpp
 // =============================================================================
 
-#include "c_emitter.hpp"
+#include "../codegen/c_emitter.hpp"
 
 #include <cmath>
 #include <limits>

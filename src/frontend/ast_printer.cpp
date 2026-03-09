@@ -2,8 +2,8 @@
 // ast_printer.cpp
 // =============================================================================
 
-#include "ast_printer.hpp"
-#include "token.hpp"
+#include "../frontend/ast_printer.hpp"
+#include "../frontend/token.hpp"
 
 namespace ZedLang {
 
@@ -407,6 +407,33 @@ void AstPrinter::print(Stmt* stmt) {
             dedent();
             break;
         }
+        case Stmt::HASH_ASSERT: {
+            HashAssertStmt* ha = static_cast<HashAssertStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "#assert";
+            print_location(ha);
+            out << "\n";
+            indent();
+            print(ha->cond);
+            dedent();
+            break;
+        }
+        case Stmt::BREAK_LABEL: {
+            LabeledBreakStmt* lb = static_cast<LabeledBreakStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "break " << lb->label;
+            print_location(lb);
+            out << "\n";
+            break;
+        }
+        case Stmt::CONTINUE_LABEL: {
+            LabeledContinueStmt* lc = static_cast<LabeledContinueStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "continue " << lc->label;
+            print_location(lc);
+            out << "\n";
+            break;
+        }
     }
 }
 
@@ -638,6 +665,17 @@ void AstPrinter::print(Type* type) {
             SliceType* st = static_cast<SliceType*>(type);
             out << "[]";
             print(st->elem);
+            break;
+        }
+        case Type::PROC_TYPE: {
+            ProcTypeAST* pt = static_cast<ProcTypeAST*>(type);
+            out << "proc(";
+            for (size_t i = 0; i < pt->param_types.size(); ++i) {
+                if (i > 0) out << ", ";
+                print(pt->param_types[i]);
+            }
+            out << ")";
+            if (pt->return_type) { out << " -> "; print(pt->return_type); }
             break;
         }
     }

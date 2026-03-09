@@ -4,8 +4,10 @@
 
 #pragma once
 
-#include "types.hpp"
+#include "../sema/types.hpp"
+
 #include "../support/source_loc.hpp"
+
 #include <string>
 #include <unordered_map>
 #include <vector>

@@ -99,7 +99,7 @@ public:
 // ---------------------------------------------------------------------------
 class Type : public Node {
 public:
-    enum Kind { NAMED, PTR, ARRAY, SLICE };
+    enum Kind { NAMED, PTR, ARRAY, SLICE, PROC_TYPE };
     virtual Kind kind() const = 0;
 };
 
@@ -134,6 +134,17 @@ public:
     Type* elem;
     SliceType(SourceRange r, Type* e) : elem(e) { range = r; }
     Kind kind() const override { return SLICE; }
+};
+
+// proc(ParamType, ...) -> RetType   — used as a first-class type annotation
+// e.g.:  callback : proc(i32, bool) -> f32
+class ProcTypeAST : public Type {
+public:
+    std::vector<Type*> param_types;   // parameter types only (no names needed for type)
+    Type*              return_type;   // nullptr = void
+    ProcTypeAST(SourceRange r, std::vector<Type*> pts, Type* ret)
+        : param_types(std::move(pts)), return_type(ret) { range = r; }
+    Kind kind() const override { return PROC_TYPE; }
 };
 
 // ---------------------------------------------------------------------------
@@ -221,7 +232,8 @@ public:
 class Stmt : public Node {
 public:
     enum Kind { BLOCK, RETURN, IF, LOOP, BREAK, CONTINUE, ASSIGN, EXPR, DECL_STMT,
-                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC, HASH_ASSERT };
+                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC, HASH_ASSERT,
+                 BREAK_LABEL, CONTINUE_LABEL };
     virtual Kind kind() const = 0;
 };
 
@@ -251,8 +263,9 @@ public:
 
 class LoopStmt : public Stmt {
 public:
-    Expr*      cond = nullptr;  // null = infinite loop; non-null = while(cond)
-    BlockStmt* body;
+    Expr*       cond  = nullptr;  // null = infinite loop; non-null = while(cond)
+    BlockStmt*  body;
+    std::string label;            // optional loop label, e.g. "outer"
     LoopStmt(SourceRange r, BlockStmt* b) : body(b) { range = r; }
     LoopStmt(SourceRange r, Expr* c, BlockStmt* b) : cond(c), body(b) { range = r; }
     Kind kind() const override { return LOOP; }
@@ -268,6 +281,21 @@ class ContinueStmt : public Stmt {
 public:
     ContinueStmt(SourceRange r) { range = r; }
     Kind kind() const override { return CONTINUE; }
+};
+
+// break <label>  /  continue <label>
+class LabeledBreakStmt : public Stmt {
+public:
+    std::string label;
+    LabeledBreakStmt(SourceRange r, std::string l) : label(std::move(l)) { range = r; }
+    Kind kind() const override { return BREAK_LABEL; }
+};
+
+class LabeledContinueStmt : public Stmt {
+public:
+    std::string label;
+    LabeledContinueStmt(SourceRange r, std::string l) : label(std::move(l)) { range = r; }
+    Kind kind() const override { return CONTINUE_LABEL; }
 };
 
 class AssignStmt : public Stmt {
@@ -415,8 +443,9 @@ class StructLitExpr : public Expr {
 public:
     std::string type_name;
     std::vector<FieldInit> fields;
-    StructLitExpr(SourceRange r, std::string tn, std::vector<FieldInit> f)
-        : type_name(std::move(tn)), fields(std::move(f)) { range = r; }
+    Expr* base = nullptr;   // optional spread: Rect{ ..old_rect, width = 50 }
+    StructLitExpr(SourceRange r, std::string tn, std::vector<FieldInit> f, Expr* b = nullptr)
+        : type_name(std::move(tn)), fields(std::move(f)), base(b) { range = r; }
     Kind kind() const override { return STRUCT_LIT; }
 };
 

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "ast.hpp"
+#include "../frontend/ast.hpp"
 
 #include <iostream>
 

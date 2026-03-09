@@ -2,7 +2,7 @@
 // symtable.cpp
 // =============================================================================
 
-#include "symtable.hpp"
+#include "../sema/symtable.hpp"
 
 #include <cassert>
 
@@ -61,6 +61,14 @@ TypeRef SymbolTable::resolve_ast_type(ZedLang::Type* t) {
             // ZedLang::SliceType is the AST node (ast.hpp).
             auto* st = static_cast<ZedLang::SliceType*>(t);
             return arena().make_slice(resolve_ast_type(st->elem));
+        }
+        case ZedLang::Type::PROC_TYPE: {
+            auto* pt = static_cast<ZedLang::ProcTypeAST*>(t);
+            std::vector<sem::ProcParam> params;
+            for (ZedLang::Type* ptype : pt->param_types)
+                params.push_back({"", resolve_ast_type(ptype)});
+            TypeRef ret = pt->return_type ? resolve_ast_type(pt->return_type) : nullptr;
+            return arena().make_proc(std::move(params), ret);
         }
     }
     return arena().ty_error();
@@ -177,6 +185,12 @@ void SymbolTable::collect_globals(Program* prog) {
 // declare
 // ---------------------------------------------------------------------------
 bool SymbolTable::declare(Symbol sym) {
+    // '_' is the discard name — silently allow multiple declarations in the
+    // same scope, and skip any "already declared" error for it.
+    if (sym.name == "_") {
+        scopes_.insert(std::move(sym));
+        return true;
+    }
     if (Symbol* existing = lookup_local(sym.name)) {
         err_.error(sym.decl_loc,
                    "'" + sym.name + "' is already declared in this scope")

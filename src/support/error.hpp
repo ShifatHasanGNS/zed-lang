@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "source_loc.hpp"
+#include "../support/source_loc.hpp"
 
 #include <exception>
 #include <string>

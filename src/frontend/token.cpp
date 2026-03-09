@@ -5,8 +5,8 @@
 // Everything in token.hpp that references TOK_* constants is defined here.
 // =============================================================================
 
-#include "tok_defs.hpp"   // stable TOK_* constants; never missing unlike parser.tab.hpp
-#include "token.hpp"
+#include "../frontend/tok_defs.hpp"   // stable TOK_* constants; never missing unlike parser.tab.hpp
+#include "../frontend/token.hpp"
 
 #include <unordered_map>
 
@@ -51,6 +51,7 @@ std::string_view token_kind_name(int k) {
         case TOK_SEMI:         return "';'";
         case TOK_DOTDOTLT:     return "'..<'";
         case TOK_DOTDOTEQ:     return "'..='";
+        case TOK_DOTDOT:       return "'..'";
         case TOK_AMP:          return "'&'";
         case TOK_DEREF:        return "'.*'";
         case TOK_NOT:          return "'!'";

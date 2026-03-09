@@ -2,7 +2,7 @@
 // codegen/codegen.cpp
 // =============================================================================
 
-#include "codegen.hpp"
+#include "../codegen/codegen.hpp"
 
 #include "../frontend/ast.hpp"       // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"  // stable TOK_* constants
@@ -39,6 +39,7 @@ void CodeGen::generate(Program* prog) {
                 emit_struct_def(static_cast<StructDecl*>(d));
         }
         // proc forward declarations
+        emit_.comment("--- Procedure Forward Declarations ---");
         for (Decl* d : imp->decls) {
             if (d->kind() == Decl::PROC)
                 emit_proc_decl(static_cast<ProcDecl*>(d));
@@ -228,7 +229,6 @@ void CodeGen::emit_global_var(VarDecl* vd) {
 // Procedure forward declaration
 // ---------------------------------------------------------------------------
 void CodeGen::emit_proc_decl(ProcDecl *pd) {
-    emit_.comment("--- Procedure Forward Declarations ---");
     TypeRef ty = tc_.sym_ref().lookup(pd->proc_name) ?
                  tc_.sym_ref().lookup(pd->proc_name)->type : nullptr;
     if (!ty || !ty->is_proc()) return;
@@ -305,12 +305,23 @@ void CodeGen::emit_stmt(Stmt* s) {
         case Stmt::DECL_STMT: emit_decl_stmt(static_cast<DeclStmt*>(s));      break;
         case Stmt::BREAK:     emit_.line("break;");                            break;
         case Stmt::CONTINUE:  emit_.line("continue;");                         break;
+        case Stmt::BREAK_LABEL: {
+            auto* s2 = static_cast<LabeledBreakStmt*>(s);
+            emit_.line("goto __break_" + s2->label + ";");
+            break;
+        }
+        case Stmt::CONTINUE_LABEL: {
+            auto* s2 = static_cast<LabeledContinueStmt*>(s);
+            emit_.line("goto __continue_" + s2->label + ";");
+            break;
+        }
         case Stmt::FOR_RANGE:      emit_for_range(static_cast<ForRangeStmt*>(s));          break;
         case Stmt::DEFER:          /* deferred — emitted at return/block end */             break;
         case Stmt::MATCH:          emit_match(static_cast<MatchStmt*>(s));                  break;
         case Stmt::WHEN:           emit_when(static_cast<WhenStmt*>(s));                    break;
         case Stmt::COMPOUND_ASSIGN:emit_compound_assign(static_cast<CompoundAssignStmt*>(s)); break;
         case Stmt::INC_DEC:        emit_inc_dec(static_cast<IncDecStmt*>(s));               break;
+        case Stmt::HASH_ASSERT:    emit_hash_assert(static_cast<HashAssertStmt*>(s));        break;
     }
 }
 
@@ -477,7 +488,28 @@ void CodeGen::emit_inc_dec(IncDecStmt* s) {
     emit_.emit(s->inc ? "++;\n" : "--;\n");
 }
 
+// ---------------------------------------------------------------------------
+// #assert  →  static_assert(expr, "file:line: #assert failed")
+// ---------------------------------------------------------------------------
+void CodeGen::emit_hash_assert(HashAssertStmt* s) {
+    std::string msg = std::string(s->range.begin.file ? s->range.begin.file : "?")
+                    + ":" + std::to_string(s->range.begin.line)
+                    + ": #assert failed";
+    emit_.emit_indent();
+    emit_.emit("static_assert(");
+    emit_expr(s->cond);
+    emit_.emit(", \"" + msg + "\");\n");
+}
+
+// ---------------------------------------------------------------------------
+// for { } / for cond { }  (infinite and while-loop forms)
+// ---------------------------------------------------------------------------
 void CodeGen::emit_loop(LoopStmt* s) {
+    // If this loop has a label, emit a C label before the loop, and a
+    // __continue_<label> label inside the body suffix for continue support.
+    if (!s->label.empty()) {
+        emit_.line("// loop label: " + s->label);
+    }
     if (s->cond) {
         emit_.begin_line("while (");
         emit_expr(s->cond);
@@ -485,7 +517,22 @@ void CodeGen::emit_loop(LoopStmt* s) {
     } else {
         emit_.begin_line("for (;;)");
     }
-    emit_block(s->body, true);
+    // Emit the body
+    emit_.emit(" {\n");
+    emit_.indent();
+    for (Stmt* st : s->body->stmts) {
+        // Collect/emit defers handled by emit_block; call it directly
+        emit_stmt(st);
+    }
+    if (!s->label.empty()) {
+        emit_.line("__continue_" + s->label + ":;");
+    }
+    emit_.dedent();
+    emit_.emit_indent();
+    emit_.emit("}\n");
+    if (!s->label.empty()) {
+        emit_.line("__break_" + s->label + ":;");
+    }
 }
 
 void CodeGen::emit_return(ReturnStmt* s) {
@@ -521,6 +568,16 @@ void CodeGen::emit_decl_stmt(DeclStmt* s) {
 }
 
 void CodeGen::emit_var_decl_local(VarDecl* vd) {
+    // '_' discard: evaluate init for side-effects only, emit nothing if no init
+    if (vd->var_name == "_") {
+        if (vd->init) {
+            emit_.emit_indent();
+            emit_.emit("(void)(");
+            emit_expr(vd->init);
+            emit_.emit(");\n");
+        }
+        return;
+    }
     TypeRef ty = tc_.type_of_decl(vd);
     if (!ty) ty = tc_.sym_ref().arena().ty_error();
     emit_.emit_indent();
@@ -616,7 +673,10 @@ void CodeGen::emit_binary(BinaryExpr* e) {
 
 void CodeGen::emit_unary(UnaryExpr* e) {
     emit_.emit("(" + op_str(e->op));
-    emit_expr(e->expr);
+    // Pass the type of the subexpression as a hint so that float literals
+    // inside unary minus get the correct suffix: -(0.5f) not -(0.5)
+    TypeRef hint = tc_.type_of(e->expr);
+    emit_expr_hint(e->expr, hint);
     emit_.emit(")");
 }
 
@@ -781,6 +841,27 @@ void CodeGen::emit_ident(IdentExpr* e) {
 }
 
 void CodeGen::emit_struct_lit(StructLitExpr* e) {
+    if (e->base && e->fields.empty()) {
+        // Pure copy: TypeName{ ..base }  →  base  (no-op, just emit base)
+        emit_expr(e->base);
+        return;
+    }
+    if (e->base) {
+        // Spread update: start from base then override named fields.
+        // C99 designated-init cannot do this directly — emit a compound expression:
+        //   [&]{ auto _b = base; _b.field = val; ...; return _b; }()   (C++ lambda)
+        emit_.emit("[&](){ auto _zed_base = ");
+        emit_expr(e->base);
+        emit_.emit("; ");
+        for (const FieldInit& fi : e->fields) {
+            emit_.emit("_zed_base." + fi.name + " = ");
+            emit_expr(fi.value);
+            emit_.emit("; ");
+        }
+        emit_.emit("return _zed_base; }()");
+        return;
+    }
+    // Normal struct literal
     emit_.emit("(" + e->type_name + "){");
     for (size_t i = 0; i < e->fields.size(); ++i) {
         if (i > 0) emit_.emit(", ");
@@ -814,8 +895,9 @@ void CodeGen::emit_c_type(TypeRef t) {
         // Anonymous foreign — should be rare in type-position; auto is safest.
         emit_.emit("auto");
     } else if (t->is_proc()) {
-        // Function pointer — emit as void* for simplicity in type positions.
-        // Proper proc-typed variables are not yet supported in assignments.
+        // Emit as a std::function-style type alias or raw function pointer.
+        // For variable declarations, emit_var_decl handles the full pointer form.
+        // In other positions (e.g. cast targets) emit a simplified void*.
         emit_.emit("void*");
     } else {
         emit_.emit(primitive_c_name(t->kind));
@@ -827,6 +909,17 @@ void CodeGen::emit_var_decl(TypeRef t, const std::string& name) {
         auto* at = static_cast<sem::ArrayType*>(t);
         emit_c_type(at->elem);
         emit_.emit(" " + name + "[" + std::to_string(at->count) + "]");
+    } else if (t->is_proc()) {
+        // Emit as C function pointer:  ret (*name)(ParamType, ...)
+        auto* pt = static_cast<sem::ProcType*>(t);
+        if (pt->return_type) emit_c_type(pt->return_type);
+        else emit_.emit("void");
+        emit_.emit(" (*" + name + ")(");
+        for (size_t i = 0; i < pt->params.size(); ++i) {
+            if (i > 0) emit_.emit(", ");
+            emit_c_type(pt->params[i].type);
+        }
+        emit_.emit(")");
     } else {
         emit_c_type(t);
         emit_.emit(" " + name);

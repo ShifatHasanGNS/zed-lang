@@ -383,8 +383,8 @@ static void yynoreturn yy_fatal_error ( const char* msg , yyscan_t yyscanner );
 	yyg->yy_hold_char = *yy_cp; \
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
-#define YY_NUM_RULES 72
-#define YY_END_OF_BUFFER 73
+#define YY_NUM_RULES 73
+#define YY_END_OF_BUFFER 74
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -394,18 +394,18 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_accept[105] =
     {   0,
-        0,    0,    0,    0,    0,    0,   73,   71,    1,    2,
-       59,   15,   71,   64,   57,   48,   49,   62,   60,   55,
-       61,   54,   63,   12,   12,   47,   56,   66,   68,   67,
-        8,   52,   53,   58,   50,   65,   51,    7,    7,   20,
-       22,   21,   72,    1,   42,   70,   70,   35,   45,   36,
-       33,   29,   31,    5,   32,   25,   28,    0,   34,    0,
-       12,    0,    0,    0,    0,   24,   23,   39,   43,   41,
-       44,   40,    8,   38,   37,   46,    0,   20,   19,   18,
-       16,   17,   70,   70,    5,    3,    4,   26,   27,   13,
-       10,    0,   14,   11,    9,    6,   70,    0,   70,    0,
+        0,    0,    0,    0,    0,    0,   74,   72,    1,    2,
+       60,   15,   72,   65,   58,   49,   50,   63,   61,   56,
+       62,   55,   64,   12,   12,   48,   57,   67,   69,   68,
+        8,   53,   54,   59,   51,   66,   52,    7,    7,   20,
+       22,   21,   73,    1,   43,   71,   71,   36,   46,   37,
+       34,   30,   32,    5,   33,   25,   29,   28,   35,    0,
+       12,    0,    0,    0,    0,   24,   23,   40,   44,   42,
+       45,   41,    8,   39,   38,   47,    0,   20,   19,   18,
+       16,   17,   71,   71,    5,    3,    4,   26,   27,   13,
+       10,    0,   14,   11,    9,    6,   71,    0,   71,    0,
 
-       13,   70,   69,    0
+       13,   71,   70,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
@@ -544,12 +544,12 @@ static const flex_int16_t yy_chk[232] =
     } ;
 
 /* Table of booleans, true if rule could match eol. */
-static const flex_int32_t yy_rule_can_match_eol[73] =
+static const flex_int32_t yy_rule_can_match_eol[74] =
     {   0,
 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     };
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     };
 
 /* The intent behind this definition is that it'll catch
  * any uses of REJECT which flex missed.
@@ -565,9 +565,9 @@ static const flex_int32_t yy_rule_can_match_eol[73] =
 // =============================================================================
 
 
-#include "token.hpp"
-#include "ast.hpp"         // must precede parser.tab.hpp (see token.cpp comment)
-#include "lexer_extra.hpp"
+#include "../frontend/token.hpp"
+#include "../frontend/ast.hpp"          // must precede parser.tab.hpp (see token.cpp comment)
+#include "../frontend/lexer_extra.hpp"
 
 #include "../support/source_loc.hpp"
 #include "../support/error.hpp"
@@ -1162,222 +1162,227 @@ YY_RULE_SETUP
 case 28:
 YY_RULE_SETUP
 #line 163 "src/frontend/lexer.l"
-{ return TOK_DEREF; }
+{ return TOK_DOTDOT; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
 #line 164 "src/frontend/lexer.l"
-{ return TOK_INC; }
+{ return TOK_DEREF; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
 #line 165 "src/frontend/lexer.l"
-{ return TOK_DEC; }
+{ return TOK_INC; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 #line 166 "src/frontend/lexer.l"
-{ return TOK_PLUS_ASSIGN; }
+{ return TOK_DEC; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
 #line 167 "src/frontend/lexer.l"
-{ return TOK_MINUS_ASSIGN; }
+{ return TOK_PLUS_ASSIGN; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
 #line 168 "src/frontend/lexer.l"
-{ return TOK_STAR_ASSIGN; }
+{ return TOK_MINUS_ASSIGN; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
 #line 169 "src/frontend/lexer.l"
-{ return TOK_SLASH_ASSIGN; }
+{ return TOK_STAR_ASSIGN; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
 #line 170 "src/frontend/lexer.l"
-{ return TOK_PERCENT_ASSIGN; }
+{ return TOK_SLASH_ASSIGN; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
 #line 171 "src/frontend/lexer.l"
-{ return TOK_AMP_ASSIGN; }
+{ return TOK_PERCENT_ASSIGN; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
 #line 172 "src/frontend/lexer.l"
-{ return TOK_PIPE_ASSIGN; }
+{ return TOK_AMP_ASSIGN; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
 #line 173 "src/frontend/lexer.l"
-{ return TOK_XOR_ASSIGN; }
+{ return TOK_PIPE_ASSIGN; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
 #line 174 "src/frontend/lexer.l"
-{ return TOK_SHL; }
+{ return TOK_XOR_ASSIGN; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
 #line 175 "src/frontend/lexer.l"
-{ return TOK_SHR; }
+{ return TOK_SHL; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
 #line 176 "src/frontend/lexer.l"
-{ return TOK_EQ; }
+{ return TOK_SHR; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
 #line 177 "src/frontend/lexer.l"
-{ return TOK_NEQ; }
+{ return TOK_EQ; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
 #line 178 "src/frontend/lexer.l"
-{ return TOK_LEQ; }
+{ return TOK_NEQ; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
 #line 179 "src/frontend/lexer.l"
-{ return TOK_GEQ; }
+{ return TOK_LEQ; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
 #line 180 "src/frontend/lexer.l"
-{ return TOK_AND; }
+{ return TOK_GEQ; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
 #line 181 "src/frontend/lexer.l"
+{ return TOK_AND; }
+	YY_BREAK
+case 47:
+YY_RULE_SETUP
+#line 182 "src/frontend/lexer.l"
 { return TOK_OR; }
 	YY_BREAK
 /* ------------------------------------------------------------------ */
 /* Single-character tokens                                              */
 /* ------------------------------------------------------------------ */
-case 47:
-YY_RULE_SETUP
-#line 186 "src/frontend/lexer.l"
-{ return TOK_COLON; }
-	YY_BREAK
 case 48:
 YY_RULE_SETUP
 #line 187 "src/frontend/lexer.l"
-{ return TOK_LPAREN; }
+{ return TOK_COLON; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
 #line 188 "src/frontend/lexer.l"
-{ return TOK_RPAREN; }
+{ return TOK_LPAREN; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
 #line 189 "src/frontend/lexer.l"
-{ return TOK_LBRACE; }
+{ return TOK_RPAREN; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
 #line 190 "src/frontend/lexer.l"
-{ return TOK_RBRACE; }
+{ return TOK_LBRACE; }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
 #line 191 "src/frontend/lexer.l"
-{ return TOK_LBRACKET; }
+{ return TOK_RBRACE; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
 #line 192 "src/frontend/lexer.l"
-{ return TOK_RBRACKET; }
+{ return TOK_LBRACKET; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
 #line 193 "src/frontend/lexer.l"
-{ return TOK_DOT; }
+{ return TOK_RBRACKET; }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
 #line 194 "src/frontend/lexer.l"
-{ return TOK_COMMA; }
+{ return TOK_DOT; }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
 #line 195 "src/frontend/lexer.l"
-{ return TOK_SEMI; }
+{ return TOK_COMMA; }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
 #line 196 "src/frontend/lexer.l"
-{ return TOK_AMP; }
+{ return TOK_SEMI; }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
 #line 197 "src/frontend/lexer.l"
-{ return TOK_XOR; }
+{ return TOK_AMP; }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
 #line 198 "src/frontend/lexer.l"
-{ return TOK_NOT; }
+{ return TOK_XOR; }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
 #line 199 "src/frontend/lexer.l"
-{ return TOK_PLUS; }
+{ return TOK_NOT; }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
 #line 200 "src/frontend/lexer.l"
-{ return TOK_MINUS; }
+{ return TOK_PLUS; }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
 #line 201 "src/frontend/lexer.l"
-{ return TOK_STAR; }
+{ return TOK_MINUS; }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
 #line 202 "src/frontend/lexer.l"
-{ return TOK_SLASH; }
+{ return TOK_STAR; }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
 #line 203 "src/frontend/lexer.l"
-{ return TOK_PERCENT; }
+{ return TOK_SLASH; }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
 #line 204 "src/frontend/lexer.l"
-{ return TOK_PIPE; }
+{ return TOK_PERCENT; }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
 #line 205 "src/frontend/lexer.l"
-{ return TOK_LT; }
+{ return TOK_PIPE; }
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
 #line 206 "src/frontend/lexer.l"
-{ return TOK_GT; }
+{ return TOK_LT; }
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
 #line 207 "src/frontend/lexer.l"
+{ return TOK_GT; }
+	YY_BREAK
+case 69:
+YY_RULE_SETUP
+#line 208 "src/frontend/lexer.l"
 { return TOK_ASSIGN; }
 	YY_BREAK
 /* ------------------------------------------------------------------ */
 /* Compile-time directives                                              */
 /* ------------------------------------------------------------------ */
-case 69:
-YY_RULE_SETUP
-#line 212 "src/frontend/lexer.l"
-{ return TOK_HASH_ASSERT; }
-	YY_BREAK
 case 70:
 YY_RULE_SETUP
 #line 213 "src/frontend/lexer.l"
+{ return TOK_HASH_ASSERT; }
+	YY_BREAK
+case 71:
+YY_RULE_SETUP
+#line 214 "src/frontend/lexer.l"
 {
     yyextra->err->error(
         SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
@@ -1387,21 +1392,21 @@ YY_RULE_SETUP
 /* ------------------------------------------------------------------ */
 /* Unknown character                                                    */
 /* ------------------------------------------------------------------ */
-case 71:
+case 72:
 YY_RULE_SETUP
-#line 222 "src/frontend/lexer.l"
+#line 223 "src/frontend/lexer.l"
 {
     yyextra->err->error(
         SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
         std::string("unexpected character: '") + yytext[0] + "'");
 }
 	YY_BREAK
-case 72:
+case 73:
 YY_RULE_SETUP
-#line 228 "src/frontend/lexer.l"
+#line 229 "src/frontend/lexer.l"
 ECHO;
 	YY_BREAK
-#line 1404 "src/flex_bison/lexer.cpp"
+#line 1409 "src/flex_bison/lexer.cpp"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(SC_COMMENT):
 	yyterminate();
@@ -2606,6 +2611,6 @@ void yyfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 228 "src/frontend/lexer.l"
+#line 229 "src/frontend/lexer.l"
 
 

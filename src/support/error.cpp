@@ -2,7 +2,7 @@
 // error.cpp
 // =============================================================================
 
-#include "error.hpp"
+#include "../support/error.hpp"
 
 #include <algorithm>
 #include <iostream>

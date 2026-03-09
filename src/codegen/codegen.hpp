@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "c_emitter.hpp"
+#include "../codegen/c_emitter.hpp"
 
 #include "../frontend/ast.hpp"
 #include "../sema/type_checker.hpp"
@@ -66,6 +66,7 @@ private:
     void emit_when(WhenStmt* s);
     void emit_compound_assign(CompoundAssignStmt* s);
     void emit_inc_dec(IncDecStmt* s);
+    void emit_hash_assert(HashAssertStmt* s);
     void emit_return(ReturnStmt* s);
     void emit_assign(AssignStmt* s);
     void emit_expr_stmt(ExprStmt* s);

@@ -16,8 +16,8 @@
 //   <root>/<name>      ← executable  (name from zed.toml [project].name)
 // =============================================================================
 
-#include "build_cmd.hpp"
-#include "toml_reader.hpp"
+#include "../driver/build_cmd.hpp"
+#include "../driver/toml_reader.hpp"
 
 #include "../support/error.hpp"
 #include "../frontend/ast.hpp"

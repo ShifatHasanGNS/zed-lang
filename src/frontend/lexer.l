@@ -4,9 +4,9 @@
 // =============================================================================
 
 
-#include "token.hpp"
-#include "ast.hpp"         // must precede parser.tab.hpp (see token.cpp comment)
-#include "lexer_extra.hpp"
+#include "../frontend/token.hpp"
+#include "../frontend/ast.hpp"          // must precede parser.tab.hpp (see token.cpp comment)
+#include "../frontend/lexer_extra.hpp"
 
 #include "../support/source_loc.hpp"
 #include "../support/error.hpp"
@@ -160,6 +160,7 @@ using namespace ZedLang;
 "->"    { return TOK_ARROW; }
 "..<"   { return TOK_DOTDOTLT; }
 "..="   { return TOK_DOTDOTEQ; }
+".."    { return TOK_DOTDOT; }
 ".*"    { return TOK_DEREF; }
 "++"    { return TOK_INC; }
 "--"    { return TOK_DEC; }

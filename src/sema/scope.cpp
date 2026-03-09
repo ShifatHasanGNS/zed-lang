@@ -2,7 +2,7 @@
 // scope.cpp
 // =============================================================================
 
-#include "scope.hpp"
+#include "../sema/scope.hpp"
 
 #include <cassert>
 

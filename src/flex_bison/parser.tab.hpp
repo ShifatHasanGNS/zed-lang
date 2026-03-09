@@ -115,11 +115,12 @@
      TOK_INC = 330,
      TOK_DEC = 331,
      TOK_HASH_ASSERT = 332,
-     LOWER_THAN_ELSE = 333,
-     TOK_ELSE = 334,
-     UNARY_MINUS = 335,
-     UNARY_ADDR = 336,
-     POSTFIX_DEREF = 337
+     TOK_DOTDOT = 333,
+     LOWER_THAN_ELSE = 334,
+     TOK_ELSE = 335,
+     UNARY_MINUS = 336,
+     UNARY_ADDR = 337,
+     POSTFIX_DEREF = 338
    };
 #endif
 /* Tokens.  */
@@ -199,11 +200,12 @@
 #define TOK_INC 330
 #define TOK_DEC 331
 #define TOK_HASH_ASSERT 332
-#define LOWER_THAN_ELSE 333
-#define TOK_ELSE 334
-#define UNARY_MINUS 335
-#define UNARY_ADDR 336
-#define POSTFIX_DEREF 337
+#define TOK_DOTDOT 333
+#define LOWER_THAN_ELSE 334
+#define TOK_ELSE 335
+#define UNARY_MINUS 336
+#define UNARY_ADDR 337
+#define POSTFIX_DEREF 338
 
 
 
@@ -220,6 +222,7 @@ typedef union YYSTYPE
     ZedLang::Expr*   expr;
     std::vector<ZedLang::Expr*>* expr_list;
     ZedLang::Type*   type;
+    std::vector<ZedLang::Type*>* type_list;
     ZedLang::BlockStmt* block;
     ZedLang::VarDecl* var_decl;
     ZedLang::ConstDecl* const_decl;
@@ -244,7 +247,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 248 "src/flex_bison/parser.tab.hpp"
+#line 251 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
