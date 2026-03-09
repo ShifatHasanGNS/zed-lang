@@ -207,6 +207,16 @@ using namespace ZedLang;
 "="     { return TOK_ASSIGN; }
 
     /* ------------------------------------------------------------------ */
+    /* Compile-time directives                                              */
+    /* ------------------------------------------------------------------ */
+"#assert"               { return TOK_HASH_ASSERT; }
+"#"[a-zA-Z_][a-zA-Z0-9_]* {
+    yyextra->err->error(
+        SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
+        std::string("unknown directive: '") + yytext + "'");
+}
+
+    /* ------------------------------------------------------------------ */
     /* Unknown character                                                    */
     /* ------------------------------------------------------------------ */
 . {

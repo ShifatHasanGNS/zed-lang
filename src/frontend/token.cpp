@@ -27,7 +27,7 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_STRUCT:    return "'struct'";
         case TOK_KW_IF:        return "'if'";
         case TOK_KW_ELSE:      return "'else'";
-        case TOK_KW_LOOP:      return "'loop'";
+        // TOK_KW_LOOP = 267 retired
         case TOK_KW_IN:        return "'in'";
         case TOK_KW_RETURN:    return "'return'";
         case TOK_KW_BREAK:     return "'break'";
@@ -90,6 +90,7 @@ std::string_view token_kind_name(int k) {
         case TOK_XOR_ASSIGN:   return "'^='";
         case TOK_INC:          return "'++'";
         case TOK_DEC:          return "'--'";
+        case TOK_HASH_ASSERT:  return "'#assert'";
         default:               return "<unknown token>";
     }
 }
@@ -105,7 +106,7 @@ int keyword_lookup(std::string_view s) {
         { "struct",   TOK_KW_STRUCT   },
         { "if",       TOK_KW_IF       },
         { "else",     TOK_KW_ELSE     },
-        { "loop",     TOK_KW_LOOP     },
+        // "loop" intentionally removed — use "for" instead
         { "in",       TOK_KW_IN       },
         { "return",   TOK_KW_RETURN   },
         { "break",    TOK_KW_BREAK    },
@@ -123,6 +124,10 @@ int keyword_lookup(std::string_view s) {
         { "when",     TOK_KW_WHEN     },
         { "enum",     TOK_KW_ENUM     },
         { "step",     TOK_KW_STEP     },
+        // ── readable keyword aliases ──────────────────────────────────────────
+        { "and",      TOK_AND         },  // alias for &&
+        { "or",       TOK_OR          },  // alias for ||
+        { "not",      TOK_NOT         },  // alias for !
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;
@@ -162,7 +167,7 @@ bool Token::is_expr_start() const {
 bool Token::is_stmt_start() const {
     switch (kind) {
         case TOK_KW_IF:
-        case TOK_KW_LOOP:
+        case TOK_KW_FOR:
         case TOK_KW_RETURN:
         case TOK_KW_BREAK:
         case TOK_KW_CONTINUE:

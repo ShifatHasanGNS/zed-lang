@@ -519,7 +519,7 @@ extern int yylex \
 #undef yyTABLES_NAME
 #endif
 
-#line 218 "src/frontend/lexer.l"
+#line 228 "src/frontend/lexer.l"
 
 
 #line 525 "src/flex_bison/lexer.h"

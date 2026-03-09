@@ -295,30 +295,40 @@ TypeRef TypeChecker::check_binary(BinaryExpr* e) {
     if (lty->is_any_foreign() || rty->is_any_foreign())
         return sym_.arena().ty_foreign();
 
+    // Helper: pick the wider of two numeric types for mixed-width expressions.
+    // If one side is a literal default (i32/f32) and the other is a wider
+    // explicit type (i64/f64/u32/…), return the explicit type.
+    auto wider = [&](TypeRef a, TypeRef b) -> TypeRef {
+        if (*a == *b) return a;
+        if (types_compatible(b, a)) return a;  // b widens into a → a is wider
+        if (types_compatible(a, b)) return b;
+        return a; // fallback (error already reported)
+    };
+
     switch (e->op) {
-        // Arithmetic: both sides must be numeric and equal
+        // Arithmetic: both sides must be numeric and compatible
         case TOK_PLUS: case TOK_MINUS: case TOK_STAR:
         case TOK_SLASH: case TOK_PERCENT:
             if (!lty->is_numeric())
                 err_.error(e->left->range.begin,
                     "arithmetic requires numeric type, got '" + lty->to_string() + "'");
-            else if (*lty != *rty)
+            else if (*lty != *rty && !types_compatible(lty, rty) && !types_compatible(rty, lty))
                 err_.error(e->range.begin,
                     "type mismatch: '" + lty->to_string() +
                     "' vs '" + rty->to_string() + "'");
-            return lty;
+            return wider(lty, rty);
 
-        // Bitwise: integers only
+        // Bitwise: integers only, allow widening
         case TOK_AMP: case TOK_PIPE: case TOK_XOR: case TOK_DEREF:
         case TOK_SHL: case TOK_SHR:
             if (!lty->is_integer())
                 err_.error(e->left->range.begin,
                     "bitwise operator requires integer type");
-            else if (*lty != *rty)
+            else if (*lty != *rty && !types_compatible(lty, rty) && !types_compatible(rty, lty))
                 err_.error(e->range.begin,
                     "type mismatch in bitwise op: '" + lty->to_string() +
                     "' vs '" + rty->to_string() + "'");
-            return lty;
+            return wider(lty, rty);
 
         // Comparison: both sides equal, result is bool
         case TOK_EQ: case TOK_NEQ:

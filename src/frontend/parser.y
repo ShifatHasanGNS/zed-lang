@@ -86,7 +86,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_STRUCT   "struct"
 %token TOK_KW_IF       "if"
 %token TOK_KW_ELSE     "else"
-%token TOK_KW_LOOP     "loop"
+%token TOK_KW_LOOP     "loop"  /* RETIRED — slot 267 kept for ABI; never emitted by lexer */
 %token TOK_KW_IN       "in"
 %token TOK_KW_RETURN   "return"
 %token TOK_KW_BREAK    "break"
@@ -103,6 +103,13 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_CIMPORT "'cimport'"
 %token TOK_KW_IMPORT  "'import'"
 %token TOK_KW_CAST    "'cast'"
+%token TOK_KW_FOR     "'for'"
+%token TOK_KW_DEFER   "'defer'"
+%token TOK_KW_MATCH   "'match'"
+%token TOK_KW_CASE    "'case'"
+%token TOK_KW_WHEN    "'when'"
+%token TOK_KW_ENUM    "'enum'"
+%token TOK_KW_STEP    "'step'"
 %token TOK_LPAREN   "'('"
 %token TOK_RPAREN   "')'"
 %token TOK_LBRACE   "'{'"
@@ -141,15 +148,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_OR       "'||'"
 
 %token TOK_ASSIGN   "'='"
-%token TOK_XOR      "'^ (xor)'"
-
-%token TOK_KW_FOR     "'for'"
-%token TOK_KW_DEFER   "'defer'"
-%token TOK_KW_MATCH   "'match'"
-%token TOK_KW_CASE    "'case'"
-%token TOK_KW_WHEN    "'when'"
-%token TOK_KW_ENUM    "'enum'"
-%token TOK_KW_STEP    "'step'"
+%token TOK_XOR      "'^ (xor)'"  /* binary XOR — must match tok_defs.hpp */
 
 %token TOK_PLUS_ASSIGN    "'+='"
 %token TOK_MINUS_ASSIGN   "'-='"
@@ -161,15 +160,15 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_XOR_ASSIGN     "'^='"
 %token TOK_INC            "'++'"
 %token TOK_DEC            "'--'"
-  /* binary XOR — must stay last to get value 314 matching tok_defs.hpp */
+%token TOK_HASH_ASSERT    "'#assert'"
 
 // Non-terminals
 %type <decl>          top_decl
 %type <decl_list>     top_decl_list
 %type <decl>          var_decl const_decl struct_decl proc_decl cimport_decl import_decl
 %type <stmt>          stmt
-%type <stmt>          if_stmt loop_stmt return_stmt
-%type <stmt>          break_stmt continue_stmt expr_stmt
+%type <stmt>          if_stmt for_stmt return_stmt
+%type <stmt>          break_stmt continue_stmt expr_stmt hash_assert_stmt
 %type <block>         block
 %type <expr>          expr expr_no_struct expr_or expr_and expr_cmp expr_bitor expr_bitxor expr_bitand
 %type <expr>          expr_shift expr_add expr_mul expr_unary expr_postfix expr_primary
@@ -187,7 +186,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <op>            cmp_op shift_op add_op mul_op
 %type <else_if_list>  else_if_chain
 %type <block>         else_block
-%type <stmt>          for_range_stmt defer_stmt match_stmt when_stmt
+%type <stmt>          defer_stmt match_stmt when_stmt
 %type <match_case>    match_case
 %type <match_case_list> match_case_list
 %type <decl>          enum_decl
@@ -477,15 +476,15 @@ stmt
             $$ = new DeclStmt(r, $1);
         }
     | if_stmt           { $$ = $1; }
-    | loop_stmt         { $$ = $1; }
+    | for_stmt          { $$ = $1; }
     | return_stmt       { $$ = $1; }
     | break_stmt        { $$ = $1; }
     | continue_stmt     { $$ = $1; }
     | expr_stmt         { $$ = $1; }
-    | for_range_stmt    { $$ = $1; }
     | defer_stmt        { $$ = $1; }
     | match_stmt        { $$ = $1; }
     | when_stmt         { $$ = $1; }
+    | hash_assert_stmt  { $$ = $1; }
     | block             { $$ = $1; }
     ;
 
@@ -516,39 +515,54 @@ else_block
     | TOK_KW_ELSE block         { $$ = $2; }
     ;
 
-loop_stmt
-    : TOK_KW_LOOP block
+// ---------------------------------------------------------------------------
+// Unified for_stmt:
+//   for { }                               -- infinite loop
+//   for cond { }                          -- while loop
+//   for i in lo..<hi { }                  -- exclusive range, step=1
+//   for i in lo..=hi { }                  -- inclusive range, step=1
+//   for i in lo..<hi step s { }           -- exclusive range, custom step
+//   for i in lo..=hi step s { }           -- inclusive range, custom step
+//
+// Note: Bison resolves the shift/reduce conflict on `for IDENT` with
+// lookahead `in` via its default (shift), which is the correct behaviour.
+// ---------------------------------------------------------------------------
+for_stmt
+    : TOK_KW_FOR block
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new LoopStmt(r, $2);
         }
-    | TOK_KW_LOOP expr_no_struct block
+    | TOK_KW_FOR expr_no_struct block
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new LoopStmt(r, $2, $3);
         }
-    ;
-
-for_range_stmt
-    : TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr_no_struct block
+    // ── exclusive range ───────────────────────────────────────────────────
+    | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr_no_struct block
         {
             SourceRange r = to_sourcerange(@$, filename);
-            auto* s = new ForRangeStmt(r,*$2,$4,$6,false,$7); delete $2; $$ = s;
-        }
-    | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTEQ expr_no_struct block
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            auto* s = new ForRangeStmt(r,*$2,$4,$6,true,$7);  delete $2; $$ = s;
+            auto* s = new ForRangeStmt(r, *$2, $4, $6, false, $7);
+            delete $2; $$ = s;
         }
     | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr TOK_KW_STEP expr_no_struct block
         {
             SourceRange r = to_sourcerange(@$, filename);
-            auto* s = new ForRangeStmt(r,*$2,$4,$6,false,$9); s->step_expr=$8; delete $2; $$ = s;
+            auto* s = new ForRangeStmt(r, *$2, $4, $6, false, $9);
+            s->step_expr = $8; delete $2; $$ = s;
+        }
+    // ── inclusive range ───────────────────────────────────────────────────
+    | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTEQ expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForRangeStmt(r, *$2, $4, $6, true, $7);
+            delete $2; $$ = s;
         }
     | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTEQ expr TOK_KW_STEP expr_no_struct block
         {
             SourceRange r = to_sourcerange(@$, filename);
-            auto* s = new ForRangeStmt(r,*$2,$4,$6,true,$9);  s->step_expr=$8; delete $2; $$ = s;
+            auto* s = new ForRangeStmt(r, *$2, $4, $6, true, $9);
+            s->step_expr = $8; delete $2; $$ = s;
         }
     ;
 
@@ -581,6 +595,12 @@ match_case
             $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
         }
     | TOK_KW_CASE block
+        {
+            $$ = new MatchCase();
+            $$->value = nullptr; $$->body = $2;
+            $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
+        }
+    | TOK_KW_ELSE block                 /* idiomatic alias for bare `case` */
         {
             $$ = new MatchCase();
             $$->value = nullptr; $$->body = $2;
@@ -636,6 +656,17 @@ enum_variant
         {
             $$ = new EnumVariantAST(); $$->name=*$1; $$->value=nullptr;
             $$->loc=SourceLoc(filename,@1.first_line,@1.first_column); delete $1;
+        }
+    ;
+
+// ---------------------------------------------------------------------------
+// #assert <const-expr>  →  static_assert(expr, "file:line")
+// ---------------------------------------------------------------------------
+hash_assert_stmt
+    : TOK_HASH_ASSERT expr
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new HashAssertStmt(r, $2);
         }
     ;
 

@@ -65,45 +65,45 @@
      TOK_KW_CIMPORT = 280,
      TOK_KW_IMPORT = 281,
      TOK_KW_CAST = 282,
-     TOK_LPAREN = 283,
-     TOK_RPAREN = 284,
-     TOK_LBRACE = 285,
-     TOK_RBRACE = 286,
-     TOK_LBRACKET = 287,
-     TOK_RBRACKET = 288,
-     TOK_DOT = 289,
-     TOK_COMMA = 290,
-     TOK_SEMI = 291,
-     TOK_DOTDOTLT = 292,
-     TOK_DOTDOTEQ = 293,
-     TOK_AMP = 294,
-     TOK_DEREF = 295,
-     TOK_NOT = 296,
-     TOK_PLUS = 297,
-     TOK_MINUS = 298,
-     TOK_STAR = 299,
-     TOK_SLASH = 300,
-     TOK_PERCENT = 301,
-     TOK_PIPE = 302,
-     TOK_SHL = 303,
-     TOK_SHR = 304,
-     TOK_EQ = 305,
-     TOK_NEQ = 306,
-     TOK_LT = 307,
-     TOK_LEQ = 308,
-     TOK_GT = 309,
-     TOK_GEQ = 310,
-     TOK_AND = 311,
-     TOK_OR = 312,
-     TOK_ASSIGN = 313,
-     TOK_XOR = 314,
-     TOK_KW_FOR = 315,
-     TOK_KW_DEFER = 316,
-     TOK_KW_MATCH = 317,
-     TOK_KW_CASE = 318,
-     TOK_KW_WHEN = 319,
-     TOK_KW_ENUM = 320,
-     TOK_KW_STEP = 321,
+     TOK_KW_FOR = 283,
+     TOK_KW_DEFER = 284,
+     TOK_KW_MATCH = 285,
+     TOK_KW_CASE = 286,
+     TOK_KW_WHEN = 287,
+     TOK_KW_ENUM = 288,
+     TOK_KW_STEP = 289,
+     TOK_LPAREN = 290,
+     TOK_RPAREN = 291,
+     TOK_LBRACE = 292,
+     TOK_RBRACE = 293,
+     TOK_LBRACKET = 294,
+     TOK_RBRACKET = 295,
+     TOK_DOT = 296,
+     TOK_COMMA = 297,
+     TOK_SEMI = 298,
+     TOK_DOTDOTLT = 299,
+     TOK_DOTDOTEQ = 300,
+     TOK_AMP = 301,
+     TOK_DEREF = 302,
+     TOK_NOT = 303,
+     TOK_PLUS = 304,
+     TOK_MINUS = 305,
+     TOK_STAR = 306,
+     TOK_SLASH = 307,
+     TOK_PERCENT = 308,
+     TOK_PIPE = 309,
+     TOK_SHL = 310,
+     TOK_SHR = 311,
+     TOK_EQ = 312,
+     TOK_NEQ = 313,
+     TOK_LT = 314,
+     TOK_LEQ = 315,
+     TOK_GT = 316,
+     TOK_GEQ = 317,
+     TOK_AND = 318,
+     TOK_OR = 319,
+     TOK_ASSIGN = 320,
+     TOK_XOR = 321,
      TOK_PLUS_ASSIGN = 322,
      TOK_MINUS_ASSIGN = 323,
      TOK_STAR_ASSIGN = 324,
@@ -114,11 +114,12 @@
      TOK_XOR_ASSIGN = 329,
      TOK_INC = 330,
      TOK_DEC = 331,
-     LOWER_THAN_ELSE = 332,
-     TOK_ELSE = 333,
-     UNARY_MINUS = 334,
-     UNARY_ADDR = 335,
-     POSTFIX_DEREF = 336
+     TOK_HASH_ASSERT = 332,
+     LOWER_THAN_ELSE = 333,
+     TOK_ELSE = 334,
+     UNARY_MINUS = 335,
+     UNARY_ADDR = 336,
+     POSTFIX_DEREF = 337
    };
 #endif
 /* Tokens.  */
@@ -148,45 +149,45 @@
 #define TOK_KW_CIMPORT 280
 #define TOK_KW_IMPORT 281
 #define TOK_KW_CAST 282
-#define TOK_LPAREN 283
-#define TOK_RPAREN 284
-#define TOK_LBRACE 285
-#define TOK_RBRACE 286
-#define TOK_LBRACKET 287
-#define TOK_RBRACKET 288
-#define TOK_DOT 289
-#define TOK_COMMA 290
-#define TOK_SEMI 291
-#define TOK_DOTDOTLT 292
-#define TOK_DOTDOTEQ 293
-#define TOK_AMP 294
-#define TOK_DEREF 295
-#define TOK_NOT 296
-#define TOK_PLUS 297
-#define TOK_MINUS 298
-#define TOK_STAR 299
-#define TOK_SLASH 300
-#define TOK_PERCENT 301
-#define TOK_PIPE 302
-#define TOK_SHL 303
-#define TOK_SHR 304
-#define TOK_EQ 305
-#define TOK_NEQ 306
-#define TOK_LT 307
-#define TOK_LEQ 308
-#define TOK_GT 309
-#define TOK_GEQ 310
-#define TOK_AND 311
-#define TOK_OR 312
-#define TOK_ASSIGN 313
-#define TOK_XOR 314
-#define TOK_KW_FOR 315
-#define TOK_KW_DEFER 316
-#define TOK_KW_MATCH 317
-#define TOK_KW_CASE 318
-#define TOK_KW_WHEN 319
-#define TOK_KW_ENUM 320
-#define TOK_KW_STEP 321
+#define TOK_KW_FOR 283
+#define TOK_KW_DEFER 284
+#define TOK_KW_MATCH 285
+#define TOK_KW_CASE 286
+#define TOK_KW_WHEN 287
+#define TOK_KW_ENUM 288
+#define TOK_KW_STEP 289
+#define TOK_LPAREN 290
+#define TOK_RPAREN 291
+#define TOK_LBRACE 292
+#define TOK_RBRACE 293
+#define TOK_LBRACKET 294
+#define TOK_RBRACKET 295
+#define TOK_DOT 296
+#define TOK_COMMA 297
+#define TOK_SEMI 298
+#define TOK_DOTDOTLT 299
+#define TOK_DOTDOTEQ 300
+#define TOK_AMP 301
+#define TOK_DEREF 302
+#define TOK_NOT 303
+#define TOK_PLUS 304
+#define TOK_MINUS 305
+#define TOK_STAR 306
+#define TOK_SLASH 307
+#define TOK_PERCENT 308
+#define TOK_PIPE 309
+#define TOK_SHL 310
+#define TOK_SHR 311
+#define TOK_EQ 312
+#define TOK_NEQ 313
+#define TOK_LT 314
+#define TOK_LEQ 315
+#define TOK_GT 316
+#define TOK_GEQ 317
+#define TOK_AND 318
+#define TOK_OR 319
+#define TOK_ASSIGN 320
+#define TOK_XOR 321
 #define TOK_PLUS_ASSIGN 322
 #define TOK_MINUS_ASSIGN 323
 #define TOK_STAR_ASSIGN 324
@@ -197,11 +198,12 @@
 #define TOK_XOR_ASSIGN 329
 #define TOK_INC 330
 #define TOK_DEC 331
-#define LOWER_THAN_ELSE 332
-#define TOK_ELSE 333
-#define UNARY_MINUS 334
-#define UNARY_ADDR 335
-#define POSTFIX_DEREF 336
+#define TOK_HASH_ASSERT 332
+#define LOWER_THAN_ELSE 333
+#define TOK_ELSE 334
+#define UNARY_MINUS 335
+#define UNARY_ADDR 336
+#define POSTFIX_DEREF 337
 
 
 
@@ -242,7 +244,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 246 "src/flex_bison/parser.tab.hpp"
+#line 248 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

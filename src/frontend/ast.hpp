@@ -221,7 +221,7 @@ public:
 class Stmt : public Node {
 public:
     enum Kind { BLOCK, RETURN, IF, LOOP, BREAK, CONTINUE, ASSIGN, EXPR, DECL_STMT,
-                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC };
+                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC, HASH_ASSERT };
     virtual Kind kind() const = 0;
 };
 
@@ -499,6 +499,17 @@ public:
     bool  inc;  // true = ++,  false = --
     IncDecStmt(SourceRange r, Expr* e, bool i) : expr(e), inc(i) { range = r; }
     Kind kind() const override { return INC_DEC; }
+};
+
+// ---------------------------------------------------------------------------
+// HashAssertStmt:  #assert <const-expr>
+// Emits static_assert(expr, "<source location>") in C++.
+// ---------------------------------------------------------------------------
+class HashAssertStmt : public Stmt {
+public:
+    Expr* cond;
+    HashAssertStmt(SourceRange r, Expr* c) : cond(c) { range = r; }
+    Kind kind() const override { return HASH_ASSERT; }
 };
 
 // ---------------------------------------------------------------------------
