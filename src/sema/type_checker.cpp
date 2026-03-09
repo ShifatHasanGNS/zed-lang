@@ -2,7 +2,7 @@
 // type_checker.cpp
 // =============================================================================
 
-#include "../sema/type_checker.hpp"
+#include "type_checker.hpp"
 
 #include "../frontend/ast.hpp"         // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"    // stable TOK_* constants
@@ -66,6 +66,57 @@ void TypeChecker::check_struct_decl(StructDecl* sd) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Constant integer expression evaluator
+// Returns true and sets `out` if the expression is a compile-time integer.
+// Handles: integer literals, identifier refs to already-folded consts,
+// and binary arithmetic/bitwise over the above.
+// ---------------------------------------------------------------------------
+static bool eval_const_int(Expr* e, SymbolTable& sym, int64_t& out) {
+    if (!e) return false;
+
+    if (auto* lit = dynamic_cast<LitExpr*>(e)) {
+        if (lit->lit_kind == LitExpr::INT) { out = static_cast<int64_t>(lit->int_val); return true; }
+        return false;
+    }
+
+    if (auto* id = dynamic_cast<IdentExpr*>(e)) {
+        const Symbol* s = sym.lookup(id->name);
+        if (s && s->has_const_val) { out = s->const_int_val; return true; }
+        return false;
+    }
+
+    if (auto* bin = dynamic_cast<BinaryExpr*>(e)) {
+        int64_t lv, rv;
+        if (!eval_const_int(bin->left, sym, lv)) return false;
+        if (!eval_const_int(bin->right, sym, rv)) return false;
+        switch (bin->op) {
+            case TOK_PLUS:    out = lv + rv;              return true;
+            case TOK_MINUS:   out = lv - rv;              return true;
+            case TOK_STAR:    out = lv * rv;              return true;
+            case TOK_SLASH:   if (rv == 0) return false;
+                              out = lv / rv;              return true;
+            case TOK_PERCENT: if (rv == 0) return false;
+                              out = lv % rv;              return true;
+            case TOK_SHL:     out = lv << rv;             return true;
+            case TOK_SHR:     out = lv >> rv;             return true;
+            case TOK_AMP:     out = lv & rv;              return true;
+            case TOK_PIPE:    out = lv | rv;              return true;
+            case TOK_XOR:     out = lv ^ rv;              return true;
+            default:          return false;
+        }
+    }
+
+    if (auto* un = dynamic_cast<UnaryExpr*>(e)) {
+        int64_t v;
+        if (!eval_const_int(un->expr, sym, v)) return false;
+        if (un->op == TOK_MINUS) { out = -v; return true; }
+        return false;
+    }
+
+    return false;
+}
+
 void TypeChecker::check_const_decl(ConstDecl* cd) {
     TypeRef vty = check_expr(cd->value);
     // Update the placeholder type stored during collect_globals.
@@ -80,13 +131,13 @@ void TypeChecker::check_const_decl(ConstDecl* cd) {
     } else {
         sym->type = vty;
     }
-    // Attempt simple integer constant folding
+    // Attempt recursive integer constant folding (handles expressions like
+    // GRID_SIZE * CELL_SIZE, not just bare literals).
     if (sym) {
-        if (auto* lit = dynamic_cast<LitExpr*>(cd->value)) {
-            if (lit->lit_kind == LitExpr::INT) {
-                sym->has_const_val = true;
-                sym->const_int_val = static_cast<int64_t>(lit->int_val);
-            }
+        int64_t val;
+        if (eval_const_int(cd->value, sym_, val)) {
+            sym->has_const_val  = true;
+            sym->const_int_val  = val;
         }
     }
 }

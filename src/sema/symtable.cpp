@@ -2,9 +2,11 @@
 // symtable.cpp
 // =============================================================================
 
-#include "../sema/symtable.hpp"
+#include "symtable.hpp"
 
+#include "../frontend/tok_defs.hpp"   // TOK_PLUS, TOK_STAR, etc. for const folding
 #include <cassert>
+#include <functional>
 
 namespace ZedLang {
 
@@ -83,6 +85,70 @@ void SymbolTable::collect_globals(Program* prog) {
     // Detect cimports early so resolve_ast_type can fall back to FOREIGN_NAMED.
     for (Decl* d : prog->decls)
         if (d->kind() == Decl::CIMPORT) { has_cimports_ = true; break; }
+
+    // Sub-pass A0: pre-register all integer constants so array sizes that
+    // reference them (e.g.  [SNAKE_MAX_SIZE]Vec2i) are available when struct
+    // fields are resolved in Sub-pass B below.
+    for (Decl* d : prog->decls) {
+        if (d->kind() != Decl::CONST) continue;
+        auto* cd = static_cast<ConstDecl*>(d);
+        // Only register — don't evaluate yet; a second sweep below folds values.
+        Symbol sym(Symbol::Kind::CONST, cd->const_name,
+                   arena().ty_i32(),   // placeholder; type checker corrects later
+                   d->range.begin);
+        sym.initialized = true;
+        if (!lookup_local(cd->const_name)) declare(sym);
+    }
+    // Fold integer const values in declaration order (handles chains like
+    // GRID_SIZE=20, CANVAS_SIZE=GRID_SIZE*CELL_SIZE, SNAKE_MAX_SIZE=…).
+    for (Decl* d : prog->decls) {
+        if (d->kind() != Decl::CONST) continue;
+        auto* cd = static_cast<ConstDecl*>(d);
+        Symbol* sym = lookup(cd->const_name);
+        if (!sym) continue;
+        // Walk the expression tree for constant integers.
+        std::function<bool(Expr*, int64_t&)> fold = [&](Expr* e, int64_t& out) -> bool {
+            if (!e) return false;
+            if (auto* lit = dynamic_cast<LitExpr*>(e)) {
+                if (lit->lit_kind == LitExpr::INT) { out = (int64_t)lit->int_val; return true; }
+                return false;
+            }
+            if (auto* id = dynamic_cast<IdentExpr*>(e)) {
+                Symbol* s = lookup(id->name);
+                if (s && s->has_const_val) { out = s->const_int_val; return true; }
+                return false;
+            }
+            if (auto* bin = dynamic_cast<BinaryExpr*>(e)) {
+                int64_t lv, rv;
+                if (!fold(bin->left, lv) || !fold(bin->right, rv)) return false;
+                switch (bin->op) {
+                    case TOK_PLUS:    out = lv + rv; return true;
+                    case TOK_MINUS:   out = lv - rv; return true;
+                    case TOK_STAR:    out = lv * rv; return true;
+                    case TOK_SLASH:   if (rv==0) return false; out = lv / rv; return true;
+                    case TOK_PERCENT: if (rv==0) return false; out = lv % rv; return true;
+                    case TOK_SHL:     out = lv << rv; return true;
+                    case TOK_SHR:     out = lv >> rv; return true;
+                    case TOK_AMP:     out = lv & rv; return true;
+                    case TOK_PIPE:    out = lv | rv; return true;
+                    case TOK_XOR:     out = lv ^ rv; return true;
+                    default:          return false;
+                }
+            }
+            if (auto* un = dynamic_cast<UnaryExpr*>(e)) {
+                int64_t v;
+                if (!fold(un->expr, v)) return false;
+                if (un->op == TOK_MINUS) { out = -v; return true; }
+                return false;
+            }
+            return false;
+        };
+        int64_t val;
+        if (fold(cd->value, val)) {
+            sym->has_const_val  = true;
+            sym->const_int_val  = val;
+        }
+    }
 
     // Sub-pass A: register struct names (so proc signatures can use them).
     for (Decl* d : prog->decls) {

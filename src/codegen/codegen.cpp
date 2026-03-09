@@ -2,7 +2,7 @@
 // codegen/codegen.cpp
 // =============================================================================
 
-#include "../codegen/codegen.hpp"
+#include "codegen.hpp"
 
 #include "../frontend/ast.hpp"       // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"  // stable TOK_* constants
@@ -39,7 +39,6 @@ void CodeGen::generate(Program* prog) {
                 emit_struct_def(static_cast<StructDecl*>(d));
         }
         // proc forward declarations
-        emit_.comment("--- Procedure Forward Declarations ---");
         for (Decl* d : imp->decls) {
             if (d->kind() == Decl::PROC)
                 emit_proc_decl(static_cast<ProcDecl*>(d));
@@ -229,6 +228,7 @@ void CodeGen::emit_global_var(VarDecl* vd) {
 // Procedure forward declaration
 // ---------------------------------------------------------------------------
 void CodeGen::emit_proc_decl(ProcDecl *pd) {
+    emit_.comment("--- Procedure Forward Declarations ---");
     TypeRef ty = tc_.sym_ref().lookup(pd->proc_name) ?
                  tc_.sym_ref().lookup(pd->proc_name)->type : nullptr;
     if (!ty || !ty->is_proc()) return;
@@ -505,11 +505,6 @@ void CodeGen::emit_hash_assert(HashAssertStmt* s) {
 // for { } / for cond { }  (infinite and while-loop forms)
 // ---------------------------------------------------------------------------
 void CodeGen::emit_loop(LoopStmt* s) {
-    // If this loop has a label, emit a C label before the loop, and a
-    // __continue_<label> label inside the body suffix for continue support.
-    if (!s->label.empty()) {
-        emit_.line("// loop label: " + s->label);
-    }
     if (s->cond) {
         emit_.begin_line("while (");
         emit_expr(s->cond);
@@ -517,22 +512,54 @@ void CodeGen::emit_loop(LoopStmt* s) {
     } else {
         emit_.begin_line("for (;;)");
     }
-    // Emit the body
+
+    if (s->label.empty()) {
+        // No label — delegate entirely to emit_block, which handles defers.
+        emit_block(s->body, true);
+        return;
+    }
+
+    // Labeled loop: emit the block manually so we can inject the
+    // __continue label inside the closing brace (LIFO, after defers).
     emit_.emit(" {\n");
     emit_.indent();
+
+    auto defers = collect_defers(s->body);
+    bool returned = false;
     for (Stmt* st : s->body->stmts) {
-        // Collect/emit defers handled by emit_block; call it directly
+        if (!defers.empty()) {
+            if (st->kind() == Stmt::RETURN) {
+                for (Stmt* d : defers) {
+                    emit_.emit_indent();
+                    emit_expr(static_cast<ExprStmt*>(d)->expr);
+                    emit_.emit(";\n");
+                }
+                returned = true;
+            } else if (st->kind() == Stmt::BREAK || st->kind() == Stmt::CONTINUE
+                    || st->kind() == Stmt::BREAK_LABEL || st->kind() == Stmt::CONTINUE_LABEL) {
+                for (Stmt* d : defers) {
+                    emit_.emit_indent();
+                    emit_expr(static_cast<ExprStmt*>(d)->expr);
+                    emit_.emit(";\n");
+                }
+            }
+        }
         emit_stmt(st);
     }
-    if (!s->label.empty()) {
-        emit_.line("__continue_" + s->label + ":;");
+    if (!returned) {
+        for (Stmt* d : defers) {
+            emit_.emit_indent();
+            emit_expr(static_cast<ExprStmt*>(d)->expr);
+            emit_.emit(";\n");
+        }
     }
+    // continue-label goes at end of body (before closing brace)
+    emit_.line("__continue_" + s->label + ":;");
     emit_.dedent();
     emit_.emit_indent();
     emit_.emit("}\n");
-    if (!s->label.empty()) {
-        emit_.line("__break_" + s->label + ":;");
-    }
+    // break-label goes after the loop
+    emit_.line("__break_" + s->label + ":;");
 }
 
 void CodeGen::emit_return(ReturnStmt* s) {
