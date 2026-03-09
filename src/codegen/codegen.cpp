@@ -330,15 +330,36 @@ void CodeGen::emit_block(BlockStmt* b, bool own_braces) {
         emit_.indent();
     }
     auto defers = collect_defers(b);
+    bool returned = false;
     for (Stmt* s : b->stmts) {
-        if (s->kind() == Stmt::RETURN && !defers.empty()) {
-            // Emit deferred calls before return
-            for (Stmt* d : defers) { emit_.emit_indent(); emit_expr(static_cast<ExprStmt*>(d)->expr); emit_.emit(";\n"); }
+        if (!defers.empty()) {
+            if (s->kind() == Stmt::RETURN) {
+                // Flush defers LIFO before the return
+                for (Stmt* d : defers) {
+                    emit_.emit_indent();
+                    emit_expr(static_cast<ExprStmt*>(d)->expr);
+                    emit_.emit(";\n");
+                }
+                returned = true;
+            } else if (s->kind() == Stmt::BREAK || s->kind() == Stmt::CONTINUE) {
+                // Also flush before break/continue
+                for (Stmt* d : defers) {
+                    emit_.emit_indent();
+                    emit_expr(static_cast<ExprStmt*>(d)->expr);
+                    emit_.emit(";\n");
+                }
+            }
         }
         emit_stmt(s);
     }
-    // Emit defers at end of block (fall-through)
-    for (Stmt* d : defers) { emit_.emit_indent(); emit_expr(static_cast<ExprStmt*>(d)->expr); emit_.emit(";\n"); }
+    // Fall-through end of block: flush if we didn't already return
+    if (!returned) {
+        for (Stmt* d : defers) {
+            emit_.emit_indent();
+            emit_expr(static_cast<ExprStmt*>(d)->expr);
+            emit_.emit(";\n");
+        }
+    }
     if (own_braces) {
         emit_.dedent();
         emit_.emit_indent();
@@ -387,19 +408,21 @@ void CodeGen::emit_match(MatchStmt* s) {
     emit_.begin_line("switch (");
     emit_expr(s->value);
     emit_.emit(") {\n");
+    emit_.indent();
     for (auto& mc : s->cases) {
         if (mc.value) {
             emit_.emit_indent();
             emit_.emit("case ");
             emit_expr(mc.value);
-            emit_.emit(": ");
+            emit_.emit(":");  // no trailing space — emit_block(true) adds " {"
         } else {
-            emit_.begin_line("default: ");
+            emit_.begin_line("default:");
         }
         emit_block(mc.body, true);
         emit_.line("break;");
     }
-    emit_.begin_line("}\n");
+    emit_.dedent();
+    emit_.line("}");
 }
 
 // ---------------------------------------------------------------------------
@@ -428,7 +451,6 @@ void CodeGen::emit_when(WhenStmt* s) {
 // compound assign
 // ---------------------------------------------------------------------------
 void CodeGen::emit_compound_assign(CompoundAssignStmt* s) {
-    const char* op_str(int op);
     emit_.emit_indent();
     emit_expr(s->lvalue);
     switch (s->op) {

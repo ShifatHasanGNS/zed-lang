@@ -129,6 +129,18 @@ void AstPrinter::print(Decl* decl) {
             dedent();
             break;
         }
+        case Decl::CIMPORT: {
+            auto* ci = static_cast<CImportDecl*>(decl);
+            emit_indent(out, current_indent);
+            out << "CImport \"" << ci->path << "\"\n";
+            break;
+        }
+        case Decl::IMPORT: {
+            auto* im = static_cast<ImportDecl*>(decl);
+            emit_indent(out, current_indent);
+            out << "Import \"" << im->path << "\"\n";
+            break;
+        }
         case Decl::ENUM_DECL: {
             auto* ed = static_cast<EnumDecl*>(decl);
             emit_indent(out, current_indent);
@@ -141,18 +153,6 @@ void AstPrinter::print(Decl* decl) {
                 else out << "\n";
             }
             dedent();
-            break;
-        }
-        case Decl::CIMPORT: {
-            auto* ci = static_cast<CImportDecl*>(decl);
-            emit_indent(out, current_indent);
-            out << "CImport \"" << ci->path << "\"\n";
-            break;
-        }
-        case Decl::IMPORT: {
-            auto* im = static_cast<ImportDecl*>(decl);
-            emit_indent(out, current_indent);
-            out << "Import \"" << im->path << "\"\n";
             break;
         }
     }
@@ -235,10 +235,17 @@ void AstPrinter::print(Stmt* stmt) {
         case Stmt::LOOP: {
             LoopStmt* ls = static_cast<LoopStmt*>(stmt);
             emit_indent(out, current_indent);
-            out << "Loop (infinite)";
+            out << (ls->cond ? "Loop (while)" : "Loop (infinite)");
             print_location(ls);
             out << "\n";
             indent();
+            if (ls->cond) {
+                emit_indent(out, current_indent);
+                out << "Cond:\n";
+                indent();
+                print(ls->cond);
+                dedent();
+            }
             print(ls->body);
             dedent();
             break;
@@ -296,6 +303,107 @@ void AstPrinter::print(Stmt* stmt) {
             out << "DeclStmt\n";
             indent();
             print(ds->decl);
+            dedent();
+            break;
+        }
+        case Stmt::FOR_RANGE: {
+            ForRangeStmt* fs = static_cast<ForRangeStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "ForRange var=" << fs->var
+                << (fs->inclusive ? " ..=" : " ..<");
+            print_location(fs);
+            out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "Lo:\n";
+            indent(); print(fs->lo); dedent();
+            emit_indent(out, current_indent); out << "Hi:\n";
+            indent(); print(fs->hi); dedent();
+            if (fs->step_expr) {
+                emit_indent(out, current_indent); out << "Step:\n";
+                indent(); print(fs->step_expr); dedent();
+            }
+            print(fs->body);
+            dedent();
+            break;
+        }
+        case Stmt::DEFER: {
+            DeferStmt* ds = static_cast<DeferStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "Defer";
+            print_location(ds);
+            out << "\n";
+            indent();
+            print(ds->inner);
+            dedent();
+            break;
+        }
+        case Stmt::MATCH: {
+            MatchStmt* ms = static_cast<MatchStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "Match";
+            print_location(ms);
+            out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "Value:\n";
+            indent(); print(ms->value); dedent();
+            for (auto& mc : ms->cases) {
+                emit_indent(out, current_indent);
+                out << (mc.value ? "Case:\n" : "Default:\n");
+                indent();
+                if (mc.value) {
+                    emit_indent(out, current_indent); out << "Val:\n";
+                    indent(); print(mc.value); dedent();
+                }
+                print(mc.body);
+                dedent();
+            }
+            dedent();
+            break;
+        }
+        case Stmt::WHEN: {
+            WhenStmt* ws = static_cast<WhenStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "When";
+            print_location(ws);
+            out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "Cond:\n";
+            indent(); print(ws->cond); dedent();
+            emit_indent(out, current_indent); out << "Then:\n";
+            indent(); print(ws->then_block); dedent();
+            for (auto& [ec, eb] : ws->else_whens) {
+                emit_indent(out, current_indent); out << "ElseWhen:\n";
+                indent(); print(ec); print(eb); dedent();
+            }
+            if (ws->else_block) {
+                emit_indent(out, current_indent); out << "Else:\n";
+                indent(); print(ws->else_block); dedent();
+            }
+            dedent();
+            break;
+        }
+        case Stmt::COMPOUND_ASSIGN: {
+            CompoundAssignStmt* cs = static_cast<CompoundAssignStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "CompoundAssign op=" << token_kind_name(cs->op);
+            print_location(cs);
+            out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "LHS:\n";
+            indent(); print(cs->lvalue); dedent();
+            emit_indent(out, current_indent); out << "RHS:\n";
+            indent(); print(cs->rhs); dedent();
+            dedent();
+            break;
+        }
+        case Stmt::INC_DEC: {
+            IncDecStmt* is = static_cast<IncDecStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << (is->inc ? "Inc" : "Dec");
+            print_location(is);
+            out << "\n";
+            indent();
+            print(is->expr);
             dedent();
             break;
         }

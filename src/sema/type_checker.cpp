@@ -208,6 +208,12 @@ void TypeChecker::check_if(IfStmt* s) {
 }
 
 void TypeChecker::check_loop(LoopStmt* s) {
+    if (s->cond) {
+        TypeRef cty = check_expr(s->cond);
+        if (!cty->is_bool() && !cty->is_error() && !cty->is_any_foreign())
+            err_.error(s->cond->range.begin,
+                "loop condition must be bool, got '" + cty->to_string() + "'");
+    }
     sym_.push_scope(Scope::Kind::LOOP);
     for (Stmt* st : s->body->stmts) check_stmt(st);
     sym_.pop_scope();
@@ -713,11 +719,13 @@ bool TypeChecker::types_compatible(TypeRef from, TypeRef to) const {
 void TypeChecker::check_for_range(ForRangeStmt* s) {
     TypeRef lty = check_expr(s->lo);
     TypeRef hty = check_expr(s->hi);
-    // Infer loop variable type from lo bound (integer expected)
-    TypeRef var_ty = lty->is_integer() ? lty :
-                     (lty->is_any_foreign() ? sym_.arena().ty_i32() : sym_.arena().ty_i32());
+    // Validate both bounds are integer (or foreign-passthrough)
     if (!lty->is_integer() && !lty->is_error() && !lty->is_any_foreign())
-        err_.error(s->lo->range.begin, "for-range bound must be integer");
+        err_.error(s->lo->range.begin, "for-range lower bound must be integer");
+    if (!hty->is_integer() && !hty->is_error() && !hty->is_any_foreign())
+        err_.error(s->hi->range.begin, "for-range upper bound must be integer");
+    // Infer loop variable type from lo bound; fall back to i32
+    TypeRef var_ty = lty->is_integer() ? lty : sym_.arena().ty_i32();
     if (s->step_expr) {
         TypeRef sty = check_expr(s->step_expr);
         if (!sty->is_integer() && !sty->is_error() && !sty->is_any_foreign())
