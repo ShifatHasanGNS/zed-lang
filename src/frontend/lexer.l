@@ -104,7 +104,7 @@ using namespace ZedLang;
     /* Float literals                                                       */
     /* ------------------------------------------------------------------ */
     /* Form 1: digit(s).digit(s) optional-exponent  e.g. 3.14  1.5e-3   */
-    /* Form 2: digit(s) exponent, no decimal point  e.g. 1e-9  2E10     */
+    /* Form 2: digit(s) exponent, no decimal point  e.g. 1e-6  2E10     */
 [0-9]+"."[0-9]+([eE][+-]?[0-9]+)? |
 [0-9]+[eE][+-]?[0-9]+              {
     /* Parser reads $N as yylval->float_val for TOK_FLOAT_LIT */

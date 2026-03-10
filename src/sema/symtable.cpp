@@ -2,7 +2,7 @@
 // symtable.cpp
 // =============================================================================
 
-#include "symtable.hpp"
+#include "../sema/symtable.hpp"
 
 #include "../frontend/tok_defs.hpp"   // TOK_PLUS, TOK_STAR, etc. for const folding
 #include <cassert>
@@ -72,6 +72,12 @@ TypeRef SymbolTable::resolve_ast_type(ZedLang::Type* t) {
             TypeRef ret = pt->return_type ? resolve_ast_type(pt->return_type) : nullptr;
             return arena().make_proc(std::move(params), ret);
         }
+        case ZedLang::Type::DYN_ARRAY_TYPE: {
+            auto* da = static_cast<ZedLang::DynArrayTypeAST*>(t);
+            return arena().make_dyn_array(resolve_ast_type(da->elem));
+        }
+        case ZedLang::Type::STRING_TYPE:
+            return arena().ty_string();
     }
     return arena().ty_error();
 }
@@ -220,9 +226,16 @@ void SymbolTable::collect_globals(Program* prog) {
                 for (const std::string& pname : pg.names)
                     params.push_back({pname, pty});
             }
-            TypeRef ret = pd->return_type
-                        ? resolve_ast_type(pd->return_type)
-                        : arena().ty_void();
+            TypeRef ret;
+            if (!pd->return_types.empty()) {
+                std::vector<TypeRef> elems;
+                for (Type* t : pd->return_types) elems.push_back(resolve_ast_type(t));
+                ret = arena().make_tuple(std::move(elems));
+            } else {
+                ret = pd->return_type
+                    ? resolve_ast_type(pd->return_type)
+                    : arena().ty_void();
+            }
             TypeRef proc_ty = arena().make_proc(std::move(params), ret);
             Symbol sym(Symbol::Kind::PROC, pd->proc_name,
                        proc_ty, d->range.begin);

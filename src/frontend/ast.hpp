@@ -99,7 +99,7 @@ public:
 // ---------------------------------------------------------------------------
 class Type : public Node {
 public:
-    enum Kind { NAMED, PTR, ARRAY, SLICE, PROC_TYPE };
+    enum Kind { NAMED, PTR, ARRAY, SLICE, PROC_TYPE, DYN_ARRAY_TYPE, STRING_TYPE };
     virtual Kind kind() const = 0;
 };
 
@@ -150,6 +150,21 @@ public:
 // ---------------------------------------------------------------------------
 // Decl (abstract)
 // ---------------------------------------------------------------------------
+// [dynamic]T
+class DynArrayTypeAST : public Type {
+public:
+    Type* elem;
+    DynArrayTypeAST(SourceRange r, Type* e) : elem(e) { range = r; }
+    Kind kind() const override { return DYN_ARRAY_TYPE; }
+};
+
+// string (keyword type)
+class StringTypeAST : public Type {
+public:
+    StringTypeAST(SourceRange r) { range = r; }
+    Kind kind() const override { return STRING_TYPE; }
+};
+
 class Decl : public Node {
 public:
     enum Kind { VAR, CONST, STRUCT, PROC, ENUM_DECL, CIMPORT = 20, IMPORT = 21 };
@@ -218,10 +233,15 @@ class ProcDecl : public Decl {
 public:
     std::string proc_name;
     std::vector<ParamGroup> params;
-    Type* return_type = nullptr;      // null means void
-    BlockStmt* body = nullptr;        // null means "---" (extern)
-    ProcDecl(SourceRange r, std::string n, std::vector<ParamGroup> p, Type* ret, BlockStmt* b)
-        : proc_name(std::move(n)), params(std::move(p)), return_type(ret), body(b) { range = r; }
+    // Single return: return_type non-null, return_types empty.
+    // Multi-return:  return_type null,     return_types non-empty.
+    Type*              return_type  = nullptr;
+    std::vector<Type*> return_types;          // filled for -> (T1, T2, ...)
+    BlockStmt* body = nullptr;                // null means "---" (extern)
+    ProcDecl(SourceRange r, std::string n, std::vector<ParamGroup> p,
+             Type* ret, std::vector<Type*> rets, BlockStmt* b)
+        : proc_name(std::move(n)), params(std::move(p)),
+          return_type(ret), return_types(std::move(rets)), body(b) { range = r; }
     Kind kind() const override { return PROC; }
     const std::string& name() const override { return proc_name; }
 };
@@ -233,6 +253,7 @@ class Stmt : public Node {
 public:
     enum Kind { BLOCK, RETURN, IF, LOOP, BREAK, CONTINUE, ASSIGN, EXPR, DECL_STMT,
                  FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC, HASH_ASSERT,
+                 MULTI_ASSIGN, MULTI_DECL,
                  BREAK_LABEL, CONTINUE_LABEL };
     virtual Kind kind() const = 0;
 };
@@ -249,6 +270,26 @@ public:
     Expr* value = nullptr;   // null means void return
     ReturnStmt(SourceRange r, Expr* v) : value(v) { range = r; }
     Kind kind() const override { return RETURN; }
+};
+
+// a, b := foo()   — multi-value declaration from a single call/tuple
+class MultiDeclStmt : public Stmt {
+public:
+    std::vector<std::string> names;   // variable names ("_" = discard)
+    Expr*                    rhs;     // must evaluate to TupleExpr or multi-return call
+    MultiDeclStmt(SourceRange r, std::vector<std::string> n, Expr* e)
+        : names(std::move(n)), rhs(e) { range = r; }
+    Kind kind() const override { return MULTI_DECL; }
+};
+
+// a, b = foo()   — multi-value assignment to existing variables
+class MultiAssignStmt : public Stmt {
+public:
+    std::vector<Expr*> lvalues;
+    Expr*              rhs;
+    MultiAssignStmt(SourceRange r, std::vector<Expr*> lv, Expr* e)
+        : lvalues(std::move(lv)), rhs(e) { range = r; }
+    Kind kind() const override { return MULTI_ASSIGN; }
 };
 
 class IfStmt : public Stmt {
@@ -328,7 +369,8 @@ public:
 class Expr : public Node {
 public:
     enum Kind { BINARY, UNARY, CALL, INDEX, SLICE, FIELD, DEREF, ADDR, CAST,
-                LIT, IDENT, STRUCT_LIT };
+                LIT, IDENT, STRUCT_LIT, TUPLE, SIZEOF_EXPR, ARRAY_INIT,
+                BUILTIN_CALL, OR_RETURN_EXPR };
     virtual Kind kind() const = 0;
 };
 
@@ -449,7 +491,53 @@ public:
     Kind kind() const override { return STRUCT_LIT; }
 };
 
+// Tuple expression: (a, b, c) — used for multi-return and multi-assign RHS
+class TupleExpr : public Expr {
+public:
+    std::vector<Expr*> elems;
+    TupleExpr(SourceRange r, std::vector<Expr*> e) : elems(std::move(e)) { range = r; }
+    Kind kind() const override { return TUPLE; }
+};
+
+// sizeof(T) / sizeof(expr) and alignof(T)
+class SizeofExpr : public Expr {
+public:
+    bool is_align;       // true = alignof, false = sizeof
+    Type* type_arg;      // non-null when argument is a type
+    Expr* expr_arg;      // non-null when argument is an expression
+    SizeofExpr(SourceRange r, bool align, Type* t, Expr* e)
+        : is_align(align), type_arg(t), expr_arg(e) { range = r; }
+    Kind kind() const override { return SIZEOF_EXPR; }
+};
+
 // ---------------------------------------------------------------------------
+// ArrayInitExpr: { expr, expr, ... } — used in global/local var initializers
+// e.g.  verts: [5]Vec3 = { Vec3{...}, Vec3{...} }
+class ArrayInitExpr : public Expr {
+public:
+    std::vector<Expr*> elems;
+    ArrayInitExpr(SourceRange r, std::vector<Expr*> e) : elems(std::move(e)) { range = r; }
+    Kind kind() const override { return ARRAY_INIT; }
+};
+
+// BuiltinCallExpr — append, len, cap, reserve, delete_dyn, to_cstr, from_cstr
+class BuiltinCallExpr : public Expr {
+public:
+    int builtin_tok;            // TOK_KW_APPEND, TOK_KW_LEN, ...
+    std::vector<Expr*> args;
+    BuiltinCallExpr(SourceRange r, int tok, std::vector<Expr*> a)
+        : builtin_tok(tok), args(std::move(a)) { range = r; }
+    Kind kind() const override { return BUILTIN_CALL; }
+};
+
+// expr or_return  — short-circuits on (T, bool) false result
+class OrReturnExpr : public Expr {
+public:
+    Expr* inner;
+    OrReturnExpr(SourceRange r, Expr* e) : inner(e) { range = r; }
+    Kind kind() const override { return OR_RETURN_EXPR; }
+};
+
 // ForRangeStmt:  for i in lo..<hi { }  /  for i in lo..=hi step s { }
 // ---------------------------------------------------------------------------
 class ForRangeStmt : public Stmt {

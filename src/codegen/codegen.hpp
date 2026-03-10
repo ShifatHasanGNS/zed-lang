@@ -22,6 +22,7 @@
 
 #include <ostream>
 #include <string>
+#include <set>
 
 namespace ZedLang {
 
@@ -67,6 +68,9 @@ private:
     void emit_compound_assign(CompoundAssignStmt* s);
     void emit_inc_dec(IncDecStmt* s);
     void emit_hash_assert(HashAssertStmt* s);
+    void emit_multi_decl(MultiDeclStmt* s);
+    void emit_multi_assign(MultiAssignStmt* s);
+    void emit_multi_ret_struct(const std::string& name, sem::TupleType* tt);
     void emit_return(ReturnStmt* s);
     void emit_assign(AssignStmt* s);
     void emit_expr_stmt(ExprStmt* s);
@@ -89,6 +93,11 @@ private:
     void emit_lit(LitExpr* e, TypeRef hint = nullptr);
     void emit_ident(IdentExpr* e);
     void emit_struct_lit(StructLitExpr* e);
+    void emit_tuple(TupleExpr* e);
+    void emit_array_init(ArrayInitExpr* e);
+    void emit_sizeof(SizeofExpr* e);
+    void emit_builtin_call(BuiltinCallExpr* e);
+    void emit_or_return(OrReturnExpr* e);
 
     // ---- Type helpers ------------------------------------------------------
     // Emit the C type spelling for a SemanticType (e.g. "int32_t", "MyStruct*").
@@ -107,6 +116,8 @@ private:
     TypeChecker& tc_;
     CEmitter     emit_;
     std::vector<Program*> imported_programs_;
+    std::string  current_proc_name_;        // for multi-return emit_return
+    std::set<std::string> emitted_ret_structs_;  // avoid duplicate typedef
 };
 
 } // namespace ZedLang

@@ -2,8 +2,8 @@
 // ast_printer.cpp
 // =============================================================================
 
-#include "../frontend/ast_printer.hpp"
-#include "../frontend/token.hpp"
+#include "ast_printer.hpp"
+#include "token.hpp"
 
 namespace ZedLang {
 
@@ -434,6 +434,23 @@ void AstPrinter::print(Stmt* stmt) {
             out << "\n";
             break;
         }
+        case Stmt::MULTI_DECL: {
+            MultiDeclStmt* md = static_cast<MultiDeclStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "MultiDecl (";
+            for (size_t i = 0; i < md->names.size(); ++i) {
+                if (i) out << ", "; out << md->names[i];
+            }
+            out << ")"; print_location(md); out << "\n";
+            indent(); print(md->rhs); dedent();
+            break;
+        }
+        case Stmt::MULTI_ASSIGN: {
+            MultiAssignStmt* ma = static_cast<MultiAssignStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "MultiAssign"; print_location(ma); out << "\n";
+            break;
+        }
     }
 }
 
@@ -636,6 +653,48 @@ void AstPrinter::print(Expr* expr) {
             dedent();
             break;
         }
+        case Expr::TUPLE: {
+            TupleExpr* te = static_cast<TupleExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "Tuple"; print_location(te); out << "\n";
+            indent();
+            for (Expr* el : te->elems) print(el);
+            dedent();
+            break;
+        }
+        case Expr::ARRAY_INIT: {
+            ArrayInitExpr* ai = static_cast<ArrayInitExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "ArrayInit"; print_location(ai); out << "\n";
+            indent();
+            for (Expr* el : ai->elems) print(el);
+            dedent();
+            break;
+        }
+        case Expr::SIZEOF_EXPR: {
+            SizeofExpr* se = static_cast<SizeofExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << (se->is_align ? "Alignof" : "Sizeof");
+            print_location(se); out << "\n";
+            break;
+        }
+        case Expr::BUILTIN_CALL: {
+            BuiltinCallExpr* bc = static_cast<BuiltinCallExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "BuiltinCall tok=" << bc->builtin_tok;
+            print_location(bc); out << "\n";
+            indent();
+            for (Expr* a : bc->args) print(a);
+            dedent();
+            break;
+        }
+        case Expr::OR_RETURN_EXPR: {
+            OrReturnExpr* oe = static_cast<OrReturnExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "OrReturn"; print_location(oe); out << "\n";
+            indent(); print(oe->inner); dedent();
+            break;
+        }
     }
 }
 
@@ -678,6 +737,15 @@ void AstPrinter::print(Type* type) {
             if (pt->return_type) { out << " -> "; print(pt->return_type); }
             break;
         }
+        case Type::DYN_ARRAY_TYPE: {
+            DynArrayTypeAST* da = static_cast<DynArrayTypeAST*>(type);
+            out << "[dynamic]";
+            print(da->elem);
+            break;
+        }
+        case Type::STRING_TYPE:
+            out << "string";
+            break;
     }
 }
 

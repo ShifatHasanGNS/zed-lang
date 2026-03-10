@@ -67,6 +67,13 @@ uint64_t SemanticType::byte_size() const {
         case Kind::FOREIGN: return 0;
         case Kind::FOREIGN_NAMED: return 0;
         case Kind::ENUM:         return 4;  // underlying i32
+        case Kind::TUPLE: {
+            uint64_t sz = 0;
+            for (auto& e : static_cast<const sem::TupleType*>(this)->elems) sz += e->byte_size();
+            return sz;
+        }
+        case Kind::STRING:    return 16;  // { *u8(8) + len(8) }
+        case Kind::DYN_ARRAY: return 24;  // { *T(8) + len(8) + cap(8) }
     }
     return 0;
 }
@@ -119,6 +126,20 @@ std::string SemanticType::to_string() const {
             s += ")";
             if (p->return_type) s += " -> " + p->return_type->to_string();
             return s;
+        }
+        case Kind::STRING:    return "string";
+        case Kind::DYN_ARRAY: {
+            const auto* d = static_cast<const sem::DynArrayType*>(this);
+            return "[dynamic]" + d->elem->to_string();
+        }
+        case Kind::TUPLE: {
+            const auto* t = static_cast<const sem::TupleType*>(this);
+            std::string s = "(";
+            for (size_t i = 0; i < t->elems.size(); ++i) {
+                if (i) s += ", ";
+                s += t->elems[i]->to_string();
+            }
+            return s + ")";
         }
     }
     return "<unknown>";
@@ -190,6 +211,7 @@ TypeArena::TypeArena() {
     cstr_  = alloc<SemanticType>(SemanticType::Kind::CSTR);
     error_   = alloc<SemanticType>(SemanticType::Kind::ERROR);
     foreign_ = alloc<SemanticType>(SemanticType::Kind::FOREIGN);
+    string_  = alloc<SemanticType>(SemanticType::Kind::STRING);
 }
 
 TypeRef TypeArena::lookup_primitive(const std::string& name) const {
@@ -247,6 +269,14 @@ TypeRef TypeArena::make_proc(std::vector<sem::ProcParam> params, TypeRef ret) {
     return alloc<sem::ProcType>(std::move(params), ret);
 }
 
+
+TypeRef TypeArena::make_dyn_array(TypeRef elem) {
+    return alloc<sem::DynArrayType>(elem);
+}
+
+TypeRef TypeArena::make_tuple(std::vector<TypeRef> elems) {
+    return alloc<sem::TupleType>(std::move(elems));
+}
 
 TypeRef TypeArena::make_enum(std::string name) {
     return alloc<sem::EnumType>(std::move(name));

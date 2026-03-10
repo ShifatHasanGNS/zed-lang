@@ -43,6 +43,13 @@ public:
 
     // Access the symbol table (for codegen struct/proc lookups).
     SymbolTable& sym_ref() { return sym_; }
+    // Resolve an AST Type node — delegates to resolve_type (public wrapper)
+    TypeRef resolve(Type* t);
+    // Check whether a MultiDeclStmt RHS yields a given type (for codegen)
+    TypeRef type_of_multi_decl(MultiDeclStmt* s) const {
+        auto it = multi_decl_types_.find(s);
+        return (it != multi_decl_types_.end()) ? it->second : nullptr;
+    }
 
 private:
     // ---- Declaration passes ------------------------------------------------
@@ -68,6 +75,8 @@ private:
     void check_compound_assign(CompoundAssignStmt* s);
     void check_inc_dec(IncDecStmt* s);
     void check_hash_assert(HashAssertStmt* s);
+    void check_multi_decl(MultiDeclStmt* s);
+    void check_multi_assign(MultiAssignStmt* s);
 
     // ---- Expression checkers (return resolved type) -----------------------
     TypeRef check_expr(Expr* e);
@@ -83,6 +92,12 @@ private:
     TypeRef check_lit(LitExpr* e);
     TypeRef check_ident(IdentExpr* e);
     TypeRef check_struct_lit(StructLitExpr* e);
+    TypeRef check_tuple(TupleExpr* e);
+    TypeRef check_array_init(ArrayInitExpr* e);
+    TypeRef check_sizeof(SizeofExpr* e);
+    TypeRef check_multi_decl_expr(Expr* rhs);
+    TypeRef check_builtin_call(BuiltinCallExpr* e);
+    TypeRef check_or_return(OrReturnExpr* e);
 
     // ---- Helpers -----------------------------------------------------------
     // Resolve an AST Type node to a SemanticType.
@@ -109,6 +124,7 @@ private:
     std::unordered_map<Expr*, TypeRef> expr_types_;
     // Side table: VarDecl* → resolved SemanticType (survives scope pop)
     std::unordered_map<VarDecl*, TypeRef> var_types_;
+    std::unordered_map<MultiDeclStmt*, TypeRef> multi_decl_types_;
     // Deferred statement stack per proc scope (for defer checking)
     std::vector<std::vector<Stmt*>> defer_stacks_;
 };

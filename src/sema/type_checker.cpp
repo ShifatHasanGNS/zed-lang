@@ -2,7 +2,7 @@
 // type_checker.cpp
 // =============================================================================
 
-#include "type_checker.hpp"
+#include "../sema/type_checker.hpp"
 
 #include "../frontend/ast.hpp"         // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"    // stable TOK_* constants
@@ -195,8 +195,16 @@ void TypeChecker::check_proc_body(ProcDecl* pd) {
     Scope* proc_scope = sym_.push_scope(Scope::Kind::PROC);
 
     // Resolve return type and store it on the scope for check_return()
-    TypeRef ret = pd->return_type ? resolve_type(pd->return_type)
-                                  : sym_.arena().ty_void();
+    TypeRef ret;
+    if (!pd->return_types.empty()) {
+        // Multi-return: build a TupleType
+        std::vector<TypeRef> elems;
+        for (Type* t : pd->return_types) elems.push_back(resolve_type(t));
+        ret = sym_.arena().make_tuple(std::move(elems));
+    } else {
+        ret = pd->return_type ? resolve_type(pd->return_type)
+                              : sym_.arena().ty_void();
+    }
     proc_scope->proc_return_type = ret;
 
     // Declare parameters in the proc scope
@@ -250,6 +258,8 @@ void TypeChecker::check_stmt(Stmt* s) {
         case Stmt::COMPOUND_ASSIGN:check_compound_assign(static_cast<CompoundAssignStmt*>(s)); break;
         case Stmt::INC_DEC:        check_inc_dec(static_cast<IncDecStmt*>(s));              break;
         case Stmt::HASH_ASSERT:    check_hash_assert(static_cast<HashAssertStmt*>(s));       break;
+        case Stmt::MULTI_DECL:     check_multi_decl(static_cast<MultiDeclStmt*>(s));         break;
+        case Stmt::MULTI_ASSIGN:   check_multi_assign(static_cast<MultiAssignStmt*>(s));      break;
     }
 }
 
@@ -295,12 +305,26 @@ void TypeChecker::check_return(ReturnStmt* s) {
     }
     if (s->value) {
         TypeRef got = check_expr(s->value);
-        if (expected->is_void())
+        if (expected->is_void()) {
             err_.error(s->range.begin,
                 "procedure returns void but 'return' has a value");
-        else
-            if (!got->is_any_foreign())
-                expect_type(got, expected, s->range.begin, "return value");
+        } else if (expected->is_tuple() && got->is_tuple()) {
+            // Both are tuples — check element-wise
+            auto* et = static_cast<sem::TupleType*>(expected);
+            auto* gt = static_cast<sem::TupleType*>(got);
+            if (et->elems.size() != gt->elems.size())
+                err_.error(s->range.begin,
+                    "wrong number of return values: expected " +
+                    std::to_string(et->elems.size()) + ", got " +
+                    std::to_string(gt->elems.size()));
+            else
+                for (size_t i = 0; i < et->elems.size(); ++i)
+                    if (!et->elems[i]->is_any_foreign() && !gt->elems[i]->is_any_foreign())
+                        expect_type(gt->elems[i], et->elems[i], s->range.begin,
+                            "return value " + std::to_string(i));
+        } else if (!got->is_any_foreign()) {
+            expect_type(got, expected, s->range.begin, "return value");
+        }
     } else if (!expected->is_void()) {
         err_.error(s->range.begin,
             "missing return value; expected '" + expected->to_string() + "'");
@@ -348,6 +372,11 @@ TypeRef TypeChecker::check_expr(Expr* e) {
         case Expr::LIT:        t = check_lit(static_cast<LitExpr*>(e));            break;
         case Expr::IDENT:      t = check_ident(static_cast<IdentExpr*>(e));        break;
         case Expr::STRUCT_LIT: t = check_struct_lit(static_cast<StructLitExpr*>(e)); break;
+        case Expr::TUPLE:      t = check_tuple(static_cast<TupleExpr*>(e));          break;
+        case Expr::SIZEOF_EXPR:t = check_sizeof(static_cast<SizeofExpr*>(e));        break;
+        case Expr::ARRAY_INIT:    t = check_array_init(static_cast<ArrayInitExpr*>(e));   break;
+        case Expr::BUILTIN_CALL:  t = check_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
+        case Expr::OR_RETURN_EXPR:t = check_or_return(static_cast<OrReturnExpr*>(e));     break;
     }
     set_type(e, t);
     return t;
@@ -375,7 +404,20 @@ TypeRef TypeChecker::check_binary(BinaryExpr* e) {
 
     switch (e->op) {
         // Arithmetic: both sides must be numeric and compatible
-        case TOK_PLUS: case TOK_MINUS: case TOK_STAR:
+        case TOK_PLUS: case TOK_MINUS:
+            // Pointer arithmetic: ptr + int, int + ptr, ptr - int  → ptr
+            // ptr - ptr → i64 (byte offset)
+            if (e->op == TOK_PLUS &&
+                ((lty->is_ptr() && rty->is_integer()) ||
+                 (lty->is_integer() && rty->is_ptr())))
+                return lty->is_ptr() ? lty : rty;
+            if (e->op == TOK_MINUS && lty->is_ptr() && rty->is_integer())
+                return lty;
+            if (e->op == TOK_MINUS && lty->is_ptr() && rty->is_ptr())
+                return sym_.arena().ty_i64();   // pointer difference
+            // Fallthrough to numeric check
+            [[fallthrough]];
+        case TOK_STAR:
         case TOK_SLASH: case TOK_PERCENT:
             if (!lty->is_numeric())
                 err_.error(e->left->range.begin,
@@ -643,7 +685,7 @@ TypeRef TypeChecker::check_lit(LitExpr* e) {
             return sym_.arena().ty_i32();
         case LitExpr::FLOAT:  return sym_.arena().ty_f32();  // f32 default
         case LitExpr::BOOL:   return sym_.arena().ty_bool();
-        case LitExpr::STRING: return sym_.arena().ty_cstr();
+        case LitExpr::STRING: return sym_.arena().ty_cstr();  // "..." emits as const char*
         case LitExpr::NIL:
             // nil is a pointer of unknown pointee — use *void as placeholder
             return sym_.arena().make_ptr(sym_.arena().ty_void());
@@ -760,6 +802,12 @@ TypeRef TypeChecker::resolve_type(Type* t) {
             TypeRef ret = pt->return_type ? resolve_type(pt->return_type) : nullptr;
             return sym_.arena().make_proc(std::move(params), ret);
         }
+        case Type::DYN_ARRAY_TYPE: {
+            auto* da = static_cast<ZedLang::DynArrayTypeAST*>(t);
+            return sym_.arena().make_dyn_array(resolve_type(da->elem));
+        }
+        case Type::STRING_TYPE:
+            return sym_.arena().ty_string();
     }
     return sym_.arena().ty_error();
 }
@@ -804,6 +852,15 @@ bool TypeChecker::types_compatible(TypeRef from, TypeRef to) const {
     // enum ↔ integer compatibility (for match, comparisons, assignments)
     if (from->is_enum() && to->is_integer()) return true;
     if (from->is_integer() && to->is_enum()) return true;
+    // string ↔ string; cstr can be implicitly converted to string
+    if (from->is_string() && to->is_string()) return true;
+    if (from->is_cstr()   && to->is_string()) return true;
+    // dyn_array compatible if same element type
+    if (from->is_dyn_array() && to->is_dyn_array()) {
+        auto* fa = static_cast<sem::DynArrayType*>(from);
+        auto* ta = static_cast<sem::DynArrayType*>(to);
+        return *fa->elem == *ta->elem;
+    }
     return false;
 }
 
@@ -903,6 +960,169 @@ void TypeChecker::check_hash_assert(HashAssertStmt* s) {
         err_.error(s->cond->range.begin,
             "'#assert' condition must be bool or integer, got '" + ty->to_string() + "'");
 }
+
+// ---------------------------------------------------------------------------
+// check_tuple — (a, b, c) expression — returns TupleType
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_tuple(TupleExpr* e) {
+    std::vector<TypeRef> elems;
+    for (Expr* elem : e->elems)
+        elems.push_back(check_expr(elem));
+    return sym_.arena().make_tuple(std::move(elems));
+}
+
+// ---------------------------------------------------------------------------
+// check_array_init — { expr, expr, ... } aggregate initializer
+// Returns the type of the first element (element type, not array type).
+// The actual array type is determined from context (var_decl or assign).
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_array_init(ArrayInitExpr* e) {
+    if (e->elems.empty()) return sym_.arena().ty_error();
+    TypeRef elem_ty = check_expr(e->elems[0]);
+    for (size_t i = 1; i < e->elems.size(); ++i) {
+        TypeRef t = check_expr(e->elems[i]);
+        if (!t->is_error() && !elem_ty->is_error() && !t->is_any_foreign())
+            if (*t != *elem_ty && !types_compatible(t, elem_ty))
+                err_.error(e->elems[i]->range.begin,
+                    "array initializer element " + std::to_string(i) +
+                    " has type '" + t->to_string() +
+                    "', expected '" + elem_ty->to_string() + "'");
+    }
+    // Return element type — codegen uses the var's declared array type
+    return elem_ty;
+}
+
+// ---------------------------------------------------------------------------
+// check_sizeof — sizeof(T) / sizeof(expr) / alignof(T) → u64
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_sizeof(SizeofExpr* e) {
+    if (e->expr_arg) check_expr(e->expr_arg);   // type-check for errors
+    return sym_.arena().ty_u64();
+}
+
+// ---------------------------------------------------------------------------
+// check_multi_decl — a, b := foo()
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_multi_decl_expr(Expr* rhs) {
+    return check_expr(rhs);
+}
+
+void TypeChecker::check_multi_decl(MultiDeclStmt* s) {
+    TypeRef rhs_ty = check_expr(s->rhs);
+
+    // Determine per-variable types from tuple or single value
+    std::vector<TypeRef> var_tys;
+    if (rhs_ty->is_tuple()) {
+        auto* tt = static_cast<sem::TupleType*>(rhs_ty);
+        var_tys = tt->elems;
+    } else {
+        // If single value, all names get that type — mostly used for (ok) := f()
+        for (size_t i = 0; i < s->names.size(); ++i)
+            var_tys.push_back(rhs_ty);
+    }
+
+    if (var_tys.size() < s->names.size()) {
+        err_.error(s->range.begin,
+            "multi-assign: left has " + std::to_string(s->names.size()) +
+            " names but right yields only " + std::to_string(var_tys.size()) + " values");
+        while (var_tys.size() < s->names.size())
+            var_tys.push_back(sym_.arena().ty_error());
+    }
+
+    // Declare each name (skip '_')
+    for (size_t i = 0; i < s->names.size(); ++i) {
+        if (s->names[i] == "_") continue;
+        Symbol sym(Symbol::Kind::VAR, s->names[i], var_tys[i], s->range.begin);
+        sym.initialized = true;
+        sym_.declare(sym);
+    }
+    // Store tuple type for codegen
+    multi_decl_types_[s] = rhs_ty;
+}
+
+void TypeChecker::check_multi_assign(MultiAssignStmt* s) {
+    TypeRef rhs_ty = check_expr(s->rhs);
+    std::vector<TypeRef> rhs_tys;
+    if (rhs_ty->is_tuple()) {
+        rhs_tys = static_cast<sem::TupleType*>(rhs_ty)->elems;
+    } else {
+        for (size_t i = 0; i < s->lvalues.size(); ++i) rhs_tys.push_back(rhs_ty);
+    }
+    for (size_t i = 0; i < s->lvalues.size() && i < rhs_tys.size(); ++i) {
+        if (!check_lvalue(s->lvalues[i])) continue;
+        TypeRef lty = check_expr(s->lvalues[i]);
+        if (!lty->is_any_foreign() && !rhs_tys[i]->is_any_foreign())
+            expect_type(rhs_tys[i], lty, s->range.begin,
+                "multi-assign lvalue " + std::to_string(i));
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// check_builtin_call
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
+    for (Expr* a : e->args) check_expr(a);
+
+    auto& ar = sym_.arena();
+    switch (e->builtin_tok) {
+        case TOK_KW_APPEND:
+            // append(&arr, val) — first arg must be *[dynamic]T
+            if (!e->args.empty()) {
+                TypeRef arg0 = check_expr(e->args[0]);   // already checked above — re-fetch
+                // arg0 is the address-of a dyn array: its type is *DynArrayType
+                // just validate no obvious errors; C++ template handles the rest
+            }
+            return ar.ty_void();
+        case TOK_KW_LEN:       return ar.ty_u64();
+        case TOK_KW_CAP:       return ar.ty_u64();
+        case TOK_KW_RESERVE:   return ar.ty_void();
+        case TOK_KW_DELETE_DYN:return ar.ty_void();
+        case TOK_KW_TO_CSTR:   return ar.ty_cstr();
+        case TOK_KW_FROM_CSTR: return ar.ty_string();
+        default:
+            err_.error(e->range.begin, "unknown builtin");
+            return ar.ty_error();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// check_or_return
+// val := call() or_return
+// Inner expression must yield (T, bool). Result type is T.
+// At runtime: if bool is false, the enclosing proc returns a zero-value tuple.
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_or_return(OrReturnExpr* e) {
+    TypeRef inner_ty = check_expr(e->inner);
+    if (inner_ty->is_any_foreign()) return inner_ty;
+
+    if (!inner_ty->is_tuple()) {
+        err_.error(e->range.begin,
+            "'or_return' requires a (T, bool) result, got '"
+            + inner_ty->to_string() + "'");
+        return sym_.arena().ty_error();
+    }
+    auto* tt = static_cast<sem::TupleType*>(inner_ty);
+    if (tt->elems.size() < 2 || !tt->elems.back()->is_bool()) {
+        err_.error(e->range.begin,
+            "'or_return' requires the last return element to be bool");
+        return sym_.arena().ty_error();
+    }
+    // Must be inside a proc that can propagate the failure
+    TypeRef ret = sym_.current_return_type();
+    if (!ret || ret->is_void())
+        err_.error(e->range.begin,
+            "'or_return' used in a void proc — cannot propagate failure");
+
+    // Return T (first element); T, bool → T
+    if (tt->elems.size() == 2) return tt->elems[0];
+    // (T0, T1, ..., bool) → (T0, T1, ...)
+    std::vector<TypeRef> elems(tt->elems.begin(), tt->elems.end() - 1);
+    return sym_.arena().make_tuple(std::move(elems));
+}
+
+// Public wrapper for resolve_type — needed by codegen for sizeof(T)
+TypeRef TypeChecker::resolve(Type* t) { return resolve_type(t); }
 
 } // namespace ZedLang
 

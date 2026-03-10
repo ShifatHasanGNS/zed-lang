@@ -162,7 +162,19 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_INC            "'++'"
 %token TOK_DEC            "'--'"
 %token TOK_HASH_ASSERT    "'#assert'"
-%token TOK_DOTDOT     "'..'"
+%token TOK_DOTDOT     "'..'" 
+%token TOK_KW_SIZEOF  "'sizeof'"
+%token TOK_KW_ALIGNOF   "'alignof'"
+%token TOK_KW_STRING    "'string'"
+%token TOK_KW_DYNAMIC   "'dynamic'"
+%token TOK_KW_APPEND    "'append'"
+%token TOK_KW_LEN       "'len'"
+%token TOK_KW_CAP       "'cap'"
+%token TOK_KW_RESERVE   "'reserve'"
+%token TOK_KW_DELETE_DYN "'delete_dyn'"
+%token TOK_KW_OR_RETURN  "'or_return'"
+%token TOK_KW_TO_CSTR    "'to_cstr'"
+%token TOK_KW_FROM_CSTR  "'from_cstr'"
 
 // Non-terminals
 %type <decl>          top_decl
@@ -175,7 +187,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr>          expr expr_no_struct expr_or expr_and expr_cmp expr_bitor expr_bitxor expr_bitand
 %type <expr>          expr_shift expr_add expr_mul expr_unary expr_postfix expr_primary
 %type <expr>          struct_lit cast_expr
-%type <type>          type named_type ptr_type array_type slice_type proc_type
+%type <type>          type named_type ptr_type array_type slice_type proc_type dyn_array_type string_type
 %type <type_list>     type_list opt_type_list
 %type <ident_list>    ident_list
 %type <field>         field_group
@@ -187,6 +199,9 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr_list>     arg_list opt_arg_list
 %type <stmt_list>     stmt_list
 %type <op>            cmp_op shift_op add_op mul_op
+%type <expr>          sizeof_expr array_init_expr builtin_call_expr
+%type <expr_list>     multi_ret_expr_list
+%type <stmt>          multi_decl_stmt multi_assign_stmt
 %type <else_if_list>  else_if_chain
 %type <block>         else_block
 %type <stmt>          defer_stmt match_stmt when_stmt
@@ -359,7 +374,7 @@ proc_decl
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
-            $$ = new ProcDecl(r, *$1, params, nullptr, $7);
+            $$ = new ProcDecl(r, *$1, params, nullptr, {}, $7);
             delete $1;
             delete $5;
         }
@@ -367,7 +382,7 @@ proc_decl
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
-            $$ = new ProcDecl(r, *$1, params, nullptr, nullptr);
+            $$ = new ProcDecl(r, *$1, params, nullptr, {}, nullptr);
             delete $1;
             delete $5;
         }
@@ -375,7 +390,7 @@ proc_decl
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
-            $$ = new ProcDecl(r, *$1, params, $8, $9);
+            $$ = new ProcDecl(r, *$1, params, $8, {}, $9);
             delete $1;
             delete $5;
         }
@@ -383,9 +398,24 @@ proc_decl
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
-            $$ = new ProcDecl(r, *$1, params, $8, nullptr);
+            $$ = new ProcDecl(r, *$1, params, $8, {}, nullptr);
             delete $1;
             delete $5;
+        }
+    // Multi-return: proc() -> (T1, T2)
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto params = $5 ? *$5 : std::vector<ParamGroup>();
+            $$ = new ProcDecl(r, *$1, params, nullptr, *$9, $11);
+            delete $1; delete $5; delete $9;
+        }
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN TOK_NOBODY
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto params = $5 ? *$5 : std::vector<ParamGroup>();
+            $$ = new ProcDecl(r, *$1, params, nullptr, *$9, nullptr);
+            delete $1; delete $5; delete $9;
         }
     ;
 
@@ -421,11 +451,29 @@ param_group
 
 // Types
 type
-    : named_type     { $$ = $1; }
-    | ptr_type       { $$ = $1; }
-    | array_type     { $$ = $1; }
-    | slice_type     { $$ = $1; }
-    | proc_type      { $$ = $1; }
+    : named_type      { $$ = $1; }
+    | ptr_type        { $$ = $1; }
+    | array_type      { $$ = $1; }
+    | slice_type      { $$ = $1; }
+    | proc_type       { $$ = $1; }
+    | dyn_array_type  { $$ = $1; }
+    | string_type     { $$ = $1; }
+    ;
+
+dyn_array_type
+    : TOK_LBRACKET TOK_KW_DYNAMIC TOK_RBRACKET type
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new DynArrayTypeAST(r, $4);
+        }
+    ;
+
+string_type
+    : TOK_KW_STRING
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new StringTypeAST(r);
+        }
     ;
 
 named_type
@@ -517,6 +565,8 @@ stmt
     | if_stmt           { $$ = $1; }
     | for_stmt          { $$ = $1; }
     | return_stmt       { $$ = $1; }
+    | multi_decl_stmt   { $$ = $1; }
+    | multi_assign_stmt { $$ = $1; }
     | break_stmt        { $$ = $1; }
     | continue_stmt     { $$ = $1; }
     | expr_stmt         { $$ = $1; }
@@ -728,6 +778,12 @@ return_stmt
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ReturnStmt(r, nullptr);
         }
+    | TOK_KW_RETURN multi_ret_expr_list
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ReturnStmt(r, new TupleExpr(r, *$2));
+            delete $2;
+        }
     | TOK_KW_RETURN expr
         {
             SourceRange r = to_sourcerange(@$, filename);
@@ -737,6 +793,44 @@ return_stmt
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ReturnStmt(r, $2);
+        }
+    ;
+
+multi_decl_stmt
+    : ident_list TOK_DECL expr
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MultiDeclStmt(r, *$1, $3);
+            delete $1;
+        }
+    | ident_list TOK_DECL struct_lit
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MultiDeclStmt(r, *$1, $3);
+            delete $1;
+        }
+    ;
+
+multi_assign_stmt
+    : multi_ret_expr_list TOK_ASSIGN expr
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MultiAssignStmt(r, *$1, $3);
+            delete $1;
+        }
+    ;
+
+multi_ret_expr_list
+    : expr TOK_COMMA expr
+        {
+            $$ = new std::vector<Expr*>();
+            $$->push_back($1);
+            $$->push_back($3);
+        }
+    | multi_ret_expr_list TOK_COMMA expr
+        {
+            $1->push_back($3);
+            $$ = $1;
         }
     ;
 
@@ -1003,6 +1097,11 @@ expr_postfix
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new DerefExpr(r, $1);
         }
+    | expr_postfix TOK_KW_OR_RETURN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new OrReturnExpr(r, $1);
+        }
     ;
 
 expr_primary
@@ -1053,6 +1152,82 @@ expr_primary
     | TOK_LPAREN expr TOK_RPAREN
         {
             $$ = $2;
+        }
+    | sizeof_expr       { $$ = $1; }
+    | array_init_expr   { $$ = $1; }
+    | builtin_call_expr { $$ = $1; }
+    ;
+
+sizeof_expr
+    : TOK_KW_SIZEOF TOK_LPAREN type TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new SizeofExpr(r, false, $3, nullptr);
+        }
+    | TOK_KW_SIZEOF TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new SizeofExpr(r, false, nullptr, $3);
+        }
+    | TOK_KW_ALIGNOF TOK_LPAREN type TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new SizeofExpr(r, true, $3, nullptr);
+        }
+    ;
+
+array_init_expr
+    : TOK_LBRACE arg_list TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ArrayInitExpr(r, *$2);
+            delete $2;
+        }
+    | TOK_LBRACE arg_list TOK_COMMA TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ArrayInitExpr(r, *$2);
+            delete $2;
+        }
+    ;
+
+builtin_call_expr
+    : TOK_KW_APPEND TOK_LPAREN arg_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_APPEND, *$3);
+            delete $3;
+        }
+    | TOK_KW_LEN TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_LEN, {$3});
+        }
+    | TOK_KW_CAP TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_CAP, {$3});
+        }
+    | TOK_KW_RESERVE TOK_LPAREN arg_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_RESERVE, *$3);
+            delete $3;
+        }
+    | TOK_KW_DELETE_DYN TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_DELETE_DYN, {$3});
+        }
+    | TOK_KW_TO_CSTR TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_TO_CSTR, {$3});
+        }
+    | TOK_KW_FROM_CSTR TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_FROM_CSTR, {$3});
         }
     ;
 

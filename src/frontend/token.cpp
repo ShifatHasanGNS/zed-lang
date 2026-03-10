@@ -92,6 +92,18 @@ std::string_view token_kind_name(int k) {
         case TOK_INC:          return "'++'";
         case TOK_DEC:          return "'--'";
         case TOK_HASH_ASSERT:  return "'#assert'";
+        case TOK_KW_SIZEOF:    return "'sizeof'";
+        case TOK_KW_ALIGNOF:   return "'alignof'";
+        case TOK_KW_STRING:    return "'string'";
+        case TOK_KW_DYNAMIC:   return "'dynamic'";
+        case TOK_KW_APPEND:    return "'append'";
+        case TOK_KW_LEN:       return "'len'";
+        case TOK_KW_CAP:       return "'cap'";
+        case TOK_KW_RESERVE:   return "'reserve'";
+        case TOK_KW_DELETE_DYN:return "'delete_dyn'";
+        case TOK_KW_OR_RETURN: return "'or_return'";
+        case TOK_KW_TO_CSTR:   return "'to_cstr'";
+        case TOK_KW_FROM_CSTR: return "'from_cstr'";
         default:               return "<unknown token>";
     }
 }
@@ -129,6 +141,18 @@ int keyword_lookup(std::string_view s) {
         { "and",      TOK_AND         },  // alias for &&
         { "or",       TOK_OR          },  // alias for ||
         { "not",      TOK_NOT         },  // alias for !
+        { "sizeof",      TOK_KW_SIZEOF    },
+        { "alignof",     TOK_KW_ALIGNOF   },
+        { "string",      TOK_KW_STRING    },
+        { "dynamic",     TOK_KW_DYNAMIC   },
+        { "append",      TOK_KW_APPEND    },
+        { "len",         TOK_KW_LEN       },
+        { "cap",         TOK_KW_CAP       },
+        { "reserve",     TOK_KW_RESERVE   },
+        { "delete_dyn",  TOK_KW_DELETE_DYN},
+        { "or_return",   TOK_KW_OR_RETURN },
+        { "to_cstr",     TOK_KW_TO_CSTR   },
+        { "from_cstr",   TOK_KW_FROM_CSTR },
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;
