@@ -445,3 +445,42 @@ main :: proc() -> i32 {
     return 0
 }
 ```
+
+## Zed Init (`zed init <NAME>`)
+
+```zed
+  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+  ┃           Zed Project Initialized           ┃
+  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  ◆ <NAME>/
+  │
+  ├── src/
+  │ │
+  │ └── main.z      ⟵ entry point
+  │
+  ├── .gitignore
+  │
+  ├── README.md
+  │
+  └── zed.toml      ⟵ build config
+
+  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+  build:
+      zed build debug   --project <NAME>/
+      zed build release --project <NAME>/
+
+  run:
+      zed run   debug   --project <NAME>/
+      zed run   release --project <NAME>/
+
+  clean:
+      zed clean         --project <NAME>/
+
+  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+  ▶▶  cd <NAME> && zed run debug --project .
+
+  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+```
