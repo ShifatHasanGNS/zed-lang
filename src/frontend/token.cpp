@@ -115,32 +115,32 @@ int keyword_lookup(std::string_view s) {
     // Keys are string literals — their lifetimes exceed the static map,
     // so string_view keys are safe here.
     static const std::unordered_map<std::string_view, int> table = {
-        { "proc",     TOK_KW_PROC     },
-        { "struct",   TOK_KW_STRUCT   },
-        { "if",       TOK_KW_IF       },
-        { "else",     TOK_KW_ELSE     },
+        { "proc",         TOK_KW_PROC     },
+        { "struct",       TOK_KW_STRUCT   },
+        { "if",           TOK_KW_IF       },
+        { "else",         TOK_KW_ELSE     },
         // "loop" intentionally removed — use "for" instead
-        { "in",       TOK_KW_IN       },
-        { "return",   TOK_KW_RETURN   },
-        { "break",    TOK_KW_BREAK    },
-        { "continue", TOK_KW_CONTINUE },
-        { "nil",      TOK_KW_NIL      },
-        { "true",     TOK_KW_TRUE     },
-        { "false",    TOK_KW_FALSE    },
-        { "cimport",  TOK_KW_CIMPORT  },
-        { "cast",     TOK_KW_CAST     },
-        { "import",   TOK_KW_IMPORT   },
-        { "for",      TOK_KW_FOR      },
-        { "defer",    TOK_KW_DEFER    },
-        { "match",    TOK_KW_MATCH    },
-        { "case",     TOK_KW_CASE     },
-        { "when",     TOK_KW_WHEN     },
-        { "enum",     TOK_KW_ENUM     },
-        { "step",     TOK_KW_STEP     },
+        { "in",           TOK_KW_IN        },
+        { "return",       TOK_KW_RETURN    },
+        { "break",        TOK_KW_BREAK     },
+        { "continue",     TOK_KW_CONTINUE  },
+        { "nil",          TOK_KW_NIL       },
+        { "true",         TOK_KW_TRUE     },
+        { "false",       TOK_KW_FALSE    },
+        { "cimport",     TOK_KW_CIMPORT  },
+        { "cast",        TOK_KW_CAST     },
+        { "import",      TOK_KW_IMPORT   },
+        { "for",         TOK_KW_FOR      },
+        { "defer",       TOK_KW_DEFER    },
+        { "match",       TOK_KW_MATCH    },
+        { "case",        TOK_KW_CASE     },
+        { "when",        TOK_KW_WHEN     },
+        { "enum",        TOK_KW_ENUM     },
+        { "step",        TOK_KW_STEP     },
         // ── readable keyword aliases ──────────────────────────────────────────
-        { "and",      TOK_AND         },  // alias for &&
-        { "or",       TOK_OR          },  // alias for ||
-        { "not",      TOK_NOT         },  // alias for !
+        { "and",         TOK_AND          },  // alias for &&
+        { "or",          TOK_OR           },  // alias for ||
+        { "not",         TOK_NOT          },  // alias for !
         { "sizeof",      TOK_KW_SIZEOF    },
         { "alignof",     TOK_KW_ALIGNOF   },
         { "string",      TOK_KW_STRING    },
@@ -152,7 +152,9 @@ int keyword_lookup(std::string_view s) {
         { "delete_dyn",  TOK_KW_DELETE_DYN},
         { "or_return",   TOK_KW_OR_RETURN },
         { "to_cstr",     TOK_KW_TO_CSTR   },
+        { "c_str",       TOK_KW_TO_CSTR   }, // alias for to_cstr
         { "from_cstr",   TOK_KW_FROM_CSTR },
+        { "to_string",   TOK_KW_FROM_CSTR }, // alias for from_cstr
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;
