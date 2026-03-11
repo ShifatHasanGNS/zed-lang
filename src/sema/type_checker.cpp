@@ -208,6 +208,16 @@ void TypeChecker::check_proc_body(ProcDecl* pd) {
     }
     proc_scope->proc_return_type = ret;
 
+    // collect_globals builds the proc symbol before bodies are checked, so it
+    // may store return_type=nullptr for multi-return procs. Patch it here so
+    // check_call returns the correct tuple type (fixes multi-decl type inference
+    // and codegen struct emission).
+    Symbol* proc_sym = sym_.lookup(pd->proc_name);
+    if (proc_sym && proc_sym->type && proc_sym->type->is_proc()) {
+        auto* pt = static_cast<sem::ProcType*>(proc_sym->type);
+        pt->return_type = ret;
+    }
+
     // Declare parameters in the proc scope
     for (const ParamGroup& pg : pd->params) {
         TypeRef pty = resolve_type(pg.type);

@@ -277,15 +277,35 @@ void CodeGen::emit_proc_decl(ProcDecl *pd) {
     if (!ty || !ty->is_proc()) return;
     auto* pt = static_cast<sem::ProcType*>(ty);
 
+    // collect_globals may store return_type=nullptr for multi-return procs,
+    // leaving resolution to check_proc_body. Fall back to the AST list.
+    const bool is_multi_ret = (pt->return_type && pt->return_type->is_tuple())
+                               || !pd->return_types.empty();
+
     // Emit the return struct typedef if needed
-    if (pt->return_type && pt->return_type->is_tuple()) {
-        emit_multi_ret_struct(pd->proc_name,
-            static_cast<sem::TupleType*>(pt->return_type));
+    if (is_multi_ret) {
+        if (pt->return_type && pt->return_type->is_tuple()) {
+            emit_multi_ret_struct(pd->proc_name,
+                static_cast<sem::TupleType*>(pt->return_type));
+        } else {
+            // Symbol has null return_type — build struct from AST return type list
+            std::string sname = "__ret_" + pd->proc_name;
+            if (!emitted_ret_structs_.count(sname)) {
+                emitted_ret_structs_.insert(sname);
+                emit_.emit("typedef struct { ");
+                for (size_t i = 0; i < pd->return_types.size(); ++i) {
+                    emit_var_decl(tc_.resolve(pd->return_types[i]),
+                                  "_" + std::to_string(i));
+                    emit_.emit("; ");
+                }
+                emit_.emit("} " + sname + ";\n");
+            }
+        }
     }
 
     emit_.emit_indent();
     current_proc_name_ = pd->proc_name;   // for multi-return emit_return
-    if (pt->return_type && pt->return_type->is_tuple())
+    if (is_multi_ret)
         emit_.emit("__ret_" + pd->proc_name);
     else if (pt->return_type) emit_c_type(pt->return_type);
     else emit_.emit("void");
@@ -321,8 +341,16 @@ void CodeGen::emit_proc_def(ProcDecl* pd) {
     if (!ty || !ty->is_proc()) return;
     auto* pt = static_cast<sem::ProcType*>(ty);
 
+    // Must be set before body so emit_return/emit_or_return use the correct struct name
+    current_proc_name_ = pd->proc_name;
+
+    // collect_globals may store return_type=nullptr for multi-return procs,
+    // leaving resolution to check_proc_body. Fall back to the AST list.
+    const bool is_multi_ret = (pt->return_type && pt->return_type->is_tuple())
+                               || !pd->return_types.empty();
+
     // Signature
-    if (pt->return_type && pt->return_type->is_tuple())
+    if (is_multi_ret)
         emit_.emit("__ret_" + pd->proc_name);
     else if (pt->return_type) emit_c_type(pt->return_type);
     else emit_.emit("void");
@@ -1146,7 +1174,7 @@ void CodeGen::emit_sizeof(SizeofExpr* e) {
 // For non-tuple RHS (shouldn't occur after type-check), falls back.
 // ---------------------------------------------------------------------------
 void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
-    TypeRef rhs_ty = tc_.type_of(s->rhs);
+    TypeRef rhs_ty = tc_.type_of_multi_decl(s);
     if (rhs_ty && rhs_ty->is_tuple()) {
         auto* tt = static_cast<sem::TupleType*>(rhs_ty);
         // Determine the proc name from the RHS call for the struct type name
@@ -1155,21 +1183,30 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
             if (auto* id = dynamic_cast<IdentExpr*>(call->callee))
                 ret_struct = "__ret_" + id->name;
         }
-        emit_.emit_indent();
-        emit_.emit("{ ");
+        // Emit a uniquely-named temp so the call is evaluated once, then unpack
+        // each variable as a flat statement in the enclosing scope (NOT inside
+        // a braced block — that would hide the variables from subsequent stmts).
         if (!ret_struct.empty()) {
-            emit_.emit(ret_struct + " _zed_tmp_ = ");
+            // e.g.: __ret_div_rem _zed_tmp_div_rem_ = div_rem(17, 5);
+            std::string tmp = "_zed_tmp_" + ret_struct.substr(7) + "_";
+            emit_.begin_line(ret_struct + " " + tmp + " = ");
             emit_expr(s->rhs);
-            emit_.emit("; ");
+            emit_.emit(";\n");
+            for (size_t i = 0; i < s->names.size() && i < tt->elems.size(); ++i) {
+                if (s->names[i] == "_") continue;
+                emit_.emit_indent();
+                emit_var_decl(tt->elems[i], s->names[i]);
+                emit_.emit(" = " + tmp + "._" + std::to_string(i) + ";\n");
+            }
+        } else {
+            // No struct name (shouldn't happen after type-check); emit each var uninitialized
+            for (size_t i = 0; i < s->names.size() && i < tt->elems.size(); ++i) {
+                if (s->names[i] == "_") continue;
+                emit_.emit_indent();
+                emit_var_decl(tt->elems[i], s->names[i]);
+                emit_.emit(";\n");
+            }
         }
-        for (size_t i = 0; i < s->names.size() && i < tt->elems.size(); ++i) {
-            if (s->names[i] == "_") continue;
-            emit_var_decl(tt->elems[i], s->names[i]);
-            if (!ret_struct.empty())
-                emit_.emit(" = _zed_tmp_._" + std::to_string(i));
-            emit_.emit("; ");
-        }
-        emit_.emit("}\n");
     } else {
         // Single-value fallback — treat like normal decl
         emit_.emit_indent();
@@ -1319,7 +1356,7 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
 void CodeGen::emit_or_return(OrReturnExpr* e) {
     // Determine proc return struct name
     const std::string& pname = current_proc_name_;
-    bool multi_ret = !pname.empty();
+    bool multi_ret = !pname.empty() && emitted_ret_structs_.count("__ret_" + pname);
 
     emit_.emit("({ auto _or_tmp_ = ");
     emit_expr(e->inner);
