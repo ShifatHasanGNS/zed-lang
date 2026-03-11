@@ -68,6 +68,9 @@ void CodeGen::emit_preamble() {
     emit_.blank();
     emit_.line("#include <stdint.h>");
     emit_.line("#include <stdbool.h>");
+    emit_.line("#include <stdio.h>");
+    emit_.line("#include <stdlib.h>");
+    emit_.line("#include <iostream>");
 }   
 
 void CodeGen::emit_cimports(Program* prog) {
