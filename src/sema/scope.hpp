@@ -80,6 +80,9 @@ public:
 
     // Return type stored on the nearest enclosing PROC scope.
     TypeRef proc_return_type = nullptr;
+    // True when the enclosing proc has named return variables.
+    // A bare 'return' is valid in this case (returns all named vars).
+    bool proc_has_named_returns = false;
 
     // Iterate over every symbol in THIS scope only (not parents).
     template<typename Fn>

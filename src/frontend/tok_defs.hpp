@@ -69,6 +69,7 @@ enum {
     TOK_KW_FROM_CSTR = 345,   // from_cstr(cs)
     // Stage 4 ─────────────────────────────────────────────────────
     TOK_KW_UNION     = 346,   // union  (union type declaration)
+    TOK_KW_TYPEID    = 347,   // typeid(T)  — compile-time type identifier
     TOK_AMP        = 301,
     TOK_DEREF      = 302,   // .*
     TOK_NOT        = 303,   // !  (also keyword alias: "not")
@@ -100,8 +101,6 @@ enum {
     TOK_PIPE_ASSIGN    = 328,   // |=
     TOK_XOR_ASSIGN     = 329,   // ^=
     // ── increment / decrement (statement-level only) ──────────────────────────
-    TOK_INC        = 330,   // ++
-    TOK_DEC        = 331,   // --
     // ── compile-time directives ───────────────────────────────────────────────
     TOK_HASH_ASSERT = 332,  // #assert <const-expr>  →  static_assert(...)
 };

@@ -248,8 +248,10 @@ public:
     std::vector<ParamGroup> params;
     // Single return: return_type non-null, return_types empty.
     // Multi-return:  return_type null,     return_types non-empty.
+    // Named returns: return_names parallel to return_types (empty = unnamed).
     Type*              return_type  = nullptr;
     std::vector<Type*> return_types;          // filled for -> (T1, T2, ...)
+    std::vector<std::string> return_names;    // filled for -> (n1: T1, n2: T2, ...)
     BlockStmt* body = nullptr;                // null means "---" (extern)
     ProcDecl(SourceRange r, std::string n, std::vector<ParamGroup> p,
              Type* ret, std::vector<Type*> rets, BlockStmt* b)
@@ -383,7 +385,7 @@ class Expr : public Node {
 public:
     enum Kind { BINARY, UNARY, CALL, INDEX, SLICE, FIELD, DEREF, ADDR, CAST,
                 LIT, IDENT, STRUCT_LIT, TUPLE, SIZEOF_EXPR, ARRAY_INIT,
-                BUILTIN_CALL, OR_RETURN_EXPR, PROC_LIT };
+                BUILTIN_CALL, OR_RETURN_EXPR, PROC_LIT, TYPEID_EXPR };
     virtual Kind kind() const = 0;
 };
 
@@ -549,6 +551,17 @@ public:
     Expr* inner;
     OrReturnExpr(SourceRange r, Expr* e) : inner(e) { range = r; }
     Kind kind() const override { return OR_RETURN_EXPR; }
+};
+
+// typeid(T)  — compile-time u64 unique identifier for a type.
+// Used in when conditions: when typeid(i32) == typeid(u32) { ... }
+// The value is stable within a compilation unit but not guaranteed
+// across different programs.
+class TypeIdExpr : public Expr {
+public:
+    Type* type_arg;  // always non-null
+    TypeIdExpr(SourceRange r, Type* t) : type_arg(t) { range = r; }
+    Kind kind() const override { return TYPEID_EXPR; }
 };
 
 // proc(x: i32) -> i32 { return x * 2 }  — anonymous proc literal

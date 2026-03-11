@@ -89,8 +89,6 @@ std::string_view token_kind_name(int k) {
         case TOK_AMP_ASSIGN:   return "'&='";
         case TOK_PIPE_ASSIGN:  return "'|='";
         case TOK_XOR_ASSIGN:   return "'^='";
-        case TOK_INC:          return "'++'";
-        case TOK_DEC:          return "'--'";
         case TOK_HASH_ASSERT:  return "'#assert'";
         case TOK_KW_SIZEOF:    return "'sizeof'";
         case TOK_KW_ALIGNOF:   return "'alignof'";
@@ -105,6 +103,7 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_TO_CSTR:   return "'to_cstr'";
         case TOK_KW_FROM_CSTR: return "'from_cstr'";
         case TOK_KW_UNION:     return "'union'";
+        case TOK_KW_TYPEID:    return "'typeid'";
         default:               return "<unknown token>";
     }
 }
@@ -157,6 +156,7 @@ int keyword_lookup(std::string_view s) {
         { "from_cstr",   TOK_KW_FROM_CSTR },
         { "to_string",   TOK_KW_FROM_CSTR }, // alias for from_cstr
         { "union",       TOK_KW_UNION     },
+        { "typeid",      TOK_KW_TYPEID    },
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;

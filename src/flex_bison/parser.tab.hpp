@@ -112,28 +112,27 @@
      TOK_AMP_ASSIGN = 327,
      TOK_PIPE_ASSIGN = 328,
      TOK_XOR_ASSIGN = 329,
-     TOK_INC = 330,
-     TOK_DEC = 331,
-     TOK_HASH_ASSERT = 332,
-     TOK_DOTDOT = 333,
-     TOK_KW_SIZEOF = 334,
-     TOK_KW_ALIGNOF = 335,
-     TOK_KW_STRING = 336,
-     TOK_KW_DYNAMIC = 337,
-     TOK_KW_APPEND = 338,
-     TOK_KW_LEN = 339,
-     TOK_KW_CAP = 340,
-     TOK_KW_RESERVE = 341,
-     TOK_KW_DELETE_DYN = 342,
-     TOK_KW_OR_RETURN = 343,
-     TOK_KW_TO_CSTR = 344,
-     TOK_KW_FROM_CSTR = 345,
-     TOK_KW_UNION = 346,
-     LOWER_THAN_ELSE = 347,
-     TOK_ELSE = 348,
-     UNARY_MINUS = 349,
-     UNARY_ADDR = 350,
-     POSTFIX_DEREF = 351
+     TOK_HASH_ASSERT = 330,
+     TOK_DOTDOT = 331,
+     TOK_KW_SIZEOF = 332,
+     TOK_KW_ALIGNOF = 333,
+     TOK_KW_STRING = 334,
+     TOK_KW_DYNAMIC = 335,
+     TOK_KW_APPEND = 336,
+     TOK_KW_LEN = 337,
+     TOK_KW_CAP = 338,
+     TOK_KW_RESERVE = 339,
+     TOK_KW_DELETE_DYN = 340,
+     TOK_KW_OR_RETURN = 341,
+     TOK_KW_TO_CSTR = 342,
+     TOK_KW_FROM_CSTR = 343,
+     TOK_KW_UNION = 344,
+     TOK_KW_TYPEID = 345,
+     LOWER_THAN_ELSE = 346,
+     TOK_ELSE = 347,
+     UNARY_MINUS = 348,
+     UNARY_ADDR = 349,
+     POSTFIX_DEREF = 350
    };
 #endif
 /* Tokens.  */
@@ -210,28 +209,27 @@
 #define TOK_AMP_ASSIGN 327
 #define TOK_PIPE_ASSIGN 328
 #define TOK_XOR_ASSIGN 329
-#define TOK_INC 330
-#define TOK_DEC 331
-#define TOK_HASH_ASSERT 332
-#define TOK_DOTDOT 333
-#define TOK_KW_SIZEOF 334
-#define TOK_KW_ALIGNOF 335
-#define TOK_KW_STRING 336
-#define TOK_KW_DYNAMIC 337
-#define TOK_KW_APPEND 338
-#define TOK_KW_LEN 339
-#define TOK_KW_CAP 340
-#define TOK_KW_RESERVE 341
-#define TOK_KW_DELETE_DYN 342
-#define TOK_KW_OR_RETURN 343
-#define TOK_KW_TO_CSTR 344
-#define TOK_KW_FROM_CSTR 345
-#define TOK_KW_UNION 346
-#define LOWER_THAN_ELSE 347
-#define TOK_ELSE 348
-#define UNARY_MINUS 349
-#define UNARY_ADDR 350
-#define POSTFIX_DEREF 351
+#define TOK_HASH_ASSERT 330
+#define TOK_DOTDOT 331
+#define TOK_KW_SIZEOF 332
+#define TOK_KW_ALIGNOF 333
+#define TOK_KW_STRING 334
+#define TOK_KW_DYNAMIC 335
+#define TOK_KW_APPEND 336
+#define TOK_KW_LEN 337
+#define TOK_KW_CAP 338
+#define TOK_KW_RESERVE 339
+#define TOK_KW_DELETE_DYN 340
+#define TOK_KW_OR_RETURN 341
+#define TOK_KW_TO_CSTR 342
+#define TOK_KW_FROM_CSTR 343
+#define TOK_KW_UNION 344
+#define TOK_KW_TYPEID 345
+#define LOWER_THAN_ELSE 346
+#define TOK_ELSE 347
+#define UNARY_MINUS 348
+#define UNARY_ADDR 349
+#define POSTFIX_DEREF 350
 
 
 
@@ -273,7 +271,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 277 "src/flex_bison/parser.tab.hpp"
+#line 275 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

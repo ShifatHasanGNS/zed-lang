@@ -345,7 +345,8 @@ void CodeGen::emit_proc_def(ProcDecl* pd) {
     auto* pt = static_cast<sem::ProcType*>(ty);
 
     // Must be set before body so emit_return/emit_or_return use the correct struct name
-    current_proc_name_ = pd->proc_name;
+    current_proc_name_         = pd->proc_name;
+    current_proc_return_names_ = pd->return_names;
 
     // collect_globals may store return_type=nullptr for multi-return procs,
     // leaving resolution to check_proc_body. Fall back to the AST list.
@@ -375,7 +376,23 @@ void CodeGen::emit_proc_def(ProcDecl* pd) {
     if (pt->is_variadic) { if (!first) emit_.emit(", "); emit_.emit("..."); }
     emit_.emit(")");
 
-    emit_block(pd->body, true);
+    // Named return variables are zero-initialized at the top of the body.
+    if (!pd->return_names.empty() && pt->return_type && pt->return_type->is_tuple()) {
+        auto* tt = static_cast<sem::TupleType*>(pt->return_type);
+        emit_.emit(" {\n");
+        emit_.indent();
+        for (size_t i = 0; i < pd->return_names.size() && i < tt->elems.size(); ++i) {
+            emit_.emit_indent();
+            emit_var_decl(tt->elems[i], pd->return_names[i]);
+            emit_.emit(" = {};\n");
+        }
+        emit_block(pd->body, false);
+        emit_.dedent();
+        emit_.emit_indent();
+        emit_.emit("}\n");
+    } else {
+        emit_block(pd->body, true);
+    }
     emit_.blank();
 }
 
@@ -675,7 +692,18 @@ void CodeGen::emit_return(ReturnStmt* s) {
             emit_.emit(";\n");
         }
     } else {
-        emit_.line("return;");
+        // Bare 'return' in a named-return proc: collect all named vars into the ret struct.
+        if (!current_proc_return_names_.empty()) {
+            const std::string& pname = current_proc_name_;
+            emit_.begin_line("return (__ret_" + pname + "){");
+            for (size_t i = 0; i < current_proc_return_names_.size(); ++i) {
+                if (i) emit_.emit(", ");
+                emit_.emit("._" + std::to_string(i) + "=" + current_proc_return_names_[i]);
+            }
+            emit_.emit("};\n");
+        } else {
+            emit_.line("return;");
+        }
     }
 }
 
@@ -798,6 +826,7 @@ void CodeGen::emit_expr(Expr* e) {
         case Expr::BUILTIN_CALL:  emit_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
         case Expr::OR_RETURN_EXPR:emit_or_return(static_cast<OrReturnExpr*>(e));      break;
         case Expr::PROC_LIT:      emit_proc_lit(static_cast<ProcLitExpr*>(e));        break;
+        case Expr::TYPEID_EXPR:   emit_typeid(static_cast<TypeIdExpr*>(e));           break;
     }
 }
 
@@ -1418,6 +1447,38 @@ void CodeGen::emit_proc_lit(ProcLitExpr* e) {
     current_proc_name_ = "";
     emit_block(e->body, true);
     current_proc_name_ = saved;
+}
+
+// ---------------------------------------------------------------------------
+// emit_typeid — typeid(T)  →  a compile-time u64 unique to the type.
+// Primitive types use their SemanticType::Kind ordinal.
+// Named types (struct/enum/foreign) use FNV-1a hash of the type name.
+// The value is stable within a program and can be compared in 'when' conditions.
+// ---------------------------------------------------------------------------
+static uint64_t compute_type_id(TypeRef t) {
+    // FNV-1a 64-bit
+    uint64_t h = 14695981039346656037ULL;
+    auto mix_byte = [&](uint8_t b) {
+        h ^= b;
+        h *= 1099511628211ULL;
+    };
+    mix_byte(static_cast<uint8_t>(t->kind));
+    // Mix in the name for named types so distinct named types get different IDs.
+    const char* name = nullptr;
+    if (t->kind == SemanticType::Kind::STRUCT)
+        name = static_cast<sem::StructType*>(t)->name.c_str();
+    else if (t->kind == SemanticType::Kind::ENUM)
+        name = static_cast<sem::EnumType*>(t)->name.c_str();
+    else if (t->kind == SemanticType::Kind::FOREIGN_NAMED)
+        name = static_cast<sem::ForeignNamedType*>(t)->name.c_str();
+    if (name)
+        for (const char* p = name; *p; ++p) mix_byte(static_cast<uint8_t>(*p));
+    return h;
+}
+
+void CodeGen::emit_typeid(TypeIdExpr* e) {
+    TypeRef t = tc_.resolve(e->type_arg);
+    emit_.emit(std::to_string(compute_type_id(t)) + "ULL");
 }
 
 } // namespace ZedLang

@@ -116,6 +116,16 @@ void AstPrinter::print(Decl* decl) {
                 print(pd->return_type);
                 out << "\n";
             }
+            if (!pd->return_types.empty()) {
+                emit_indent(out, current_indent);
+                out << "Returns: (";
+                for (size_t i = 0; i < pd->return_types.size(); ++i) {
+                    if (i) out << ", ";
+                    if (i < pd->return_names.size()) out << pd->return_names[i] << ": ";
+                    print(pd->return_types[i]);
+                }
+                out << ")\n";
+            }
             if (pd->body) {
                 emit_indent(out, current_indent);
                 out << "Body:\n";
@@ -714,6 +724,16 @@ void AstPrinter::print(Expr* expr) {
             emit_indent(out, current_indent);
             out << "ProcLit"; print_location(pl); out << "\n";
             if (pl->body) { indent(); print(pl->body); dedent(); }
+            break;
+        }
+        case Expr::TYPEID_EXPR: {
+            TypeIdExpr* ti = static_cast<TypeIdExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "TypeId(";
+            print(ti->type_arg);
+            out << ")";
+            print_location(ti);
+            out << "\n";
             break;
         }
     }

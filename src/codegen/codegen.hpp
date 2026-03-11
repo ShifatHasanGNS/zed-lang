@@ -100,6 +100,7 @@ private:
     void emit_builtin_call(BuiltinCallExpr* e);
     void emit_or_return(OrReturnExpr* e);
     void emit_proc_lit(ProcLitExpr* e);
+    void emit_typeid(TypeIdExpr* e);
 
     // ---- Type helpers ------------------------------------------------------
     // Emit the C type spelling for a SemanticType (e.g. "int32_t", "MyStruct*").
@@ -119,6 +120,7 @@ private:
     CEmitter     emit_;
     std::vector<Program*> imported_programs_;
     std::string  current_proc_name_;        // for multi-return emit_return
+    std::vector<std::string> current_proc_return_names_;  // for named-return emit_return
     std::set<std::string> emitted_ret_structs_;  // avoid duplicate typedef
 };
 

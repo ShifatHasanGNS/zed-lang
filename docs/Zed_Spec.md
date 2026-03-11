@@ -22,16 +22,18 @@ Pointer dereference operator: `.*` (Zig-style).
 12. [Unions](#unions)
 13. [Enums](#enums)
 14. [Procedures](#procedures)
-15. [Proc Literals](#proc-literals)
-16. [Control Flow](#control-flow)
-17. [Defer](#defer)
-18. [Match](#match)
-19. [When](#when)
-20. [Compile-time Assert](#compile-time-assert)
-21. [String Types & Conversion](#string-types--conversion)
-22. [C Interop](#c-interop)
-23. [Multi-file Projects](#multi-file-projects)
-24. [sizeof / alignof](#sizeof--alignof)
+15. [Named Return Values](#named-return-values)
+16. [Proc Literals](#proc-literals)
+17. [Control Flow](#control-flow)
+18. [Defer](#defer)
+19. [Match](#match)
+20. [When](#when)
+21. [typeid](#typeid)
+22. [Compile-time Assert](#compile-time-assert)
+23. [String Types & Conversion](#string-types--conversion)
+24. [C Interop](#c-interop)
+25. [Multi-file Projects](#multi-file-projects)
+26. [sizeof / alignof](#sizeof--alignof)
 
 ---
 
@@ -120,6 +122,8 @@ window: Window          -- foreign C type, zero-init
 score  := 0             -- global, type inferred
 ```
 
+> **C keyword shadowing.** Zed allows variable names that happen to be C/C++ reserved words (`double`, `float`, `int`, …). The code generator automatically renames them with a `_zl_` prefix in the output so compilation is never affected. The names remain usable as-is in Zed source.
+
 ---
 
 ## Operators
@@ -129,8 +133,9 @@ score  := 0             -- global, type inferred
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
 **Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
-**Increment / decrement:** `x++  x--`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
+
+> Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.
 
 ---
 
@@ -163,7 +168,7 @@ arr_ptr + 1        -- pointer arithmetic
 
 ## Arrays & Slices
 
-**Fixed arrays** — size must be a compile-time constant or const expression.
+**Fixed arrays** — size must be a compile-time constant or constant expression. Any arithmetic combination of integer literals and `::` constants is accepted.
 
 ```zed
 nums: [4]i32
@@ -172,9 +177,11 @@ nums[0] = 1
 -- Aggregate initializer
 verts: [3]Vec3 = { Vec3{x=0.0,y=0.0,z=0.0}, Vec3{x=1.0,y=0.0,z=0.0}, Vec3{x=0.0,y=1.0,z=0.0} }
 
--- Const-expr size
-GRID :: 20
-cells: [GRID * GRID]i32    -- 400 elements, resolved at compile time
+-- Const-expr size (full arithmetic supported)
+GRID      :: 20
+CELL_SIZE :: 4
+cells:  [GRID * GRID]i32         -- 400 elements
+pixels: [GRID * GRID * CELL_SIZE]u8   -- 1600 elements
 ```
 
 **Slices** — fat pointer (data + length).
@@ -201,8 +208,8 @@ append(&nums, 10)
 append(&nums, 20)
 
 -- Length and capacity
-n   := len(nums)   -- current element count  → u64
-cap := cap(nums)   -- current capacity        → u64
+n       := len(nums)   -- current element count  → u64
+cap_val := cap(nums)   -- current capacity        → u64
 
 -- Pre-allocate capacity (avoids repeated reallocations)
 reserve(&nums, 100)
@@ -216,6 +223,8 @@ delete_dyn(&nums)
 ```
 
 `len` also works on fixed arrays, slices, and `string` values.
+
+> `len`, `cap`, `append`, `reserve`, `delete_dyn`, `to_cstr`, and `from_cstr` are **soft keywords** — they are recognised as built-in calls only when immediately used as calls. They may freely be used as variable names in other positions (`cap_val := cap(nums)` or `len := 0` both work).
 
 ---
 
@@ -245,7 +254,7 @@ p.*.x = 5.0
 
 ## Unions
 
-Same syntax as structs but all fields share the same memory (C `union` semantics). Size equals the largest field.
+Same syntax as structs but all fields share the same memory (C `union` semantics). Size equals the largest field. Fields may be separated by either `,` or `;`.
 
 ```zed
 Value :: union {
@@ -258,8 +267,6 @@ v: Value
 v.as_int = 42
 x := v.as_float   -- reinterprets the same bytes
 ```
-
-Unions are declared with `::` like structs and are nominal types.
 
 ---
 
@@ -300,10 +307,18 @@ greet :: proc(name: cstr) {
 
 -- Multiple return values
 min_max :: proc(a: i32, b: i32) -> (i32, i32) {
-    return a, b     -- if a < b else return b, a
+    return a, b
 }
 
 lo, hi := min_max(3, 7)
+
+-- Named return values (see §Named Return Values)
+divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
+    if b == 0 { return }
+    result = a / b
+    ok = true
+    return
+}
 
 -- Proc type annotation (function pointer)
 callback: proc(i32) -> bool
@@ -324,10 +339,29 @@ Postfix operator for propagating errors out of a proc. The callee must return `(
 read_int :: proc(s: cstr) -> (i32, bool) { ... }
 
 parse :: proc(input: cstr) -> (i32, bool) {
-    n := read_int(input) or_return   -- returns (0, false) on failure
+    n := read_int(input) or_return   -- on failure: returns (zero-value of i32, false)
     return n * 2, true
 }
 ```
+
+---
+
+## Named Return Values
+
+Return variables can be given names in the signature. They are zero-initialised automatically and a bare `return` commits whatever values they hold at that point.
+
+```zed
+divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
+    if b == 0 { return }        -- result=0, ok=false (zero values)
+    result = a / b
+    ok = true
+    return
+}
+
+q, valid := divide(10, 2)
+```
+
+Named returns are useful for documenting what each return slot means and for early-exit patterns where the zero-value is a sensible default.
 
 ---
 
@@ -367,7 +401,7 @@ if x > 0 {
 for { break }
 
 -- While-style
-for x > 0 { x-- }
+for x > 0 { x -= 1 }
 
 -- Range (exclusive)
 for i in 0 ..< 10 { }
@@ -423,13 +457,26 @@ for not WindowShouldClose() {
 
 ## Match
 
-Pattern-match on any integer or enum value. `else` is the default case (alias for `case`).
+Pattern-match on any integer or enum value. `else` is the default case (alias for bare `case`).
 
 ```zed
 match direction {
     case Direction.North { go_north() }
     case Direction.South { go_south() }
     else                 { stop() }
+}
+```
+
+### Enum dot-shorthand
+
+When matching on an enum value the type name can be omitted — write `.Variant` and Zed infers the enum from the match expression.
+
+```zed
+match direction {
+    case .North { go_north() }
+    case .South { go_south() }
+    case .East  { go_east()  }
+    else        { stop()     }
 }
 ```
 
@@ -451,14 +498,37 @@ when DEBUG {
 
 ---
 
-## Compile-time Assert
+## typeid
+
+`typeid(T)` produces a **compile-time `u64` hash** that uniquely identifies a type. Its only intended use is as a constant in `when` conditions.
 
 ```zed
-#assert GRID_SIZE > 0
-#assert sizeof(i32) == 4
+when typeid(T) == typeid(i32) {
+    -- branch emitted only when T is i32
+} else when typeid(T) == typeid(f32) {
+    -- branch emitted only when T is f32
+}
 ```
 
-Emits a C `static_assert` with a `file:line` message on failure.
+`typeid` expressions are evaluated entirely at compile time and fold away with `when`; no runtime cost is incurred.
+
+---
+
+## Compile-time Assert
+
+`#assert` is valid both at the **top level** (outside any proc) and inside proc bodies. It emits a C `static_assert` with a `file:line` message.
+
+```zed
+-- top-level
+#assert GRID_SIZE > 0
+#assert sizeof(i32) == 4
+
+-- inside a proc
+main :: proc() -> i32 {
+    #assert sizeof(i64) == 8
+    return 0
+}
+```
 
 ---
 

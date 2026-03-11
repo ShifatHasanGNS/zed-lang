@@ -159,8 +159,6 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_AMP_ASSIGN     "'&='"
 %token TOK_PIPE_ASSIGN    "'|='"
 %token TOK_XOR_ASSIGN     "'^='"
-%token TOK_INC            "'++'"
-%token TOK_DEC            "'--'"
 %token TOK_HASH_ASSERT    "'#assert'"
 %token TOK_DOTDOT     "'..'" 
 %token TOK_KW_SIZEOF  "'sizeof'"
@@ -176,6 +174,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_TO_CSTR    "'to_cstr'"
 %token TOK_KW_FROM_CSTR  "'from_cstr'"
 %token TOK_KW_UNION      "'union'"
+%token TOK_KW_TYPEID     "'typeid'"
 
 // Non-terminals
 %type <decl>          top_decl
@@ -433,6 +432,41 @@ proc_decl
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
             $$ = new ProcDecl(r, *$1, params, nullptr, *$9, nullptr);
+            delete $1; delete $5; delete $9;
+        }
+    // Named multi-return: proc() -> (val: i32, ok: bool)
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN param_list TOK_RPAREN block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto params = $5 ? *$5 : std::vector<ParamGroup>();
+            std::vector<std::string> ret_names;
+            std::vector<Type*>       ret_types;
+            for (const ParamGroup& pg : *$9) {
+                for (const std::string& nm : pg.names) {
+                    ret_names.push_back(nm);
+                    ret_types.push_back(pg.type);
+                }
+            }
+            auto* pd = new ProcDecl(r, *$1, params, nullptr, ret_types, $11);
+            pd->return_names = ret_names;
+            $$ = pd;
+            delete $1; delete $5; delete $9;
+        }
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN param_list TOK_RPAREN TOK_NOBODY
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto params = $5 ? *$5 : std::vector<ParamGroup>();
+            std::vector<std::string> ret_names;
+            std::vector<Type*>       ret_types;
+            for (const ParamGroup& pg : *$9) {
+                for (const std::string& nm : pg.names) {
+                    ret_names.push_back(nm);
+                    ret_types.push_back(pg.type);
+                }
+            }
+            auto* pd = new ProcDecl(r, *$1, params, nullptr, ret_types, nullptr);
+            pd->return_names = ret_names;
+            $$ = pd;
             delete $1; delete $5; delete $9;
         }
     ;
@@ -925,10 +959,6 @@ expr_stmt
         { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_PIPE,   $3); }
     | expr TOK_XOR_ASSIGN expr
         { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_XOR,    $3); }
-    | expr TOK_INC
-        { SourceRange r = to_sourcerange(@$, filename); $$ = new IncDecStmt(r,$1,true);  }
-    | expr TOK_DEC
-        { SourceRange r = to_sourcerange(@$, filename); $$ = new IncDecStmt(r,$1,false); }
     ;
 
 block
@@ -1225,6 +1255,11 @@ sizeof_expr
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new SizeofExpr(r, true, $3, nullptr);
+        }
+    | TOK_KW_TYPEID TOK_LPAREN type TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new TypeIdExpr(r, $3);
         }
     ;
 

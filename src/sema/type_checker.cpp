@@ -143,29 +143,13 @@ void TypeChecker::check_const_decl(ConstDecl* cd) {
     }
 }
 
-// True when an expression is a raw string literal ("...").
-// Used to allow implicit coercion of string literals to the `string` type
-// even though their inferred type is `cstr`.  Runtime cstr variables still
-// require an explicit from_cstr() call to convert to string.
-static bool is_string_lit(Expr* e) {
-    auto* lit = dynamic_cast<LitExpr*>(e);
-    return lit && lit->lit_kind == LitExpr::STRING;
-}
-
 void TypeChecker::check_var_decl(VarDecl* vd, bool is_global) {
     TypeRef declared = vd->type ? resolve_type(vd->type) : nullptr;
     TypeRef init_ty  = nullptr;
 
     if (vd->init) {
         init_ty = check_expr(vd->init);
-        // Special case: a raw string literal ("...") has type cstr by default,
-        // but is also valid as an initialiser for an explicitly-declared string
-        // variable (the C++ backend constructs std::string from const char*).
-        // A runtime cstr variable still requires explicit from_cstr() conversion.
-        bool lit_string_coerce = (declared && declared->is_string()
-                                  && init_ty->is_cstr()
-                                  && is_string_lit(vd->init));
-        if (declared && !types_compatible(init_ty, declared) && !lit_string_coerce) {
+        if (declared && !types_compatible(init_ty, declared)) {
             expect_type(init_ty, declared, vd->range.begin,
                         "initialiser of '" + vd->var_name + "'");
             declared = init_ty;  // error recovery: use inferred type to reduce cascade errors
@@ -223,6 +207,21 @@ void TypeChecker::check_proc_body(ProcDecl* pd) {
                               : sym_.arena().ty_void();
     }
     proc_scope->proc_return_type = ret;
+
+    // Named return variables: declare them as pre-initialized locals so that
+    // the proc body can assign to them and a bare 'return' is valid.
+    if (!pd->return_names.empty()) {
+        proc_scope->proc_has_named_returns = true;
+        auto* tt = ret->is_tuple() ? static_cast<sem::TupleType*>(ret) : nullptr;
+        for (size_t i = 0; i < pd->return_names.size(); ++i) {
+            TypeRef vty = (tt && i < tt->elems.size())
+                          ? tt->elems[i]
+                          : sym_.arena().ty_error();
+            Symbol named_sym(Symbol::Kind::VAR, pd->return_names[i], vty, pd->range.begin);
+            named_sym.initialized = true;
+            sym_.declare(named_sym);
+        }
+    }
 
     // collect_globals builds the proc symbol before bodies are checked, so it
     // may store return_type=nullptr for multi-return procs. Patch it here so
@@ -350,15 +349,16 @@ void TypeChecker::check_return(ReturnStmt* s) {
                         expect_type(gt->elems[i], et->elems[i], s->range.begin,
                             "return value " + std::to_string(i));
         } else if (!got->is_any_foreign()) {
-            // String literal → string return type: allowed.
-            bool lit_coerce = (got->is_cstr() && expected->is_string()
-                               && is_string_lit(s->value));
-            if (!lit_coerce)
-                expect_type(got, expected, s->range.begin, "return value");
+            expect_type(got, expected, s->range.begin, "return value");
         }
     } else if (!expected->is_void()) {
-        err_.error(s->range.begin,
-            "missing return value; expected '" + expected->to_string() + "'");
+        // A bare 'return' is valid in a proc with named return variables —
+        // it implicitly returns all named vars in their current state.
+        Scope* proc_scope = sym_.current_scope()->enclosing_proc();
+        bool has_named = proc_scope && proc_scope->proc_has_named_returns;
+        if (!has_named)
+            err_.error(s->range.begin,
+                "missing return value; expected '" + expected->to_string() + "'");
     }
 }
 
@@ -366,9 +366,7 @@ void TypeChecker::check_assign(AssignStmt* s) {
     if (!check_lvalue(s->lvalue)) return;
     TypeRef lty = check_expr(s->lvalue);
     TypeRef rty = check_expr(s->rhs);
-    // String literal → string lvalue: allowed (same as var decl coercion).
-    bool lit_string_coerce = (lty->is_string() && rty->is_cstr() && is_string_lit(s->rhs));
-    if (!lty->is_any_foreign() && !rty->is_any_foreign() && !lit_string_coerce)
+    if (!lty->is_any_foreign() && !rty->is_any_foreign())
         expect_type(rty, lty, s->rhs->range.begin, "assignment");
 }
 
@@ -411,6 +409,11 @@ TypeRef TypeChecker::check_expr(Expr* e) {
         case Expr::BUILTIN_CALL:  t = check_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
         case Expr::OR_RETURN_EXPR: t = check_or_return(static_cast<OrReturnExpr *>(e)); break;
         case Expr::PROC_LIT: t = check_proc_lit(static_cast<ProcLitExpr *>(e)); break;
+        case Expr::TYPEID_EXPR:
+            // typeid(T) — just resolve the type to catch errors; result is u64
+            resolve_type(static_cast<TypeIdExpr*>(e)->type_arg);
+            t = sym_.arena().ty_u64();
+            break;
     }
     set_type(e, t);
     return t;
@@ -555,16 +558,10 @@ TypeRef TypeChecker::check_call(CallExpr* e) {
     } else {
         for (size_t i = 0; i < e->args.size(); ++i) {
             TypeRef aty = check_expr(e->args[i]);
-            if (!aty->is_any_foreign()) {
-                // String literal → string param: allowed (same coercion as var decl).
-                bool lit_coerce = (aty->is_cstr()
-                                   && pt->params[i].type->is_string()
-                                   && is_string_lit(e->args[i]));
-                if (!lit_coerce)
-                    expect_type(aty, pt->params[i].type,
-                                e->args[i]->range.begin,
-                                "argument " + std::to_string(i + 1));
-            }
+            if (!aty->is_any_foreign())
+                expect_type(aty, pt->params[i].type,
+                            e->args[i]->range.begin,
+                            "argument " + std::to_string(i + 1));
         }
     }
 
@@ -725,7 +722,7 @@ TypeRef TypeChecker::check_lit(LitExpr* e) {
             return sym_.arena().ty_i32();
         case LitExpr::FLOAT:  return sym_.arena().ty_f32();  // f32 default
         case LitExpr::BOOL:   return sym_.arena().ty_bool();
-        case LitExpr::STRING: return sym_.arena().ty_cstr();
+        case LitExpr::STRING: return sym_.arena().ty_string();
         case LitExpr::NIL:
             // nil is a pointer of unknown pointee — use *void as placeholder
             return sym_.arena().make_ptr(sym_.arena().ty_void());
@@ -892,10 +889,9 @@ bool TypeChecker::types_compatible(TypeRef from, TypeRef to) const {
     // enum ↔ integer compatibility (for match, comparisons, assignments)
     if (from->is_enum() && to->is_integer()) return true;
     if (from->is_integer() && to->is_enum()) return true;
-    // string ↔ string — same type, always OK
+    // string ↔ string; cstr can be implicitly converted to string
     if (from->is_string() && to->is_string()) return true;
-    // NOTE: cstr → string is NOT implicitly compatible for runtime values.
-    // Raw string literals are special-cased at each call site via is_string_lit().
+    if (from->is_cstr()   && to->is_string()) return true;
     // dyn_array compatible if same element type
     if (from->is_dyn_array() && to->is_dyn_array()) {
         auto* fa = static_cast<sem::DynArrayType*>(from);

@@ -162,8 +162,6 @@ using namespace ZedLang;
 "..="   { return TOK_DOTDOTEQ; }
 ".."    { return TOK_DOTDOT; }
 ".*"    { return TOK_DEREF; }
-"++"    { return TOK_INC; }
-"--"    { return TOK_DEC; }
 "+="    { return TOK_PLUS_ASSIGN; }
 "-="    { return TOK_MINUS_ASSIGN; }
 "*="    { return TOK_STAR_ASSIGN; }
