@@ -678,23 +678,6 @@ void AstPrinter::print(Expr* expr) {
             print_location(se); out << "\n";
             break;
         }
-        case Expr::BUILTIN_CALL: {
-            BuiltinCallExpr* bc = static_cast<BuiltinCallExpr*>(expr);
-            emit_indent(out, current_indent);
-            out << "BuiltinCall tok=" << bc->builtin_tok;
-            print_location(bc); out << "\n";
-            indent();
-            for (Expr* a : bc->args) print(a);
-            dedent();
-            break;
-        }
-        case Expr::OR_RETURN_EXPR: {
-            OrReturnExpr* oe = static_cast<OrReturnExpr*>(expr);
-            emit_indent(out, current_indent);
-            out << "OrReturn"; print_location(oe); out << "\n";
-            indent(); print(oe->inner); dedent();
-            break;
-        }
     }
 }
 
@@ -737,15 +720,6 @@ void AstPrinter::print(Type* type) {
             if (pt->return_type) { out << " -> "; print(pt->return_type); }
             break;
         }
-        case Type::DYN_ARRAY_TYPE: {
-            DynArrayTypeAST* da = static_cast<DynArrayTypeAST*>(type);
-            out << "[dynamic]";
-            print(da->elem);
-            break;
-        }
-        case Type::STRING_TYPE:
-            out << "string";
-            break;
     }
 }
 

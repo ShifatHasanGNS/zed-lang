@@ -1045,7 +1045,7 @@ YY_RULE_SETUP
 /* Float literals                                                       */
 /* ------------------------------------------------------------------ */
 /* Form 1: digit(s).digit(s) optional-exponent  e.g. 3.14  1.5e-3   */
-/* Form 2: digit(s) exponent, no decimal point  e.g. 1e-6  2E10     */
+/* Form 2: digit(s) exponent, no decimal point  e.g. 1e-9  2E10     */
 case 13:
 #line 109 "src/frontend/lexer.l"
 case 14:

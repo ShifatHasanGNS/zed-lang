@@ -2,7 +2,7 @@
 // type_checker.cpp
 // =============================================================================
 
-#include "../sema/type_checker.hpp"
+#include "type_checker.hpp"
 
 #include "../frontend/ast.hpp"         // must precede tok_defs.hpp
 #include "../frontend/tok_defs.hpp"    // stable TOK_* constants
@@ -374,9 +374,7 @@ TypeRef TypeChecker::check_expr(Expr* e) {
         case Expr::STRUCT_LIT: t = check_struct_lit(static_cast<StructLitExpr*>(e)); break;
         case Expr::TUPLE:      t = check_tuple(static_cast<TupleExpr*>(e));          break;
         case Expr::SIZEOF_EXPR:t = check_sizeof(static_cast<SizeofExpr*>(e));        break;
-        case Expr::ARRAY_INIT:    t = check_array_init(static_cast<ArrayInitExpr*>(e));   break;
-        case Expr::BUILTIN_CALL:  t = check_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
-        case Expr::OR_RETURN_EXPR:t = check_or_return(static_cast<OrReturnExpr*>(e));     break;
+        case Expr::ARRAY_INIT: t = check_array_init(static_cast<ArrayInitExpr*>(e)); break;
     }
     set_type(e, t);
     return t;
@@ -685,7 +683,7 @@ TypeRef TypeChecker::check_lit(LitExpr* e) {
             return sym_.arena().ty_i32();
         case LitExpr::FLOAT:  return sym_.arena().ty_f32();  // f32 default
         case LitExpr::BOOL:   return sym_.arena().ty_bool();
-        case LitExpr::STRING: return sym_.arena().ty_cstr();  // "..." emits as const char*
+        case LitExpr::STRING: return sym_.arena().ty_cstr();
         case LitExpr::NIL:
             // nil is a pointer of unknown pointee — use *void as placeholder
             return sym_.arena().make_ptr(sym_.arena().ty_void());
@@ -802,12 +800,6 @@ TypeRef TypeChecker::resolve_type(Type* t) {
             TypeRef ret = pt->return_type ? resolve_type(pt->return_type) : nullptr;
             return sym_.arena().make_proc(std::move(params), ret);
         }
-        case Type::DYN_ARRAY_TYPE: {
-            auto* da = static_cast<ZedLang::DynArrayTypeAST*>(t);
-            return sym_.arena().make_dyn_array(resolve_type(da->elem));
-        }
-        case Type::STRING_TYPE:
-            return sym_.arena().ty_string();
     }
     return sym_.arena().ty_error();
 }
@@ -852,15 +844,6 @@ bool TypeChecker::types_compatible(TypeRef from, TypeRef to) const {
     // enum ↔ integer compatibility (for match, comparisons, assignments)
     if (from->is_enum() && to->is_integer()) return true;
     if (from->is_integer() && to->is_enum()) return true;
-    // string ↔ string; cstr can be implicitly converted to string
-    if (from->is_string() && to->is_string()) return true;
-    if (from->is_cstr()   && to->is_string()) return true;
-    // dyn_array compatible if same element type
-    if (from->is_dyn_array() && to->is_dyn_array()) {
-        auto* fa = static_cast<sem::DynArrayType*>(from);
-        auto* ta = static_cast<sem::DynArrayType*>(to);
-        return *fa->elem == *ta->elem;
-    }
     return false;
 }
 
@@ -1055,70 +1038,6 @@ void TypeChecker::check_multi_assign(MultiAssignStmt* s) {
             expect_type(rhs_tys[i], lty, s->range.begin,
                 "multi-assign lvalue " + std::to_string(i));
     }
-}
-
-
-// ---------------------------------------------------------------------------
-// check_builtin_call
-// ---------------------------------------------------------------------------
-TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
-    for (Expr* a : e->args) check_expr(a);
-
-    auto& ar = sym_.arena();
-    switch (e->builtin_tok) {
-        case TOK_KW_APPEND:
-            // append(&arr, val) — first arg must be *[dynamic]T
-            if (!e->args.empty()) {
-                TypeRef arg0 = check_expr(e->args[0]);   // already checked above — re-fetch
-                // arg0 is the address-of a dyn array: its type is *DynArrayType
-                // just validate no obvious errors; C++ template handles the rest
-            }
-            return ar.ty_void();
-        case TOK_KW_LEN:       return ar.ty_u64();
-        case TOK_KW_CAP:       return ar.ty_u64();
-        case TOK_KW_RESERVE:   return ar.ty_void();
-        case TOK_KW_DELETE_DYN:return ar.ty_void();
-        case TOK_KW_TO_CSTR:   return ar.ty_cstr();
-        case TOK_KW_FROM_CSTR: return ar.ty_string();
-        default:
-            err_.error(e->range.begin, "unknown builtin");
-            return ar.ty_error();
-    }
-}
-
-// ---------------------------------------------------------------------------
-// check_or_return
-// val := call() or_return
-// Inner expression must yield (T, bool). Result type is T.
-// At runtime: if bool is false, the enclosing proc returns a zero-value tuple.
-// ---------------------------------------------------------------------------
-TypeRef TypeChecker::check_or_return(OrReturnExpr* e) {
-    TypeRef inner_ty = check_expr(e->inner);
-    if (inner_ty->is_any_foreign()) return inner_ty;
-
-    if (!inner_ty->is_tuple()) {
-        err_.error(e->range.begin,
-            "'or_return' requires a (T, bool) result, got '"
-            + inner_ty->to_string() + "'");
-        return sym_.arena().ty_error();
-    }
-    auto* tt = static_cast<sem::TupleType*>(inner_ty);
-    if (tt->elems.size() < 2 || !tt->elems.back()->is_bool()) {
-        err_.error(e->range.begin,
-            "'or_return' requires the last return element to be bool");
-        return sym_.arena().ty_error();
-    }
-    // Must be inside a proc that can propagate the failure
-    TypeRef ret = sym_.current_return_type();
-    if (!ret || ret->is_void())
-        err_.error(e->range.begin,
-            "'or_return' used in a void proc — cannot propagate failure");
-
-    // Return T (first element); T, bool → T
-    if (tt->elems.size() == 2) return tt->elems[0];
-    // (T0, T1, ..., bool) → (T0, T1, ...)
-    std::vector<TypeRef> elems(tt->elems.begin(), tt->elems.end() - 1);
-    return sym_.arena().make_tuple(std::move(elems));
 }
 
 // Public wrapper for resolve_type — needed by codegen for sizeof(T)

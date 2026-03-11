@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../sema/symtable.hpp"
+#include "symtable.hpp"
 
 #include "../frontend/ast.hpp"
 #include "../support/error.hpp"
@@ -96,8 +96,6 @@ private:
     TypeRef check_array_init(ArrayInitExpr* e);
     TypeRef check_sizeof(SizeofExpr* e);
     TypeRef check_multi_decl_expr(Expr* rhs);
-    TypeRef check_builtin_call(BuiltinCallExpr* e);
-    TypeRef check_or_return(OrReturnExpr* e);
 
     // ---- Helpers -----------------------------------------------------------
     // Resolve an AST Type node to a SemanticType.

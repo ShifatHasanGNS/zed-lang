@@ -49,8 +49,6 @@ struct SemanticType {
     FOREIGN,
     FOREIGN_NAMED,  // C type accessed via cimport — carries the original name
     TUPLE,          // anonymous tuple — result of multi-return proc
-    STRING,         // first-class string { *u8, len }
-    DYN_ARRAY,      // growable array [dynamic]T
     };
 
     Kind kind;
@@ -73,9 +71,7 @@ struct SemanticType {
     bool is_cstr()     const { return kind == Kind::CSTR;   }
     bool is_enum()     const { return kind == Kind::ENUM;   }
     // True for both anonymous FOREIGN and named C types from cimport
-    bool is_tuple()    const { return kind == Kind::TUPLE;     }
-    bool is_string()   const { return kind == Kind::STRING;    }
-    bool is_dyn_array()const { return kind == Kind::DYN_ARRAY; }
+    bool is_tuple()    const { return kind == Kind::TUPLE;  }
     bool is_any_foreign() const {
         return kind == Kind::FOREIGN || kind == Kind::FOREIGN_NAMED;
     }
@@ -176,11 +172,6 @@ struct TupleType final : SemanticType {
         : SemanticType(Kind::TUPLE), elems(std::move(e)) {}
 };
 
-struct DynArrayType final : SemanticType {
-    TypeRef elem;
-    explicit DynArrayType(TypeRef e) : SemanticType(Kind::DYN_ARRAY), elem(e) {}
-};
-
 } // namespace sem
 
 // Use sem::PtrType, sem::ArrayType, sem::SliceType, sem::StructType,
@@ -220,13 +211,9 @@ public:
     // Returns a named-foreign type; caches by name so identity is stable.
     TypeRef make_foreign_named(const std::string& name);
     TypeRef make_tuple(std::vector<TypeRef> elems);
-    TypeRef make_dyn_array(TypeRef elem);
-    TypeRef ty_string() const { return string_; }
     TypeRef make_enum(std::string name);
 
 private:
-    TypeRef string_;   // singleton STRING type
-
     template<typename T, typename... Args>
     T* alloc(Args&&... args) {
         owned_.push_back(std::make_unique<T>(std::forward<Args>(args)...));

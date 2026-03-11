@@ -737,9 +737,7 @@ void CodeGen::emit_expr(Expr* e) {
         case Expr::STRUCT_LIT: emit_struct_lit(static_cast<StructLitExpr*>(e));    break;
         case Expr::TUPLE:      emit_tuple(static_cast<TupleExpr*>(e));              break;
         case Expr::SIZEOF_EXPR:emit_sizeof(static_cast<SizeofExpr*>(e));            break;
-        case Expr::ARRAY_INIT:    emit_array_init(static_cast<ArrayInitExpr*>(e));    break;
-        case Expr::BUILTIN_CALL:  emit_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
-        case Expr::OR_RETURN_EXPR:emit_or_return(static_cast<OrReturnExpr*>(e));      break;
+        case Expr::ARRAY_INIT: emit_array_init(static_cast<ArrayInitExpr*>(e));     break;
     }
 }
 
@@ -907,10 +905,8 @@ void CodeGen::emit_lit(LitExpr* e, TypeRef hint) {
             emit_.emit("NULL");
         } break;
         case LitExpr::STRING: {
-            // Emit as a plain C string literal "...".
-            // std::string implicitly constructs from const char* where needed.
-            // Plain literals work correctly for printf/variadic contexts.
-            emit_.emit("\"");
+            // Emit a C string literal with minimal escaping.
+            emit_.emit('"');
             for (char c : e->str_val) {
                 switch (c) {
                     case '"':  emit_.emit("\\\""); break;
@@ -921,7 +917,7 @@ void CodeGen::emit_lit(LitExpr* e, TypeRef hint) {
                     default:   emit_.emit(c);      break;
                 }
             }
-            emit_.emit("\"");
+            emit_.emit('"');
         } break;
     }
 }
@@ -985,14 +981,10 @@ void CodeGen::emit_c_type(TypeRef t) {
         // Anonymous foreign — should be rare in type-position; auto is safest.
         emit_.emit("auto");
     } else if (t->is_proc()) {
+        // Emit as a std::function-style type alias or raw function pointer.
+        // For variable declarations, emit_var_decl handles the full pointer form.
+        // In other positions (e.g. cast targets) emit a simplified void*.
         emit_.emit("void*");
-    } else if (t->is_string()) {
-        emit_.emit("std::string");
-    } else if (t->is_dyn_array()) {
-        auto* da = static_cast<sem::DynArrayType*>(t);
-        emit_.emit("std::vector<");
-        emit_c_type(da->elem);
-        emit_.emit(">");
     } else {
         emit_.emit(primitive_c_name(t->kind));
     }
@@ -1176,125 +1168,6 @@ void CodeGen::emit_multi_assign(MultiAssignStmt* s) {
         emit_expr(s->rhs);
         emit_.emit(";\n");
     }
-}
-
-// ---------------------------------------------------------------------------
-// emit_builtin_call
-// ---------------------------------------------------------------------------
-void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
-    switch (e->builtin_tok) {
-        case TOK_KW_LEN: {
-            // len(x) — works for arrays, slices, dyn arrays, strings
-            TypeRef arg_ty = e->args.empty() ? nullptr : tc_.type_of(e->args[0]);
-            if (arg_ty && arg_ty->is_array()) {
-                // Compile-time array length
-                emit_.emit(std::to_string(static_cast<sem::ArrayType*>(arg_ty)->count));
-            } else if (arg_ty && arg_ty->is_dyn_array()) {
-                emit_.emit("(");
-                emit_expr(e->args[0]);
-                emit_.emit(").len");
-            } else if (arg_ty && arg_ty->is_string()) {
-                emit_.emit("(");
-                emit_expr(e->args[0]);
-                emit_.emit(").len");
-            } else {
-                // Slice or unknown
-                emit_.emit("(");
-                emit_expr(e->args[0]);
-                emit_.emit(").len");
-            }
-            break;
-        }
-        case TOK_KW_CAP: {
-            emit_.emit("(");
-            emit_expr(e->args[0]);
-            emit_.emit(").cap");
-            break;
-        }
-        case TOK_KW_APPEND: {
-            // append(&arr, val)  →  (arr).push(val)
-            // args[0] is &arr (AddrExpr), args[1] is val
-            if (e->args.size() >= 2) {
-                // Strip the & to get the array expression
-                Expr* arr = e->args[0];
-                if (arr->kind() == Expr::ADDR)
-                    arr = static_cast<AddrExpr*>(arr)->expr;
-                emit_.emit("(");
-                emit_expr(arr);
-                emit_.emit(").push(");
-                emit_expr(e->args[1]);
-                emit_.emit(")");
-            }
-            break;
-        }
-        case TOK_KW_RESERVE: {
-            Expr* arr = e->args[0];
-            if (arr->kind() == Expr::ADDR)
-                arr = static_cast<AddrExpr*>(arr)->expr;
-            emit_.emit("(");
-            emit_expr(arr);
-            emit_.emit(")._reserve(");
-            emit_expr(e->args[1]);
-            emit_.emit(")");
-            break;
-        }
-        case TOK_KW_DELETE_DYN: {
-            Expr* arr = e->args[0];
-            if (arr->kind() == Expr::ADDR)
-                arr = static_cast<AddrExpr*>(arr)->expr;
-            emit_.emit("(");
-            emit_expr(arr);
-            emit_.emit(").free_all()");
-            break;
-        }
-        case TOK_KW_TO_CSTR: {
-            // to_cstr(s)  →  (s).c_str()
-            emit_.emit("(");
-            emit_expr(e->args[0]);
-            emit_.emit(").c_str()");
-            break;
-        }
-        case TOK_KW_FROM_CSTR: {
-            // from_cstr(cs)  →  std::string(cs)
-            emit_.emit("std::string(");
-            emit_expr(e->args[0]);
-            emit_.emit(")");
-            break;
-        }
-        default:
-            emit_.emit("/*unknown_builtin*/");
-            break;
-    }
-}
-
-// ---------------------------------------------------------------------------
-// emit_or_return
-// val := call() or_return
-// Emits a block-expression using GCC/Clang statement-expr, or a temp var.
-// Strategy: use a C99 compound statement that evaluates the tuple, checks
-// the bool, and either returns or yields the value.
-//
-// Generated pattern (for single-value T,bool result):
-//   ({ auto _or_tmp = CALL; if (!_or_tmp._1) { return {._0={}, ._1=false}; } _or_tmp._0; })
-//
-// For void return context: just { if (!_or_tmp._1) return; }
-// ---------------------------------------------------------------------------
-void CodeGen::emit_or_return(OrReturnExpr* e) {
-    TypeRef inner_ty = tc_.type_of(e->inner);
-    // Determine proc return struct name
-    const std::string& pname = current_proc_name_;
-    bool multi_ret = !pname.empty();
-
-    emit_.emit("({ auto _or_tmp_ = ");
-    emit_expr(e->inner);
-    emit_.emit("; if (!_or_tmp_._1) { ");
-    if (multi_ret) {
-        // Return a zeroed-out return struct
-        emit_.emit("return (__ret_" + pname + "){}; ");
-    } else {
-        emit_.emit("return; ");
-    }
-    emit_.emit("} _or_tmp_._0; })");
 }
 
 } // namespace ZedLang

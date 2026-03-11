@@ -2,7 +2,7 @@
 // types.cpp
 // =============================================================================
 
-#include "../sema/types.hpp"
+#include "types.hpp"
 
 namespace ZedLang {
 
@@ -72,8 +72,6 @@ uint64_t SemanticType::byte_size() const {
             for (auto& e : static_cast<const sem::TupleType*>(this)->elems) sz += e->byte_size();
             return sz;
         }
-        case Kind::STRING:    return 16;  // { *u8(8) + len(8) }
-        case Kind::DYN_ARRAY: return 24;  // { *T(8) + len(8) + cap(8) }
     }
     return 0;
 }
@@ -126,11 +124,6 @@ std::string SemanticType::to_string() const {
             s += ")";
             if (p->return_type) s += " -> " + p->return_type->to_string();
             return s;
-        }
-        case Kind::STRING:    return "string";
-        case Kind::DYN_ARRAY: {
-            const auto* d = static_cast<const sem::DynArrayType*>(this);
-            return "[dynamic]" + d->elem->to_string();
         }
         case Kind::TUPLE: {
             const auto* t = static_cast<const sem::TupleType*>(this);
@@ -211,7 +204,6 @@ TypeArena::TypeArena() {
     cstr_  = alloc<SemanticType>(SemanticType::Kind::CSTR);
     error_   = alloc<SemanticType>(SemanticType::Kind::ERROR);
     foreign_ = alloc<SemanticType>(SemanticType::Kind::FOREIGN);
-    string_  = alloc<SemanticType>(SemanticType::Kind::STRING);
 }
 
 TypeRef TypeArena::lookup_primitive(const std::string& name) const {
@@ -269,10 +261,6 @@ TypeRef TypeArena::make_proc(std::vector<sem::ProcParam> params, TypeRef ret) {
     return alloc<sem::ProcType>(std::move(params), ret);
 }
 
-
-TypeRef TypeArena::make_dyn_array(TypeRef elem) {
-    return alloc<sem::DynArrayType>(elem);
-}
 
 TypeRef TypeArena::make_tuple(std::vector<TypeRef> elems) {
     return alloc<sem::TupleType>(std::move(elems));

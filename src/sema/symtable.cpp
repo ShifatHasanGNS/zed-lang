@@ -2,7 +2,7 @@
 // symtable.cpp
 // =============================================================================
 
-#include "../sema/symtable.hpp"
+#include "symtable.hpp"
 
 #include "../frontend/tok_defs.hpp"   // TOK_PLUS, TOK_STAR, etc. for const folding
 #include <cassert>
@@ -72,12 +72,6 @@ TypeRef SymbolTable::resolve_ast_type(ZedLang::Type* t) {
             TypeRef ret = pt->return_type ? resolve_ast_type(pt->return_type) : nullptr;
             return arena().make_proc(std::move(params), ret);
         }
-        case ZedLang::Type::DYN_ARRAY_TYPE: {
-            auto* da = static_cast<ZedLang::DynArrayTypeAST*>(t);
-            return arena().make_dyn_array(resolve_ast_type(da->elem));
-        }
-        case ZedLang::Type::STRING_TYPE:
-            return arena().ty_string();
     }
     return arena().ty_error();
 }

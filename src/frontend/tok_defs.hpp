@@ -54,19 +54,8 @@ enum {
     TOK_DOTDOTLT   = 299,   // ..<
     TOK_DOTDOTEQ   = 300,   // ..=
     TOK_DOTDOT     = 333,   // ..   (struct update spread: Rect{ ..base, width=10 })
-    TOK_KW_SIZEOF    = 334,   // sizeof(T) / sizeof(expr)
-    TOK_KW_ALIGNOF   = 335,   // alignof(T)
-    // Stage 2 ─────────────────────────────────────────────────────
-    TOK_KW_STRING    = 336,   // string  (built-in type)
-    TOK_KW_DYNAMIC   = 337,   // dynamic (used in [dynamic]T)
-    TOK_KW_APPEND    = 338,   // append(&arr, val)
-    TOK_KW_LEN       = 339,   // len(x)
-    TOK_KW_CAP       = 340,   // cap(arr)
-    TOK_KW_RESERVE   = 341,   // reserve(&arr, n)
-    TOK_KW_DELETE_DYN= 342,   // delete_dyn(&arr)
-    TOK_KW_OR_RETURN = 343,   // or_return (postfix)
-    TOK_KW_TO_CSTR   = 344,   // to_cstr(s)
-    TOK_KW_FROM_CSTR = 345,   // from_cstr(cs)
+    TOK_KW_SIZEOF  = 334,   // sizeof(T) / sizeof(expr)
+    TOK_KW_ALIGNOF = 335,   // alignof(T)
     TOK_AMP        = 301,
     TOK_DEREF      = 302,   // .*
     TOK_NOT        = 303,   // !  (also keyword alias: "not")

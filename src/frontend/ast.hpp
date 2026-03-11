@@ -99,7 +99,7 @@ public:
 // ---------------------------------------------------------------------------
 class Type : public Node {
 public:
-    enum Kind { NAMED, PTR, ARRAY, SLICE, PROC_TYPE, DYN_ARRAY_TYPE, STRING_TYPE };
+    enum Kind { NAMED, PTR, ARRAY, SLICE, PROC_TYPE };
     virtual Kind kind() const = 0;
 };
 
@@ -150,21 +150,6 @@ public:
 // ---------------------------------------------------------------------------
 // Decl (abstract)
 // ---------------------------------------------------------------------------
-// [dynamic]T
-class DynArrayTypeAST : public Type {
-public:
-    Type* elem;
-    DynArrayTypeAST(SourceRange r, Type* e) : elem(e) { range = r; }
-    Kind kind() const override { return DYN_ARRAY_TYPE; }
-};
-
-// string (keyword type)
-class StringTypeAST : public Type {
-public:
-    StringTypeAST(SourceRange r) { range = r; }
-    Kind kind() const override { return STRING_TYPE; }
-};
-
 class Decl : public Node {
 public:
     enum Kind { VAR, CONST, STRUCT, PROC, ENUM_DECL, CIMPORT = 20, IMPORT = 21 };
@@ -369,8 +354,7 @@ public:
 class Expr : public Node {
 public:
     enum Kind { BINARY, UNARY, CALL, INDEX, SLICE, FIELD, DEREF, ADDR, CAST,
-                LIT, IDENT, STRUCT_LIT, TUPLE, SIZEOF_EXPR, ARRAY_INIT,
-                BUILTIN_CALL, OR_RETURN_EXPR };
+                LIT, IDENT, STRUCT_LIT, TUPLE, SIZEOF_EXPR, ARRAY_INIT };
     virtual Kind kind() const = 0;
 };
 
@@ -518,24 +502,6 @@ public:
     std::vector<Expr*> elems;
     ArrayInitExpr(SourceRange r, std::vector<Expr*> e) : elems(std::move(e)) { range = r; }
     Kind kind() const override { return ARRAY_INIT; }
-};
-
-// BuiltinCallExpr — append, len, cap, reserve, delete_dyn, to_cstr, from_cstr
-class BuiltinCallExpr : public Expr {
-public:
-    int builtin_tok;            // TOK_KW_APPEND, TOK_KW_LEN, ...
-    std::vector<Expr*> args;
-    BuiltinCallExpr(SourceRange r, int tok, std::vector<Expr*> a)
-        : builtin_tok(tok), args(std::move(a)) { range = r; }
-    Kind kind() const override { return BUILTIN_CALL; }
-};
-
-// expr or_return  — short-circuits on (T, bool) false result
-class OrReturnExpr : public Expr {
-public:
-    Expr* inner;
-    OrReturnExpr(SourceRange r, Expr* e) : inner(e) { range = r; }
-    Kind kind() const override { return OR_RETURN_EXPR; }
 };
 
 // ForRangeStmt:  for i in lo..<hi { }  /  for i in lo..=hi step s { }

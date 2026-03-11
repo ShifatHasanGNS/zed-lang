@@ -3,9 +3,9 @@
 // =============================================================================
 
 %{
-#include "../frontend/ast.hpp"
-#include "../frontend/token.hpp"
-#include "../frontend/lexer_extra.hpp"   // defines yyscan_t and LexerExtra at global scope
+#include "ast.hpp"
+#include "token.hpp"
+#include "lexer_extra.hpp"   // defines yyscan_t and LexerExtra at global scope
 
 #include "../support/error.hpp"
 
@@ -164,17 +164,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_HASH_ASSERT    "'#assert'"
 %token TOK_DOTDOT     "'..'" 
 %token TOK_KW_SIZEOF  "'sizeof'"
-%token TOK_KW_ALIGNOF   "'alignof'"
-%token TOK_KW_STRING    "'string'"
-%token TOK_KW_DYNAMIC   "'dynamic'"
-%token TOK_KW_APPEND    "'append'"
-%token TOK_KW_LEN       "'len'"
-%token TOK_KW_CAP       "'cap'"
-%token TOK_KW_RESERVE   "'reserve'"
-%token TOK_KW_DELETE_DYN "'delete_dyn'"
-%token TOK_KW_OR_RETURN  "'or_return'"
-%token TOK_KW_TO_CSTR    "'to_cstr'"
-%token TOK_KW_FROM_CSTR  "'from_cstr'"
+%token TOK_KW_ALIGNOF "'alignof'"
 
 // Non-terminals
 %type <decl>          top_decl
@@ -187,7 +177,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr>          expr expr_no_struct expr_or expr_and expr_cmp expr_bitor expr_bitxor expr_bitand
 %type <expr>          expr_shift expr_add expr_mul expr_unary expr_postfix expr_primary
 %type <expr>          struct_lit cast_expr
-%type <type>          type named_type ptr_type array_type slice_type proc_type dyn_array_type string_type
+%type <type>          type named_type ptr_type array_type slice_type proc_type
 %type <type_list>     type_list opt_type_list
 %type <ident_list>    ident_list
 %type <field>         field_group
@@ -199,7 +189,7 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr_list>     arg_list opt_arg_list
 %type <stmt_list>     stmt_list
 %type <op>            cmp_op shift_op add_op mul_op
-%type <expr>          sizeof_expr array_init_expr builtin_call_expr
+%type <expr>          sizeof_expr array_init_expr
 %type <expr_list>     multi_ret_expr_list
 %type <stmt>          multi_decl_stmt multi_assign_stmt
 %type <else_if_list>  else_if_chain
@@ -451,29 +441,11 @@ param_group
 
 // Types
 type
-    : named_type      { $$ = $1; }
-    | ptr_type        { $$ = $1; }
-    | array_type      { $$ = $1; }
-    | slice_type      { $$ = $1; }
-    | proc_type       { $$ = $1; }
-    | dyn_array_type  { $$ = $1; }
-    | string_type     { $$ = $1; }
-    ;
-
-dyn_array_type
-    : TOK_LBRACKET TOK_KW_DYNAMIC TOK_RBRACKET type
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new DynArrayTypeAST(r, $4);
-        }
-    ;
-
-string_type
-    : TOK_KW_STRING
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new StringTypeAST(r);
-        }
+    : named_type     { $$ = $1; }
+    | ptr_type       { $$ = $1; }
+    | array_type     { $$ = $1; }
+    | slice_type     { $$ = $1; }
+    | proc_type      { $$ = $1; }
     ;
 
 named_type
@@ -1097,11 +1069,6 @@ expr_postfix
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new DerefExpr(r, $1);
         }
-    | expr_postfix TOK_KW_OR_RETURN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new OrReturnExpr(r, $1);
-        }
     ;
 
 expr_primary
@@ -1153,9 +1120,8 @@ expr_primary
         {
             $$ = $2;
         }
-    | sizeof_expr       { $$ = $1; }
-    | array_init_expr   { $$ = $1; }
-    | builtin_call_expr { $$ = $1; }
+    | sizeof_expr { $$ = $1; }
+    | array_init_expr { $$ = $1; }
     ;
 
 sizeof_expr
@@ -1188,46 +1154,6 @@ array_init_expr
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ArrayInitExpr(r, *$2);
             delete $2;
-        }
-    ;
-
-builtin_call_expr
-    : TOK_KW_APPEND TOK_LPAREN arg_list TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_APPEND, *$3);
-            delete $3;
-        }
-    | TOK_KW_LEN TOK_LPAREN expr TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_LEN, {$3});
-        }
-    | TOK_KW_CAP TOK_LPAREN expr TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_CAP, {$3});
-        }
-    | TOK_KW_RESERVE TOK_LPAREN arg_list TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_RESERVE, *$3);
-            delete $3;
-        }
-    | TOK_KW_DELETE_DYN TOK_LPAREN expr TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_DELETE_DYN, {$3});
-        }
-    | TOK_KW_TO_CSTR TOK_LPAREN expr TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_TO_CSTR, {$3});
-        }
-    | TOK_KW_FROM_CSTR TOK_LPAREN expr TOK_RPAREN
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_FROM_CSTR, {$3});
         }
     ;
 

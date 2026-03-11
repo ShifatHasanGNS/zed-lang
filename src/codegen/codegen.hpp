@@ -96,8 +96,6 @@ private:
     void emit_tuple(TupleExpr* e);
     void emit_array_init(ArrayInitExpr* e);
     void emit_sizeof(SizeofExpr* e);
-    void emit_builtin_call(BuiltinCallExpr* e);
-    void emit_or_return(OrReturnExpr* e);
 
     // ---- Type helpers ------------------------------------------------------
     // Emit the C type spelling for a SemanticType (e.g. "int32_t", "MyStruct*").
