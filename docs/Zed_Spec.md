@@ -17,16 +17,21 @@ Pointer dereference operator: `.*` (Zig-style).
 7. [Type Casts](#type-casts)
 8. [Pointers](#pointers)
 9. [Arrays & Slices](#arrays--slices)
-10. [Structs](#structs)
-11. [Enums](#enums)
-12. [Procedures](#procedures)
-13. [Control Flow](#control-flow)
-14. [Defer](#defer)
-15. [Match](#match)
-16. [When](#when)
-17. [Compile-time Assert](#compile-time-assert)
-18. [C Interop](#c-interop)
-19. [sizeof / alignof](#sizeof--alignof)
+10. [Dynamic Arrays](#dynamic-arrays)
+11. [Structs](#structs)
+12. [Unions](#unions)
+13. [Enums](#enums)
+14. [Procedures](#procedures)
+15. [Proc Literals](#proc-literals)
+16. [Control Flow](#control-flow)
+17. [Defer](#defer)
+18. [Match](#match)
+19. [When](#when)
+20. [Compile-time Assert](#compile-time-assert)
+21. [String Types & Conversion](#string-types--conversion)
+22. [C Interop](#c-interop)
+23. [Multi-file Projects](#multi-file-projects)
+24. [sizeof / alignof](#sizeof--alignof)
 
 ---
 
@@ -54,6 +59,7 @@ Pointer dereference operator: `.*` (Zig-style).
 | `f64`    | `double`      |
 | `bool`   | `bool`        |
 | `cstr`   | `const char*` |
+| `string` | `std::string` |
 | `void`   | `void`        |
 
 ---
@@ -65,7 +71,7 @@ Pointer dereference operator: `.*` (Zig-style).
 0xFF        -- hex
 0b1010      -- binary
 0o17        -- octal
-3.14        -- float (f64 default)
+3.14        -- float (f32 default; annotate type or cast for f64)
 true false  -- bool
 nil         -- null pointer
 "hello"     -- cstr  (escape: \n \t \\ \")
@@ -182,6 +188,37 @@ full := arr[:]          -- full slice
 
 ---
 
+## Dynamic Arrays
+
+Heap-allocated, growable arrays backed by `std::vector<T>`. Declared with the `[dynamic]` prefix.
+
+```zed
+-- Declaration (empty, zero-length)
+nums: [dynamic]i32
+
+-- Append a value (pass pointer to array)
+append(&nums, 10)
+append(&nums, 20)
+
+-- Length and capacity
+n   := len(nums)   -- current element count  → u64
+cap := cap(nums)   -- current capacity        → u64
+
+-- Pre-allocate capacity (avoids repeated reallocations)
+reserve(&nums, 100)
+
+-- Index (same syntax as fixed arrays)
+first := nums[0]
+nums[1] = 99
+
+-- Free the backing allocation
+delete_dyn(&nums)
+```
+
+`len` also works on fixed arrays, slices, and `string` values.
+
+---
+
 ## Structs
 
 ```zed
@@ -203,6 +240,26 @@ v2 := Vec2{ ..v, x = 10.0 }
 p := &v
 p.*.x = 5.0
 ```
+
+---
+
+## Unions
+
+Same syntax as structs but all fields share the same memory (C `union` semantics). Size equals the largest field.
+
+```zed
+Value :: union {
+    as_int:   i64,
+    as_float: f64,
+    as_ptr:   *u8,
+}
+
+v: Value
+v.as_int = 42
+x := v.as_float   -- reinterprets the same bytes
+```
+
+Unions are declared with `::` like structs and are nominal types.
 
 ---
 
@@ -251,8 +308,40 @@ lo, hi := min_max(3, 7)
 -- Proc type annotation (function pointer)
 callback: proc(i32) -> bool
 
+-- Variadic (C-style, must be last parameter, only usable via cimport)
+printf :: proc(fmt: cstr, ..) -> i32 ---
+
 -- Extern / no body
 puts :: proc(s: cstr) -> i32 ---
+```
+
+### or_return
+
+Postfix operator for propagating errors out of a proc. The callee must return `(T, bool)`; if the bool is `false`, the enclosing proc returns immediately.
+
+```zed
+-- proc that can fail returns (value, bool)
+read_int :: proc(s: cstr) -> (i32, bool) { ... }
+
+parse :: proc(input: cstr) -> (i32, bool) {
+    n := read_int(input) or_return   -- returns (0, false) on failure
+    return n * 2, true
+}
+```
+
+---
+
+## Proc Literals
+
+Anonymous proc expressions. Capture semantics follow C++ lambda `[=]` (capture by copy).
+
+```zed
+-- Assigned to a proc-typed variable
+double: proc(i32) -> i32 = proc(x: i32) -> i32 { return x * 2 }
+
+-- Passed directly as an argument
+apply :: proc(f: proc(i32) -> i32, v: i32) -> i32 { return f(v) }
+result := apply(proc(x: i32) -> i32 { return x + 1 }, 10)
 ```
 
 ---
@@ -373,6 +462,37 @@ Emits a C `static_assert` with a `file:line` message on failure.
 
 ---
 
+## String Types & Conversion
+
+Zed has two string types with distinct semantics:
+
+| Type     | Backing type  | Mutable | Heap-allocated |
+| -------- | ------------- | ------- | -------------- |
+| `cstr`   | `const char*` | No      | No (pointer)   |
+| `string` | `std::string` | Yes     | Yes            |
+
+**String literals `"..."` default to `cstr`.** To get a `string`, annotate the variable explicitly or call `from_cstr`.
+
+```zed
+a : cstr   = "hello"          -- cstr  (explicit)
+b : string = "hello"          -- string (literal → string coercion allowed)
+c := "hello"                  -- cstr  (inferred default)
+d :: "hello"                  -- cstr  (const, inferred default)
+e := from_cstr("hello")       -- string (explicit conversion)
+```
+
+**Conversion between the two always requires an explicit call:**
+
+```zed
+s : string = "world"
+cs: cstr   = to_cstr(s)       -- string → cstr  (points into s's buffer)
+s2: string = from_cstr(cs)    -- cstr   → string (copies into new std::string)
+```
+
+Assigning a runtime `cstr` variable directly to a `string` (or vice-versa) **without** a conversion call is a type error.
+
+---
+
 ## C Interop
 
 ### cimport
@@ -402,6 +522,21 @@ DrawLine :: proc(x1: i32, y1: i32, x2: i32, y2: i32, color: Color) ---
 ```
 
 The `---` body means "extern — defined in C".
+
+---
+
+## Multi-file Projects
+
+Use `import` to bring another `.z` file's top-level declarations into scope.
+
+```zed
+import "math_utils"     -- imports math_utils.z
+import "engine/render"  -- path relative to project src/
+```
+
+- All top-level `proc`, `struct`, `const`, and global `var` declarations from the imported file become visible.
+- When using `zed build --project`, source files are discovered automatically via `zed.toml`; explicit `import` is only needed for symbol visibility.
+- When using `zed build --file` or the low-level CLI, list all `.z` files on the command line in dependency order.
 
 ---
 
