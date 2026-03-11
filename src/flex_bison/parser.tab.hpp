@@ -118,11 +118,22 @@
      TOK_DOTDOT = 333,
      TOK_KW_SIZEOF = 334,
      TOK_KW_ALIGNOF = 335,
-     LOWER_THAN_ELSE = 336,
-     TOK_ELSE = 337,
-     UNARY_MINUS = 338,
-     UNARY_ADDR = 339,
-     POSTFIX_DEREF = 340
+     TOK_KW_STRING = 336,
+     TOK_KW_DYNAMIC = 337,
+     TOK_KW_APPEND = 338,
+     TOK_KW_LEN = 339,
+     TOK_KW_CAP = 340,
+     TOK_KW_RESERVE = 341,
+     TOK_KW_DELETE_DYN = 342,
+     TOK_KW_OR_RETURN = 343,
+     TOK_KW_TO_CSTR = 344,
+     TOK_KW_FROM_CSTR = 345,
+     TOK_KW_UNION = 346,
+     LOWER_THAN_ELSE = 347,
+     TOK_ELSE = 348,
+     UNARY_MINUS = 349,
+     UNARY_ADDR = 350,
+     POSTFIX_DEREF = 351
    };
 #endif
 /* Tokens.  */
@@ -205,11 +216,22 @@
 #define TOK_DOTDOT 333
 #define TOK_KW_SIZEOF 334
 #define TOK_KW_ALIGNOF 335
-#define LOWER_THAN_ELSE 336
-#define TOK_ELSE 337
-#define UNARY_MINUS 338
-#define UNARY_ADDR 339
-#define POSTFIX_DEREF 340
+#define TOK_KW_STRING 336
+#define TOK_KW_DYNAMIC 337
+#define TOK_KW_APPEND 338
+#define TOK_KW_LEN 339
+#define TOK_KW_CAP 340
+#define TOK_KW_RESERVE 341
+#define TOK_KW_DELETE_DYN 342
+#define TOK_KW_OR_RETURN 343
+#define TOK_KW_TO_CSTR 344
+#define TOK_KW_FROM_CSTR 345
+#define TOK_KW_UNION 346
+#define LOWER_THAN_ELSE 347
+#define TOK_ELSE 348
+#define UNARY_MINUS 349
+#define UNARY_ADDR 350
+#define POSTFIX_DEREF 351
 
 
 
@@ -251,7 +273,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 255 "src/flex_bison/parser.tab.hpp"
+#line 277 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

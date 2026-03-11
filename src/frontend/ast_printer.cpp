@@ -2,8 +2,8 @@
 // ast_printer.cpp
 // =============================================================================
 
-#include "ast_printer.hpp"
-#include "token.hpp"
+#include "../frontend/ast_printer.hpp"
+#include "../frontend/token.hpp"
 
 namespace ZedLang {
 
@@ -151,6 +151,20 @@ void AstPrinter::print(Decl* decl) {
                 out << v.name;
                 if (v.value) { out << " = "; print(v.value); }
                 else out << "\n";
+            }
+            dedent();
+            break;
+        }
+        case Decl::UNION_DECL: {
+            auto* ud = static_cast<UnionDecl*>(decl);
+            emit_indent(out, current_indent);
+            out << "UnionDecl " << ud->union_name << "\n";
+            indent();
+            for (const auto& f : ud->fields) {
+                emit_indent(out, current_indent);
+                for (const auto& n : f.names) out << n << " ";
+                out << ": ";
+                print(f.type);
             }
             dedent();
             break;
@@ -678,6 +692,30 @@ void AstPrinter::print(Expr* expr) {
             print_location(se); out << "\n";
             break;
         }
+        case Expr::BUILTIN_CALL: {
+            BuiltinCallExpr* bc = static_cast<BuiltinCallExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "BuiltinCall tok=" << bc->builtin_tok;
+            print_location(bc); out << "\n";
+            indent();
+            for (Expr* a : bc->args) print(a);
+            dedent();
+            break;
+        }
+        case Expr::OR_RETURN_EXPR: {
+            OrReturnExpr* oe = static_cast<OrReturnExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "OrReturn"; print_location(oe); out << "\n";
+            indent(); print(oe->inner); dedent();
+            break;
+        }
+        case Expr::PROC_LIT: {
+            ProcLitExpr* pl = static_cast<ProcLitExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "ProcLit"; print_location(pl); out << "\n";
+            if (pl->body) { indent(); print(pl->body); dedent(); }
+            break;
+        }
     }
 }
 
@@ -720,6 +758,15 @@ void AstPrinter::print(Type* type) {
             if (pt->return_type) { out << " -> "; print(pt->return_type); }
             break;
         }
+        case Type::DYN_ARRAY_TYPE: {
+            DynArrayTypeAST* da = static_cast<DynArrayTypeAST*>(type);
+            out << "[dynamic]";
+            print(da->elem);
+            break;
+        }
+        case Type::STRING_TYPE:
+            out << "string";
+            break;
     }
 }
 

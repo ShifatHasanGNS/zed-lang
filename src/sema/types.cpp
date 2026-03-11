@@ -2,7 +2,7 @@
 // types.cpp
 // =============================================================================
 
-#include "types.hpp"
+#include "../sema/types.hpp"
 
 namespace ZedLang {
 
@@ -39,21 +39,22 @@ bool SemanticType::is_numeric() const { return is_integer() || is_float(); }
 // ---------------------------------------------------------------------------
 uint64_t SemanticType::byte_size() const {
     switch (kind) {
-        case Kind::VOID:   return 0;
-        case Kind::BOOL:   return 1;
-        case Kind::I8:     return 1;
-        case Kind::I16:    return 2;
-        case Kind::I32:    return 4;
-        case Kind::I64:    return 8;
-        case Kind::U8:     return 1;
-        case Kind::U16:    return 2;
-        case Kind::U32:    return 4;
-        case Kind::U64:    return 8;
-        case Kind::F32:    return 4;
-        case Kind::F64:    return 8;
-        case Kind::CSTR:   return 8;
-        case Kind::PTR:    return 8;
-        case Kind::SLICE:  return 16;  // { ptr(8) + len(8) }
+        case Kind::VOID:          return 0;
+        case Kind::BOOL:          return 1;
+        case Kind::I8:            return 1;
+        case Kind::I16:           return 2;
+        case Kind::I32:           return 4;
+        case Kind::I64:           return 8;
+        case Kind::U8:            return 1;
+        case Kind::U16:           return 2;
+        case Kind::U32:           return 4;
+        case Kind::U64:           return 8;
+        case Kind::F32:           return 4;
+        case Kind::F64:           return 8;
+        case Kind::CSTR:          return 8;
+        case Kind::STRING:        return sizeof(void*) * 3;  // std::string SSO
+        case Kind::PTR:           return 8;
+        case Kind::SLICE:         return 16;  // { ptr(8) + len(8) }
         case Kind::ARRAY: {
             auto* a = static_cast<const sem::ArrayType*>(this);
             return a->count * a->elem->byte_size();
@@ -62,16 +63,13 @@ uint64_t SemanticType::byte_size() const {
             auto* s = static_cast<const sem::StructType*>(this);
             return s->total_size;
         }
-        case Kind::PROC:   return 8;
-        case Kind::ERROR:   return 0;
-        case Kind::FOREIGN: return 0;
+        case Kind::PROC:          return 8;
+        case Kind::ENUM:          return 4;  // underlying i32
+        case Kind::DYN_ARRAY:     return sizeof(void*) * 3;  // std::vector overhead
+        case Kind::TUPLE:         return 0;  // not a real value type
+        case Kind::ERROR:         return 0;
+        case Kind::FOREIGN:       return 0;
         case Kind::FOREIGN_NAMED: return 0;
-        case Kind::ENUM:         return 4;  // underlying i32
-        case Kind::TUPLE: {
-            uint64_t sz = 0;
-            for (auto& e : static_cast<const sem::TupleType*>(this)->elems) sz += e->byte_size();
-            return sz;
-        }
     }
     return 0;
 }
@@ -81,25 +79,26 @@ uint64_t SemanticType::byte_size() const {
 // ---------------------------------------------------------------------------
 std::string SemanticType::to_string() const {
     switch (kind) {
-        case Kind::VOID:   return "void";
-        case Kind::BOOL:   return "bool";
-        case Kind::I8:     return "i8";
-        case Kind::I16:    return "i16";
-        case Kind::I32:    return "i32";
-        case Kind::I64:    return "i64";
-        case Kind::U8:     return "u8";
-        case Kind::U16:    return "u16";
-        case Kind::U32:    return "u32";
-        case Kind::U64:    return "u64";
-        case Kind::F32:    return "f32";
-        case Kind::F64:    return "f64";
-        case Kind::CSTR:   return "cstr";
-        case Kind::ERROR:  return "<error>";
+        case Kind::VOID:    return "void";
+        case Kind::BOOL:    return "bool";
+        case Kind::I8:      return "i8";
+        case Kind::I16:     return "i16";
+        case Kind::I32:     return "i32";
+        case Kind::I64:     return "i64";
+        case Kind::U8:      return "u8";
+        case Kind::U16:     return "u16";
+        case Kind::U32:     return "u32";
+        case Kind::U64:     return "u64";
+        case Kind::F32:     return "f32";
+        case Kind::F64:     return "f64";
+        case Kind::CSTR:    return "cstr";
+        case Kind::STRING:  return "string";
+        case Kind::ERROR:   return "<error>";
         case Kind::FOREIGN: return "<foreign>";
-        case Kind::ENUM:
-            return static_cast<const sem::EnumType*>(this)->name;
         case Kind::FOREIGN_NAMED:
             return static_cast<const sem::ForeignNamedType*>(this)->name;
+        case Kind::ENUM:
+            return static_cast<const sem::EnumType*>(this)->name;
         case Kind::PTR: {
             auto* p = static_cast<const sem::PtrType*>(this);
             return "*" + p->pointee->to_string();
@@ -114,6 +113,19 @@ std::string SemanticType::to_string() const {
         }
         case Kind::STRUCT:
             return static_cast<const sem::StructType*>(this)->name;
+        case Kind::DYN_ARRAY: {
+            auto* da = static_cast<const sem::DynArrayType*>(this);
+            return "[dynamic]" + da->elem->to_string();
+        }
+        case Kind::TUPLE: {
+            auto* tt = static_cast<const sem::TupleType*>(this);
+            std::string s = "(";
+            for (size_t i = 0; i < tt->elems.size(); ++i) {
+                if (i) s += ", ";
+                s += tt->elems[i]->to_string();
+            }
+            return s + ")";
+        }
         case Kind::PROC: {
             auto* p = static_cast<const sem::ProcType*>(this);
             std::string s = "proc(";
@@ -121,18 +133,10 @@ std::string SemanticType::to_string() const {
                 if (i) s += ", ";
                 s += p->params[i].type->to_string();
             }
+            if (p->is_variadic) { if (!p->params.empty()) s += ", "; s += ".."; }
             s += ")";
             if (p->return_type) s += " -> " + p->return_type->to_string();
             return s;
-        }
-        case Kind::TUPLE: {
-            const auto* t = static_cast<const sem::TupleType*>(this);
-            std::string s = "(";
-            for (size_t i = 0; i < t->elems.size(); ++i) {
-                if (i) s += ", ";
-                s += t->elems[i]->to_string();
-            }
-            return s + ")";
         }
     }
     return "<unknown>";
@@ -170,6 +174,24 @@ bool SemanticType::operator==(const SemanticType& o) const {
             auto& b = static_cast<const sem::EnumType&>(o);
             return a.name == b.name;
         }
+        case Kind::FOREIGN_NAMED: {
+            auto& a = static_cast<const sem::ForeignNamedType&>(*this);
+            auto& b = static_cast<const sem::ForeignNamedType&>(o);
+            return a.name == b.name;
+        }
+        case Kind::DYN_ARRAY: {
+            auto& a = static_cast<const sem::DynArrayType&>(*this);
+            auto& b = static_cast<const sem::DynArrayType&>(o);
+            return *a.elem == *b.elem;
+        }
+        case Kind::TUPLE: {
+            auto& a = static_cast<const sem::TupleType&>(*this);
+            auto& b = static_cast<const sem::TupleType&>(o);
+            if (a.elems.size() != b.elems.size()) return false;
+            for (size_t i = 0; i < a.elems.size(); ++i)
+                if (*a.elems[i] != *b.elems[i]) return false;
+            return true;
+        }
         case Kind::PROC: {
             auto& a = static_cast<const sem::ProcType&>(*this);
             auto& b = static_cast<const sem::ProcType&>(o);
@@ -189,37 +211,39 @@ bool SemanticType::operator==(const SemanticType& o) const {
 // TypeArena
 // ---------------------------------------------------------------------------
 TypeArena::TypeArena() {
-    void_  = alloc<SemanticType>(SemanticType::Kind::VOID);
-    bool_  = alloc<SemanticType>(SemanticType::Kind::BOOL);
-    i8_    = alloc<SemanticType>(SemanticType::Kind::I8);
-    i16_   = alloc<SemanticType>(SemanticType::Kind::I16);
-    i32_   = alloc<SemanticType>(SemanticType::Kind::I32);
-    i64_   = alloc<SemanticType>(SemanticType::Kind::I64);
-    u8_    = alloc<SemanticType>(SemanticType::Kind::U8);
-    u16_   = alloc<SemanticType>(SemanticType::Kind::U16);
-    u32_   = alloc<SemanticType>(SemanticType::Kind::U32);
-    u64_   = alloc<SemanticType>(SemanticType::Kind::U64);
-    f32_   = alloc<SemanticType>(SemanticType::Kind::F32);
-    f64_   = alloc<SemanticType>(SemanticType::Kind::F64);
-    cstr_  = alloc<SemanticType>(SemanticType::Kind::CSTR);
+    void_    = alloc<SemanticType>(SemanticType::Kind::VOID);
+    bool_    = alloc<SemanticType>(SemanticType::Kind::BOOL);
+    i8_      = alloc<SemanticType>(SemanticType::Kind::I8);
+    i16_     = alloc<SemanticType>(SemanticType::Kind::I16);
+    i32_     = alloc<SemanticType>(SemanticType::Kind::I32);
+    i64_     = alloc<SemanticType>(SemanticType::Kind::I64);
+    u8_      = alloc<SemanticType>(SemanticType::Kind::U8);
+    u16_     = alloc<SemanticType>(SemanticType::Kind::U16);
+    u32_     = alloc<SemanticType>(SemanticType::Kind::U32);
+    u64_     = alloc<SemanticType>(SemanticType::Kind::U64);
+    f32_     = alloc<SemanticType>(SemanticType::Kind::F32);
+    f64_     = alloc<SemanticType>(SemanticType::Kind::F64);
+    cstr_    = alloc<SemanticType>(SemanticType::Kind::CSTR);
+    string_  = alloc<SemanticType>(SemanticType::Kind::STRING);
     error_   = alloc<SemanticType>(SemanticType::Kind::ERROR);
     foreign_ = alloc<SemanticType>(SemanticType::Kind::FOREIGN);
 }
 
 TypeRef TypeArena::lookup_primitive(const std::string& name) const {
-    if (name == "void")  return void_;
-    if (name == "bool")  return bool_;
-    if (name == "i8")    return i8_;
-    if (name == "i16")   return i16_;
-    if (name == "i32")   return i32_;
-    if (name == "i64")   return i64_;
-    if (name == "u8")    return u8_;
-    if (name == "u16")   return u16_;
-    if (name == "u32")   return u32_;
-    if (name == "u64")   return u64_;
-    if (name == "f32")   return f32_;
-    if (name == "f64")   return f64_;
-    if (name == "cstr")  return cstr_;
+    if (name == "void")   return void_;
+    if (name == "bool")   return bool_;
+    if (name == "i8")     return i8_;
+    if (name == "i16")    return i16_;
+    if (name == "i32")    return i32_;
+    if (name == "i64")    return i64_;
+    if (name == "u8")     return u8_;
+    if (name == "u16")    return u16_;
+    if (name == "u32")    return u32_;
+    if (name == "u64")    return u64_;
+    if (name == "f32")    return f32_;
+    if (name == "f64")    return f64_;
+    if (name == "cstr")   return cstr_;
+    if (name == "string") return string_;
     return error_;
 }
 
@@ -261,16 +285,8 @@ TypeRef TypeArena::make_proc(std::vector<sem::ProcParam> params, TypeRef ret) {
     return alloc<sem::ProcType>(std::move(params), ret);
 }
 
-
-TypeRef TypeArena::make_tuple(std::vector<TypeRef> elems) {
-    return alloc<sem::TupleType>(std::move(elems));
-}
-
-TypeRef TypeArena::make_enum(std::string name) {
-    return alloc<sem::EnumType>(std::move(name));
-}
-
 TypeRef TypeArena::make_foreign_named(const std::string& name) {
+    // Intern by name to avoid duplicate allocations
     for (auto& t : owned_) {
         if (t->kind == SemanticType::Kind::FOREIGN_NAMED) {
             auto* fn = static_cast<sem::ForeignNamedType*>(t.get());
@@ -278,6 +294,24 @@ TypeRef TypeArena::make_foreign_named(const std::string& name) {
         }
     }
     return alloc<sem::ForeignNamedType>(name);
+}
+
+TypeRef TypeArena::make_enum(std::string name) {
+    return alloc<sem::EnumType>(std::move(name));
+}
+
+TypeRef TypeArena::make_dyn_array(TypeRef elem) {
+    for (auto& t : owned_) {
+        if (t->kind == SemanticType::Kind::DYN_ARRAY) {
+            auto* da = static_cast<sem::DynArrayType*>(t.get());
+            if (*da->elem == *elem) return da;
+        }
+    }
+    return alloc<sem::DynArrayType>(elem);
+}
+
+TypeRef TypeArena::make_tuple(std::vector<TypeRef> elems) {
+    return alloc<sem::TupleType>(std::move(elems));
 }
 
 } // namespace ZedLang

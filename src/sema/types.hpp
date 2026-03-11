@@ -45,33 +45,37 @@ struct SemanticType {
     STRUCT,
     PROC,
     ERROR,
-    ENUM,           // native Zed enum type
     FOREIGN,
     FOREIGN_NAMED,  // C type accessed via cimport — carries the original name
-    TUPLE,          // anonymous tuple — result of multi-return proc
+    ENUM,           // native Zed enum type (underlying i32)
+    DYN_ARRAY,      // [dynamic]T  ->  std::vector<T>
+    STRING,         // string  ->  std::string
+    TUPLE,          // (T0, T1, ...) — multi-return only, not first-class
     };
 
     Kind kind;
     explicit SemanticType(Kind k) : kind(k) {}
     virtual ~SemanticType() = default;
 
-    bool is_integer()  const;
-    bool is_signed()   const;
-    bool is_unsigned() const;
-    bool is_float()    const;
-    bool is_numeric()  const;
-    bool is_void()     const { return kind == Kind::VOID;   }
-    bool is_bool()     const { return kind == Kind::BOOL;   }
-    bool is_ptr()      const { return kind == Kind::PTR;    }
-    bool is_slice()    const { return kind == Kind::SLICE;  }
-    bool is_array()    const { return kind == Kind::ARRAY;  }
-    bool is_struct()   const { return kind == Kind::STRUCT; }
-    bool is_proc()     const { return kind == Kind::PROC;   }
-    bool is_error()    const { return kind == Kind::ERROR;  }
-    bool is_cstr()     const { return kind == Kind::CSTR;   }
-    bool is_enum()     const { return kind == Kind::ENUM;   }
-    // True for both anonymous FOREIGN and named C types from cimport
-    bool is_tuple()    const { return kind == Kind::TUPLE;  }
+    bool is_integer()    const;
+    bool is_signed()     const;
+    bool is_unsigned()   const;
+    bool is_float()      const;
+    bool is_numeric()    const;
+    bool is_void()       const { return kind == Kind::VOID;         }
+    bool is_bool()       const { return kind == Kind::BOOL;         }
+    bool is_ptr()        const { return kind == Kind::PTR;          }
+    bool is_slice()      const { return kind == Kind::SLICE;        }
+    bool is_array()      const { return kind == Kind::ARRAY;        }
+    bool is_struct()     const { return kind == Kind::STRUCT;       }
+    bool is_proc()       const { return kind == Kind::PROC;         }
+    bool is_error()      const { return kind == Kind::ERROR;        }
+    bool is_cstr()       const { return kind == Kind::CSTR;         }
+    bool is_enum()       const { return kind == Kind::ENUM;         }
+    bool is_dyn_array()  const { return kind == Kind::DYN_ARRAY;    }
+    bool is_string()     const { return kind == Kind::STRING;       }
+    bool is_tuple()      const { return kind == Kind::TUPLE;        }
+    // True for any value that originated from C (no Zed type info)
     bool is_any_foreign() const {
         return kind == Kind::FOREIGN || kind == Kind::FOREIGN_NAMED;
     }
@@ -85,8 +89,6 @@ struct SemanticType {
 
 // ---------------------------------------------------------------------------
 // ZedLang::sem — derived semantic types
-// Kept in a sub-namespace so they don't collide with the identically-named
-// AST node classes in ast.hpp (e.g. ZedLang::PtrType, ZedLang::ArrayType).
 // ---------------------------------------------------------------------------
 namespace sem {
 
@@ -118,6 +120,7 @@ struct StructType final : SemanticType {
     std::vector<StructField>  fields;
     uint64_t                  total_size  = 0;
     bool                      layout_done = false;
+    bool                      is_union    = false;  // true for union declarations
 
     explicit StructType(std::string n)
         : SemanticType(Kind::STRUCT), name(std::move(n)) {}
@@ -137,35 +140,47 @@ struct ProcParam {
 struct ProcType final : SemanticType {
     std::vector<ProcParam> params;
     TypeRef                return_type;  // nullptr == void
+    bool                   is_variadic = false;  // proc(fmt: cstr, ..)
 
     ProcType(std::vector<ProcParam> p, TypeRef ret)
         : SemanticType(Kind::PROC),
           params(std::move(p)), return_type(ret) {}
 };
 
-// A C type accessed via cimport that has a known name (struct, enum, typedef).
-// Carries the original identifier so codegen can emit the correct C type name.
+// C type accessed via cimport
 struct ForeignNamedType final : SemanticType {
     std::string name;
     explicit ForeignNamedType(std::string n)
         : SemanticType(Kind::FOREIGN_NAMED), name(std::move(n)) {}
 };
 
+// Native Zed enum — underlying i32
 struct EnumVariant {
     std::string name;
     int64_t     value;
 };
 
 struct EnumType final : SemanticType {
-    std::string               name;
-    std::vector<EnumVariant>  variants;
-    explicit EnumType(std::string n) : SemanticType(Kind::ENUM), name(std::move(n)) {}
+    std::string              name;
+    std::vector<EnumVariant> variants;
+
+    explicit EnumType(std::string n)
+        : SemanticType(Kind::ENUM), name(std::move(n)) {}
+
     const EnumVariant* find_variant(const std::string& vname) const {
-        for (const auto& v : variants) if (v.name == vname) return &v;
+        for (const auto& v : variants)
+            if (v.name == vname) return &v;
         return nullptr;
     }
 };
 
+// [dynamic]T  ->  std::vector<T>
+struct DynArrayType final : SemanticType {
+    TypeRef elem;
+    explicit DynArrayType(TypeRef e) : SemanticType(Kind::DYN_ARRAY), elem(e) {}
+};
+
+// Multi-return tuple — not first-class, only for proc returns
 struct TupleType final : SemanticType {
     std::vector<TypeRef> elems;
     explicit TupleType(std::vector<TypeRef> e)
@@ -174,10 +189,6 @@ struct TupleType final : SemanticType {
 
 } // namespace sem
 
-// Use sem::PtrType, sem::ArrayType, sem::SliceType, sem::StructType,
-// sem::ProcType, sem::StructField, sem::ProcParam directly at call sites.
-// No using-aliases here to avoid collisions with identically-named AST nodes.
-
 // ---------------------------------------------------------------------------
 // TypeArena — owns all SemanticType objects
 // ---------------------------------------------------------------------------
@@ -185,19 +196,20 @@ class TypeArena {
 public:
     TypeArena();
 
-    TypeRef ty_void()  const { return void_;  }
-    TypeRef ty_bool()  const { return bool_;  }
-    TypeRef ty_i8()    const { return i8_;    }
-    TypeRef ty_i16()   const { return i16_;   }
-    TypeRef ty_i32()   const { return i32_;   }
-    TypeRef ty_i64()   const { return i64_;   }
-    TypeRef ty_u8()    const { return u8_;    }
-    TypeRef ty_u16()   const { return u16_;   }
-    TypeRef ty_u32()   const { return u32_;   }
-    TypeRef ty_u64()   const { return u64_;   }
-    TypeRef ty_f32()   const { return f32_;   }
-    TypeRef ty_f64()   const { return f64_;   }
-    TypeRef ty_cstr()  const { return cstr_;  }
+    TypeRef ty_void()    const { return void_;    }
+    TypeRef ty_bool()    const { return bool_;    }
+    TypeRef ty_i8()      const { return i8_;      }
+    TypeRef ty_i16()     const { return i16_;     }
+    TypeRef ty_i32()     const { return i32_;     }
+    TypeRef ty_i64()     const { return i64_;     }
+    TypeRef ty_u8()      const { return u8_;      }
+    TypeRef ty_u16()     const { return u16_;     }
+    TypeRef ty_u32()     const { return u32_;     }
+    TypeRef ty_u64()     const { return u64_;     }
+    TypeRef ty_f32()     const { return f32_;     }
+    TypeRef ty_f64()     const { return f64_;     }
+    TypeRef ty_cstr()    const { return cstr_;    }
+    TypeRef ty_string()  const { return string_;  }
     TypeRef ty_error()   const { return error_;   }
     TypeRef ty_foreign() const { return foreign_; }
 
@@ -208,10 +220,10 @@ public:
     TypeRef make_slice(TypeRef elem);
     TypeRef make_struct(std::string name);
     TypeRef make_proc(std::vector<sem::ProcParam> params, TypeRef ret);
-    // Returns a named-foreign type; caches by name so identity is stable.
     TypeRef make_foreign_named(const std::string& name);
-    TypeRef make_tuple(std::vector<TypeRef> elems);
     TypeRef make_enum(std::string name);
+    TypeRef make_dyn_array(TypeRef elem);
+    TypeRef make_tuple(std::vector<TypeRef> elems);
 
 private:
     template<typename T, typename... Args>
@@ -222,19 +234,20 @@ private:
 
     std::vector<std::unique_ptr<SemanticType>> owned_;
 
-    TypeRef void_  = nullptr;
-    TypeRef bool_  = nullptr;
-    TypeRef i8_    = nullptr;
-    TypeRef i16_   = nullptr;
-    TypeRef i32_   = nullptr;
-    TypeRef i64_   = nullptr;
-    TypeRef u8_    = nullptr;
-    TypeRef u16_   = nullptr;
-    TypeRef u32_   = nullptr;
-    TypeRef u64_   = nullptr;
-    TypeRef f32_   = nullptr;
-    TypeRef f64_   = nullptr;
-    TypeRef cstr_  = nullptr;
+    TypeRef void_    = nullptr;
+    TypeRef bool_    = nullptr;
+    TypeRef i8_      = nullptr;
+    TypeRef i16_     = nullptr;
+    TypeRef i32_     = nullptr;
+    TypeRef i64_     = nullptr;
+    TypeRef u8_      = nullptr;
+    TypeRef u16_     = nullptr;
+    TypeRef u32_     = nullptr;
+    TypeRef u64_     = nullptr;
+    TypeRef f32_     = nullptr;
+    TypeRef f64_     = nullptr;
+    TypeRef cstr_    = nullptr;
+    TypeRef string_  = nullptr;
     TypeRef error_   = nullptr;
     TypeRef foreign_ = nullptr;
 };

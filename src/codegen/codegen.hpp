@@ -52,6 +52,7 @@ private:
 
     // ---- Declaration emitters ----------------------------------------------
     void emit_struct_def(StructDecl* sd);
+    void emit_union_def(UnionDecl* ud);   // union type definition
     void emit_proc_decl(ProcDecl* pd);   // forward declaration only
     void emit_proc_def(ProcDecl* pd);    // full definition with body
     void emit_global_const(ConstDecl* cd);
@@ -96,6 +97,9 @@ private:
     void emit_tuple(TupleExpr* e);
     void emit_array_init(ArrayInitExpr* e);
     void emit_sizeof(SizeofExpr* e);
+    void emit_builtin_call(BuiltinCallExpr* e);
+    void emit_or_return(OrReturnExpr* e);
+    void emit_proc_lit(ProcLitExpr* e);
 
     // ---- Type helpers ------------------------------------------------------
     // Emit the C type spelling for a SemanticType (e.g. "int32_t", "MyStruct*").

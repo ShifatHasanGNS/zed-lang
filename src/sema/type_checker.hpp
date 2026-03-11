@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "symtable.hpp"
+#include "../sema/symtable.hpp"
 
 #include "../frontend/ast.hpp"
 #include "../support/error.hpp"
@@ -56,6 +56,7 @@ private:
     void check_decl(Decl* d);
     void check_proc_body(ProcDecl* pd);
     void check_struct_decl(StructDecl* sd);   // validates field types only
+    void check_union_decl(UnionDecl* ud);     // validates union field types
     void check_const_decl(ConstDecl* cd);
     void check_var_decl(VarDecl* vd, bool is_global = false);
 
@@ -96,6 +97,9 @@ private:
     TypeRef check_array_init(ArrayInitExpr* e);
     TypeRef check_sizeof(SizeofExpr* e);
     TypeRef check_multi_decl_expr(Expr* rhs);
+    TypeRef check_builtin_call(BuiltinCallExpr* e);
+    TypeRef check_or_return(OrReturnExpr* e);
+    TypeRef check_proc_lit(ProcLitExpr* e);
 
     // ---- Helpers -----------------------------------------------------------
     // Resolve an AST Type node to a SemanticType.
