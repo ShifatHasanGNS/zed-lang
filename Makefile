@@ -73,10 +73,10 @@ $(BUILD)/flex_bison/lexer.o: $(GEN_LEXER_CPP)
 test: all
 	@echo
 	@echo "////////////////////"
-	@echo "--- Stress Tests ---"
+	@echo "--- Unit Tests ---"
 	@echo "////////////////////"
 	@echo
-	@for f in tests/stress/*.z; do \
+	@for f in tests/unit/*.z; do \
 	    echo "  $$f"; \
 	    ./$(TARGET) run release --file "$$f" || exit 1; \
 	done
