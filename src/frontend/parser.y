@@ -15,15 +15,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
-#include <vector> 
+#include <vector>
 
 using namespace ZedLang;
 
-// yyerror forward declaration — YYLTYPE is now defined via parser.tab.hpp.
-void yyerror(YYLTYPE* loc, yyscan_t scanner, ErrorReporter* err,
+inline void yyerror(YYLTYPE* loc, yyscan_t scanner, ErrorReporter* err,
              const char* filename, ZedLang::Program** result, const char* msg);
 
-static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
+inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
     return SourceRange(
         SourceLoc(filename, loc.first_line, loc.first_column),
         SourceLoc(filename, loc.last_line, loc.last_column)
@@ -75,82 +74,129 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 
-// Terminals
-%token END 0 "end of file"
-%token <int_val>   TOK_INT_LIT   "integer literal"
-%token <float_val> TOK_FLOAT_LIT "float literal"
-%token <bool_val>  TOK_BOOL_LIT  "boolean literal"
-%token <str>       TOK_STRING_LIT "string literal"
-%token <str>       TOK_IDENT     "identifier"
+// =============================================================================
+// Terminals — declaration order determines bison's assigned numeric values
+// (starting at 258).  Must stay in sync with tok_defs.hpp.
+// =============================================================================
 
-%token TOK_KW_PROC     "proc"
-%token TOK_KW_STRUCT   "struct"
+%token END 0 "end of file"
+
+// ── Literals & identifier ─────────────────────────────────────────────────
+%token <int_val>   TOK_INT_LIT    "integer literal"
+%token <float_val> TOK_FLOAT_LIT  "float literal"
+%token <bool_val>  TOK_BOOL_LIT   "boolean literal"
+%token <str>       TOK_STRING_LIT "string literal"
+%token <str>       TOK_IDENT      "identifier"
+
+// ── Declaration keywords ──────────────────────────────────────────────────
+%token TOK_KW_PROC    "proc"
+%token TOK_KW_STRUCT  "struct"
+%token TOK_KW_UNION   "union"
+%token TOK_KW_ENUM    "enum"
+
+// ── Control-flow keywords ─────────────────────────────────────────────────
 %token TOK_KW_IF       "if"
 %token TOK_KW_ELSE     "else"
-%token TOK_KW_LOOP     "loop"  /* RETIRED — slot 267 kept for ABI; never emitted by lexer */
+%token TOK_KW_FOR      "for"
 %token TOK_KW_IN       "in"
-%token TOK_KW_RETURN   "return"
+%token TOK_KW_STEP     "step"
 %token TOK_KW_BREAK    "break"
 %token TOK_KW_CONTINUE "continue"
-%token TOK_KW_NIL      "nil"
-%token TOK_KW_TRUE     "true"
-%token TOK_KW_FALSE    "false"
+%token TOK_KW_RETURN   "return"
+%token TOK_KW_DEFER    "defer"
 
-%token TOK_DECL     "':='"
-%token TOK_DEF      "'::'"
-%token TOK_COLON    "':'"
-%token TOK_ARROW    "'->'"
-%token TOK_NOBODY   "'---'"
-%token TOK_KW_CIMPORT "'cimport'"
-%token TOK_KW_IMPORT  "'import'"
-%token TOK_KW_CAST    "'cast'"
-%token TOK_KW_FOR     "'for'"
-%token TOK_KW_DEFER   "'defer'"
-%token TOK_KW_MATCH   "'match'"
-%token TOK_KW_CASE    "'case'"
-%token TOK_KW_WHEN    "'when'"
-%token TOK_KW_ENUM    "'enum'"
-%token TOK_KW_STEP    "'step'"
+// ── match / when ──────────────────────────────────────────────────────────
+%token TOK_KW_MATCH  "match"
+%token TOK_KW_CASE   "case"
+%token TOK_KW_WHEN   "when"
+
+// ── Value keywords ────────────────────────────────────────────────────────
+%token TOK_KW_NIL   "nil"
+%token TOK_KW_TRUE  "true"
+%token TOK_KW_FALSE "false"
+
+// ── Type / expression keywords ────────────────────────────────────────────
+%token TOK_KW_STRING   "string"
+%token TOK_KW_DYNAMIC  "dynamic"
+%token TOK_KW_CAST     "cast"
+%token TOK_KW_SIZEOF   "sizeof"
+%token TOK_KW_ALIGNOF  "alignof"
+%token TOK_KW_TYPEID   "typeid"
+
+// ── Builtin-call keywords (also usable as soft identifiers) ───────────────
+%token TOK_KW_LEN        "len"
+%token TOK_KW_CAP        "cap"
+%token TOK_KW_APPEND     "append"
+%token TOK_KW_RESERVE    "reserve"
+%token TOK_KW_DELETE_DYN "delete_dyn"
+%token TOK_KW_TO_CSTR    "to_cstr"
+%token TOK_KW_FROM_CSTR  "from_cstr"
+%token TOK_KW_OR_RETURN  "or_return"
+
+// ── Import keywords ───────────────────────────────────────────────────────
+%token TOK_KW_CIMPORT "cimport"
+%token TOK_KW_IMPORT  "import"
+
+// ── Declaration / assignment operators ───────────────────────────────────
+%token TOK_DECL  "':='"
+%token TOK_DEF   "'::'"
+%token TOK_COLON "':'"
+%token TOK_ARROW "'->'"
+%token TOK_NOBODY "'---'"
+
+// ── Compile-time directive ────────────────────────────────────────────────
+%token TOK_HASH_ASSERT "'#assert'"
+
+// ── Delimiters ────────────────────────────────────────────────────────────
 %token TOK_LPAREN   "'('"
 %token TOK_RPAREN   "')'"
 %token TOK_LBRACE   "'{'"
 %token TOK_RBRACE   "'}'"
 %token TOK_LBRACKET "'['"
 %token TOK_RBRACKET "']'"
-%token TOK_DOT      "'.'"
-%token TOK_COMMA    "','"
-%token TOK_SEMI     "';'"
 
+// ── Dot variants ──────────────────────────────────────────────────────────
+%token TOK_DOT      "'.'"
+%token TOK_DOTDOT   "'..'"
 %token TOK_DOTDOTLT "'..<'"
 %token TOK_DOTDOTEQ "'..='"
 
-%token TOK_AMP      "'&'"
-%token TOK_DEREF    "'.*'"
-%token TOK_NOT      "'!'"
+// ── Other punctuation ─────────────────────────────────────────────────────
+%token TOK_COMMA "','"
+%token TOK_SEMI  "';'"
 
-%token TOK_PLUS     "'+'"
-%token TOK_MINUS    "'-'"
-%token TOK_STAR     "'*'"
-%token TOK_SLASH    "'/'"
-%token TOK_PERCENT  "'%'"
+// ── Unary / address operators ─────────────────────────────────────────────
+%token TOK_AMP   "'&'"
+%token TOK_DEREF "'.*'"
+%token TOK_NOT   "'!'"
 
-%token TOK_PIPE     "'|'"
-%token TOK_SHL      "'<<'"
-%token TOK_SHR      "'>>'"
+// ── Arithmetic operators ──────────────────────────────────────────────────
+%token TOK_PLUS    "'+'"
+%token TOK_MINUS   "'-'"
+%token TOK_STAR    "'*'"
+%token TOK_SLASH   "'/'"
+%token TOK_PERCENT "'%'"
 
-%token TOK_EQ       "'=='"
-%token TOK_NEQ      "'!='"
-%token TOK_LT       "'<'"
-%token TOK_LEQ      "'<='"
-%token TOK_GT       "'>'"
-%token TOK_GEQ      "'>='"
+// ── Bitwise operators ─────────────────────────────────────────────────────
+%token TOK_PIPE    "'|'"
+%token TOK_XOR     "'^'"
+%token TOK_SHL     "'<<'"
+%token TOK_SHR     "'>>'"
 
-%token TOK_AND      "'&&'"
-%token TOK_OR       "'||'"
+// ── Comparison operators ──────────────────────────────────────────────────
+%token TOK_EQ  "'=='"
+%token TOK_NEQ "'!='"
+%token TOK_LT  "'<'"
+%token TOK_LEQ "'<='"
+%token TOK_GT  "'>'"
+%token TOK_GEQ "'>='"
 
-%token TOK_ASSIGN   "'='"
-%token TOK_XOR      "'^ (xor)'"  /* binary XOR — must match tok_defs.hpp */
+// ── Logical operators ─────────────────────────────────────────────────────
+%token TOK_AND "'&&'"
+%token TOK_OR  "'||'"
 
+// ── Assignment ────────────────────────────────────────────────────────────
+%token TOK_ASSIGN         "'='"
 %token TOK_PLUS_ASSIGN    "'+='"
 %token TOK_MINUS_ASSIGN   "'-='"
 %token TOK_STAR_ASSIGN    "'*='"
@@ -159,24 +205,10 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_AMP_ASSIGN     "'&='"
 %token TOK_PIPE_ASSIGN    "'|='"
 %token TOK_XOR_ASSIGN     "'^='"
-%token TOK_HASH_ASSERT    "'#assert'"
-%token TOK_DOTDOT     "'..'" 
-%token TOK_KW_SIZEOF  "'sizeof'"
-%token TOK_KW_ALIGNOF   "'alignof'"
-%token TOK_KW_STRING    "'string'"
-%token TOK_KW_DYNAMIC   "'dynamic'"
-%token TOK_KW_APPEND    "'append'"
-%token TOK_KW_LEN       "'len'"
-%token TOK_KW_CAP       "'cap'"
-%token TOK_KW_RESERVE   "'reserve'"
-%token TOK_KW_DELETE_DYN "'delete_dyn'"
-%token TOK_KW_OR_RETURN  "'or_return'"
-%token TOK_KW_TO_CSTR    "'to_cstr'"
-%token TOK_KW_FROM_CSTR  "'from_cstr'"
-%token TOK_KW_UNION      "'union'"
-%token TOK_KW_TYPEID     "'typeid'"
 
+// =============================================================================
 // Non-terminals
+// =============================================================================
 %type <decl>          top_decl
 %type <decl_list>     top_decl_list
 %type <decl>          var_decl const_decl struct_decl proc_decl cimport_decl import_decl union_decl
@@ -188,19 +220,20 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr>          expr_shift expr_add expr_mul expr_unary expr_postfix expr_primary
 %type <expr>          struct_lit cast_expr
 %type <type>          type named_type ptr_type array_type slice_type proc_type dyn_array_type string_type
+%type <expr>          array_size_expr
 %type <type_list>     type_list opt_type_list
 %type <ident_list>    ident_list
 %type <field>         field_group
 %type <field_list>    field_group_list
 %type <param_group>   param_group
-%type <param_list>    param_list opt_param_list
+%type <param_list>    param_list opt_param_list named_ret_list
 %type <field_init>    field_init
 %type <field_init_list> field_init_list field_init_list_commas
-%type <expr_list>     arg_list opt_arg_list
+%type <expr_list>     arg_list opt_arg_list multi_ret_expr_list
 %type <stmt_list>     stmt_list
 %type <op>            cmp_op shift_op add_op mul_op
 %type <expr>          sizeof_expr array_init_expr builtin_call_expr proc_lit_expr
-%type <expr_list>     multi_ret_expr_list
+%type <str>           soft_ident kw_ident
 %type <stmt>          multi_decl_stmt multi_assign_stmt
 %type <else_if_list>  else_if_chain
 %type <block>         else_block
@@ -213,9 +246,12 @@ static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <else_if_list>  when_else_chain
 %type <block>         when_else_block
 
-// Precedence – add TOK_ELSE to resolve dangling else
+// =============================================================================
+// Precedence — lowest to highest
+// =============================================================================
+// Dangling-else resolution: if/when without else has lower precedence than else
 %nonassoc LOWER_THAN_ELSE
-%nonassoc TOK_ELSE
+%nonassoc TOK_KW_ELSE
 
 %left TOK_OR
 %left TOK_AND
@@ -260,6 +296,11 @@ top_decl
     | enum_decl      { $$ = $1; }
     | cimport_decl   { $$ = $1; }
     | import_decl    { $$ = $1; }
+    | TOK_HASH_ASSERT expr
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new HashAssertTopDecl(r, $2);
+        }
     ;
 
 cimport_decl
@@ -296,38 +337,36 @@ union_decl
         }
     ;
 
+// ---------------------------------------------------------------------------
 // Variable declarations
+// Uses TOK_IDENT directly (not via a reducing nonterminal) so that the LALR
+// state after shifting an identifier can deterministically choose between
+// var_decl (next token is ':' or ':=') and expr_primary (any other token).
+// kw_ident handles the rare case where a builtin keyword is used as a name.
+// ---------------------------------------------------------------------------
 var_decl
+    // ── regular identifier ─────────────────────────────────────────────────
     : TOK_IDENT TOK_DECL expr
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new VarDecl(r, *$1, nullptr, $3);
-            delete $1;
-        }
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, nullptr, $3); delete $1; }
     | TOK_IDENT TOK_DECL struct_lit
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new VarDecl(r, *$1, nullptr, $3);
-            delete $1;
-        }
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, nullptr, $3); delete $1; }
     | TOK_IDENT TOK_COLON type
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new VarDecl(r, *$1, $3, nullptr);
-            delete $1;
-        }
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, nullptr); delete $1; }
     | TOK_IDENT TOK_COLON type TOK_ASSIGN expr
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new VarDecl(r, *$1, $3, $5);
-            delete $1;
-        }
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, $5); delete $1; }
     | TOK_IDENT TOK_COLON type TOK_ASSIGN struct_lit
-        {
-            SourceRange r = to_sourcerange(@$, filename);
-            $$ = new VarDecl(r, *$1, $3, $5);
-            delete $1;
-        }
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, $5); delete $1; }
+    // ── keyword used as variable name (e.g. `len := 0`) ───────────────────
+    | kw_ident TOK_DECL expr
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, nullptr, $3); delete $1; }
+    | kw_ident TOK_DECL struct_lit
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, nullptr, $3); delete $1; }
+    | kw_ident TOK_COLON type
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, nullptr); delete $1; }
+    | kw_ident TOK_COLON type TOK_ASSIGN expr
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, $5); delete $1; }
+    | kw_ident TOK_COLON type TOK_ASSIGN struct_lit
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new VarDecl(r, *$1, $3, $5); delete $1; }
     ;
 
 const_decl
@@ -368,21 +407,50 @@ field_group
             $$->type = $3;
             delete $1;
         }
+    | ident_list TOK_COLON type TOK_SEMI
+        {
+            $$ = new Field();
+            $$->names = *$1;
+            $$->type = $3;
+            delete $1;
+        }
     ;
 
+// ident_list: used for struct/union field names and proc parameter names.
+// Uses soft_ident so fields/params can be named after builtin keywords.
 ident_list
-    : TOK_IDENT
+    : soft_ident
         {
             $$ = new std::vector<std::string>();
             $$->push_back(*$1);
             delete $1;
         }
-    | ident_list TOK_COMMA TOK_IDENT
+    | ident_list TOK_COMMA soft_ident
         {
             $1->push_back(*$3);
             delete $3;
             $$ = $1;
         }
+    ;
+
+// soft_ident: used ONLY for struct/union field names and proc parameter names
+// (via ident_list).  NOT used for variable declarations — var_decl uses
+// TOK_IDENT directly to avoid reduce/reduce conflicts with expr_primary.
+soft_ident
+    : TOK_IDENT         { $$ = $1; }
+    | kw_ident          { $$ = $1; }
+    ;
+
+// kw_ident: builtin-call keywords that may also serve as identifiers.
+// Does NOT include TOK_IDENT (keeps it disjoint from expr_primary).
+kw_ident
+    : TOK_KW_LEN        { $$ = new std::string("len");        }
+    | TOK_KW_CAP        { $$ = new std::string("cap");        }
+    | TOK_KW_APPEND     { $$ = new std::string("append");     }
+    | TOK_KW_RESERVE    { $$ = new std::string("reserve");    }
+    | TOK_KW_DELETE_DYN { $$ = new std::string("delete_dyn"); }
+    | TOK_KW_TO_CSTR    { $$ = new std::string("to_cstr");    }
+    | TOK_KW_FROM_CSTR  { $$ = new std::string("from_cstr");  }
     ;
 
 // Procedure declarations – expanded to avoid pair in union
@@ -435,7 +503,9 @@ proc_decl
             delete $1; delete $5; delete $9;
         }
     // Named multi-return: proc() -> (val: i32, ok: bool)
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN param_list TOK_RPAREN block
+    // Uses named_ret_list (requires at least one `name: type` entry with a colon)
+    // so it is unambiguous vs the unnamed type_list alternatives above.
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN block
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -452,7 +522,7 @@ proc_decl
             $$ = pd;
             delete $1; delete $5; delete $9;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN param_list TOK_RPAREN TOK_NOBODY
+    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN TOK_NOBODY
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -506,6 +576,31 @@ param_group
             $$->names = *$1;
             $$->type = $3;
             delete $1;
+        }
+    ;
+
+// named_ret_list: one or more `name: type` groups for named return values.
+// Uses TOK_IDENT TOK_COLON to anchor the first entry, making this rule
+// syntactically distinct from type_list (which starts with a bare type).
+// This prevents the LALR conflict between -> (i32, bool) and -> (val: i32, ok: bool).
+named_ret_list
+    : TOK_IDENT TOK_COLON type
+        {
+            $$ = new std::vector<ParamGroup>();
+            ParamGroup pg;
+            pg.names.push_back(*$1);
+            pg.type = $3;
+            $$->push_back(pg);
+            delete $1;
+        }
+    | named_ret_list TOK_COMMA TOK_IDENT TOK_COLON type
+        {
+            ParamGroup pg;
+            pg.names.push_back(*$3);
+            pg.type = $5;
+            $1->push_back(pg);
+            $$ = $1;
+            delete $3;
         }
     ;
 
@@ -565,6 +660,23 @@ array_type
             $$ = new ArrayType(r, std::string(*$2), $4);
             delete $2;
         }
+    | TOK_LBRACKET array_size_expr TOK_RBRACKET type
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ArrayType(r, $2, $4);
+        }
+    ;
+
+// Constant expressions valid as array sizes: INT OP INT, IDENT OP expr, etc.
+// Only binary arithmetic between literals/idents is needed here.
+array_size_expr
+    : array_size_expr TOK_STAR   array_size_expr { SourceRange r = to_sourcerange(@$, filename); $$ = new BinaryExpr(r,$1,TOK_STAR,$3); }
+    | array_size_expr TOK_PLUS   array_size_expr { SourceRange r = to_sourcerange(@$, filename); $$ = new BinaryExpr(r,$1,TOK_PLUS,$3); }
+    | array_size_expr TOK_MINUS  array_size_expr { SourceRange r = to_sourcerange(@$, filename); $$ = new BinaryExpr(r,$1,TOK_MINUS,$3); }
+    | array_size_expr TOK_SLASH  array_size_expr { SourceRange r = to_sourcerange(@$, filename); $$ = new BinaryExpr(r,$1,TOK_SLASH,$3); }
+    | array_size_expr TOK_PERCENT array_size_expr { SourceRange r = to_sourcerange(@$, filename); $$ = new BinaryExpr(r,$1,TOK_PERCENT,$3); }
+    | TOK_INT_LIT   { SourceRange r = to_sourcerange(@$, filename); $$ = new LitExpr(r, $1); }
+    | TOK_IDENT     { SourceRange r = to_sourcerange(@$, filename); $$ = new IdentExpr(r, *$1); delete $1; }
     ;
 
 slice_type
@@ -687,7 +799,10 @@ for_stmt
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new LoopStmt(r, $2, $3);
         }
-    // ── labeled infinite loop ─────────────────────────────────────────────
+    // ── labeled loop: IDENT ':' for ...  ─────────────────────────────────
+    // Uses TOK_IDENT directly (not soft_ident) so LALR can unambiguously
+    // decide between labeled loop and var_decl by looking at the token
+    // AFTER the colon (TOK_KW_FOR vs a type-starting token).
     | TOK_IDENT TOK_COLON TOK_KW_FOR block
         {
             SourceRange r = to_sourcerange(@$, filename);
@@ -755,6 +870,17 @@ match_case
             $$ = new MatchCase();
             $$->value = $2; $$->body = $3;
             $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
+        }
+    | TOK_KW_CASE TOK_DOT TOK_IDENT block
+        {
+            // .VARIANT shorthand — the enum type is inferred from the match value.
+            // Emitted as a bare IdentExpr; codegen/type-checker resolves the enum variant.
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MatchCase();
+            $$->value = new IdentExpr(r, *$3);
+            $$->body = $4;
+            $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
+            delete $3;
         }
     | TOK_KW_CASE block
         {
@@ -856,18 +982,39 @@ return_stmt
         }
     ;
 
+// multi_decl_stmt: a, b := f()
+// Uses multi_ret_expr_list (same as multi_assign) for the LHS so that
+// TOK_IDENT in `a, b` goes through expr_primary → expr, avoiding the
+// reduce/reduce conflict between soft_ident and expr_primary.
+// The parser extracts the identifier names here; the type checker validates them.
 multi_decl_stmt
-    : ident_list TOK_DECL expr
+    : multi_ret_expr_list TOK_DECL expr
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new MultiDeclStmt(r, *$1, $3);
+            std::vector<std::string> names;
+            for (Expr* e : *$1) {
+                if (auto* id = dynamic_cast<IdentExpr*>(e))
+                    names.push_back(id->name);
+                else
+                    names.push_back("_");
+                delete e;
+            }
             delete $1;
+            $$ = new MultiDeclStmt(r, names, $3);
         }
-    | ident_list TOK_DECL struct_lit
+    | multi_ret_expr_list TOK_DECL struct_lit
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new MultiDeclStmt(r, *$1, $3);
+            std::vector<std::string> names;
+            for (Expr* e : *$1) {
+                if (auto* id = dynamic_cast<IdentExpr*>(e))
+                    names.push_back(id->name);
+                else
+                    names.push_back("_");
+                delete e;
+            }
             delete $1;
+            $$ = new MultiDeclStmt(r, names, $3);
         }
     ;
 
@@ -978,6 +1125,7 @@ stmt_list
 // Expressions – same as before but ensure no conflicts
 expr
     : expr_or { $$ = $1; }
+    | array_init_expr { $$ = $1; }
     ;
 
 // expr_no_struct is identical to expr but forbids bare struct literals.
@@ -1210,7 +1358,6 @@ expr_primary
             $$ = $2;
         }
     | sizeof_expr       { $$ = $1; }
-    | array_init_expr   { $$ = $1; }
     | builtin_call_expr { $$ = $1; }
     | proc_lit_expr     { $$ = $1; }
     ;

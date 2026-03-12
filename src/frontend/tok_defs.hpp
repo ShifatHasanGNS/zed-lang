@@ -1,106 +1,119 @@
 // =============================================================================
 // tok_defs.hpp — Token constant definitions
 // =============================================================================
-// IMPORTANT: Values must stay stable — Bison assigns the same values by
-// declaration order in parser.y.  Never reorder or delete entries; only append.
+// Values assigned by bison in %token declaration order (starting at 258).
+// The declaration order in parser.y is authoritative; this file must mirror it.
+// To add a new token: append a %token to parser.y, then add the next value here.
+// Never reorder or delete entries — append only.
 // =============================================================================
 
 #pragma once
 
 enum {
-    TOK_INT_LIT    = 258,
-    TOK_FLOAT_LIT  = 259,
-    TOK_BOOL_LIT   = 260,
-    TOK_STRING_LIT = 261,
-    TOK_IDENT      = 262,
-    TOK_KW_PROC    = 263,
-    TOK_KW_STRUCT  = 264,
-    TOK_KW_IF      = 265,
-    TOK_KW_ELSE    = 266,
-    TOK_KW_LOOP    = 267,   // RETIRED — slot kept for ABI stability; lexer never emits this
-    TOK_KW_IN      = 268,
-    TOK_KW_RETURN  = 269,
-    TOK_KW_BREAK   = 270,
-    TOK_KW_CONTINUE= 271,
-    TOK_KW_NIL     = 272,
-    TOK_KW_TRUE    = 273,
-    TOK_KW_FALSE   = 274,
-    TOK_DECL       = 275,   // :=
-    TOK_DEF        = 276,   // ::
-    TOK_COLON      = 277,
-    TOK_ARROW      = 278,   // ->
-    TOK_NOBODY     = 279,   // ---
-    TOK_KW_CIMPORT = 280,
-    TOK_KW_IMPORT  = 281,
-    TOK_KW_CAST    = 282,
-    // ── loop / range / control keywords ──────────────────────────────────────
-    TOK_KW_FOR     = 283,   // for { } / for cond { } / for i in lo..<hi { }
-    TOK_KW_DEFER   = 284,   // defer expr
-    TOK_KW_MATCH   = 285,   // match val { case X { } }
-    TOK_KW_CASE    = 286,   // case inside match
-    TOK_KW_WHEN    = 287,   // when CONST { } else when { } else { }
-    TOK_KW_ENUM    = 288,   // Name :: enum { A, B = 2, C }
-    TOK_KW_STEP    = 289,   // step N  (optional, inside for-range)
-    // ── punctuation / multi-char ops ─────────────────────────────────────────
-    TOK_LPAREN     = 290,
-    TOK_RPAREN     = 291,
-    TOK_LBRACE     = 292,
-    TOK_RBRACE     = 293,
-    TOK_LBRACKET   = 294,
-    TOK_RBRACKET   = 295,
-    TOK_DOT        = 296,
-    TOK_COMMA      = 297,
-    TOK_SEMI       = 298,
-    TOK_DOTDOTLT   = 299,   // ..<
-    TOK_DOTDOTEQ   = 300,   // ..=
-    TOK_DOTDOT     = 333,   // ..   (struct update spread: Rect{ ..base, width=10 })
-    TOK_KW_SIZEOF    = 334,   // sizeof(T) / sizeof(expr)
-    TOK_KW_ALIGNOF   = 335,   // alignof(T)
-    // Stage 2 ─────────────────────────────────────────────────────
-    TOK_KW_STRING    = 336,   // string  (built-in type)
-    TOK_KW_DYNAMIC   = 337,   // dynamic (used in [dynamic]T)
-    TOK_KW_APPEND    = 338,   // append(&arr, val)
-    TOK_KW_LEN       = 339,   // len(x)
-    TOK_KW_CAP       = 340,   // cap(arr)
-    TOK_KW_RESERVE   = 341,   // reserve(&arr, n)
-    TOK_KW_DELETE_DYN= 342,   // delete_dyn(&arr)
-    TOK_KW_OR_RETURN = 343,   // or_return (postfix)
-    TOK_KW_TO_CSTR   = 344,   // to_cstr(s)
-    TOK_KW_FROM_CSTR = 345,   // from_cstr(cs)
-    // Stage 4 ─────────────────────────────────────────────────────
-    TOK_KW_UNION     = 346,   // union  (union type declaration)
-    TOK_KW_TYPEID    = 347,   // typeid(T)  — compile-time type identifier
-    TOK_AMP        = 301,
-    TOK_DEREF      = 302,   // .*
-    TOK_NOT        = 303,   // !  (also keyword alias: "not")
-    TOK_PLUS       = 304,
-    TOK_MINUS      = 305,
-    TOK_STAR       = 306,
-    TOK_SLASH      = 307,
-    TOK_PERCENT    = 308,
-    TOK_PIPE       = 309,
-    TOK_SHL        = 310,   // <<
-    TOK_SHR        = 311,   // >>
-    TOK_EQ         = 312,   // ==
-    TOK_NEQ        = 313,   // !=
-    TOK_LT         = 314,
-    TOK_LEQ        = 315,   // <=
-    TOK_GT         = 316,
-    TOK_GEQ        = 317,   // >=
-    TOK_AND        = 318,   // &&  (also keyword alias: "and")
-    TOK_OR         = 319,   // ||  (also keyword alias: "or")
-    TOK_ASSIGN     = 320,   // =
-    TOK_XOR        = 321,   // ^
-    // ── compound assignment ───────────────────────────────────────────────────
-    TOK_PLUS_ASSIGN    = 322,   // +=
-    TOK_MINUS_ASSIGN   = 323,   // -=
-    TOK_STAR_ASSIGN    = 324,   // *=
-    TOK_SLASH_ASSIGN   = 325,   // /=
-    TOK_PERCENT_ASSIGN = 326,   // %=
-    TOK_AMP_ASSIGN     = 327,   // &=
-    TOK_PIPE_ASSIGN    = 328,   // |=
-    TOK_XOR_ASSIGN     = 329,   // ^=
-    // ── increment / decrement (statement-level only) ──────────────────────────
-    // ── compile-time directives ───────────────────────────────────────────────
-    TOK_HASH_ASSERT = 332,  // #assert <const-expr>  →  static_assert(...)
+    // Literals & identifier
+    TOK_INT_LIT           = 258,
+    TOK_FLOAT_LIT         = 259,
+    TOK_BOOL_LIT          = 260,
+    TOK_STRING_LIT        = 261,
+    TOK_IDENT             = 262,
+    // Declaration keywords
+    TOK_KW_PROC           = 263,
+    TOK_KW_STRUCT         = 264,
+    TOK_KW_UNION          = 265,
+    TOK_KW_ENUM           = 266,
+    // Control-flow keywords
+    TOK_KW_IF             = 267,
+    TOK_KW_ELSE           = 268,
+    TOK_KW_FOR            = 269,
+    TOK_KW_IN             = 270,
+    TOK_KW_STEP           = 271,
+    TOK_KW_BREAK          = 272,
+    TOK_KW_CONTINUE       = 273,
+    TOK_KW_RETURN         = 274,
+    TOK_KW_DEFER          = 275,
+    // match / when
+    TOK_KW_MATCH          = 276,
+    TOK_KW_CASE           = 277,
+    TOK_KW_WHEN           = 278,
+    // Value keywords
+    TOK_KW_NIL            = 279,
+    TOK_KW_TRUE           = 280,
+    TOK_KW_FALSE          = 281,
+    // Type / expression keywords
+    TOK_KW_STRING         = 282,
+    TOK_KW_DYNAMIC        = 283,
+    TOK_KW_CAST           = 284,
+    TOK_KW_SIZEOF         = 285,
+    TOK_KW_ALIGNOF        = 286,
+    TOK_KW_TYPEID         = 287,
+    // Builtin-call keywords (also usable as soft identifiers)
+    TOK_KW_LEN            = 288,
+    TOK_KW_CAP            = 289,
+    TOK_KW_APPEND         = 290,
+    TOK_KW_RESERVE        = 291,
+    TOK_KW_DELETE_DYN     = 292,
+    TOK_KW_TO_CSTR        = 293,
+    TOK_KW_FROM_CSTR      = 294,
+    TOK_KW_OR_RETURN      = 295,
+    // Import keywords
+    TOK_KW_CIMPORT        = 296,
+    TOK_KW_IMPORT         = 297,
+    // Declaration / assignment operators
+    TOK_DECL              = 298,
+    TOK_DEF               = 299,
+    TOK_COLON             = 300,
+    TOK_ARROW             = 301,
+    TOK_NOBODY            = 302,
+    // Compile-time directive
+    TOK_HASH_ASSERT       = 303,
+    // Delimiters
+    TOK_LPAREN            = 304,
+    TOK_RPAREN            = 305,
+    TOK_LBRACE            = 306,
+    TOK_RBRACE            = 307,
+    TOK_LBRACKET          = 308,
+    TOK_RBRACKET          = 309,
+    // Dot variants
+    TOK_DOT               = 310,
+    TOK_DOTDOT            = 311,
+    TOK_DOTDOTLT          = 312,
+    TOK_DOTDOTEQ          = 313,
+    // Other punctuation
+    TOK_COMMA             = 314,
+    TOK_SEMI              = 315,
+    // Unary / address operators
+    TOK_AMP               = 316,
+    TOK_DEREF             = 317,
+    TOK_NOT               = 318,
+    // Arithmetic operators
+    TOK_PLUS              = 319,
+    TOK_MINUS             = 320,
+    TOK_STAR              = 321,
+    TOK_SLASH             = 322,
+    TOK_PERCENT           = 323,
+    // Bitwise operators
+    TOK_PIPE              = 324,
+    TOK_XOR               = 325,
+    TOK_SHL               = 326,
+    TOK_SHR               = 327,
+    // Comparison operators
+    TOK_EQ                = 328,
+    TOK_NEQ               = 329,
+    TOK_LT                = 330,
+    TOK_LEQ               = 331,
+    TOK_GT                = 332,
+    TOK_GEQ               = 333,
+    // Logical operators
+    TOK_AND               = 334,
+    TOK_OR                = 335,
+    // Assignment
+    TOK_ASSIGN            = 336,
+    TOK_PLUS_ASSIGN       = 337,
+    TOK_MINUS_ASSIGN      = 338,
+    TOK_STAR_ASSIGN       = 339,
+    TOK_SLASH_ASSIGN      = 340,
+    TOK_PERCENT_ASSIGN    = 341,
+    TOK_AMP_ASSIGN        = 342,
+    TOK_PIPE_ASSIGN       = 343,
+    TOK_XOR_ASSIGN        = 344,
 };

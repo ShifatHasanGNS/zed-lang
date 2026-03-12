@@ -1,10 +1,16 @@
 // Runtime type definitions for generated C++ code
 #pragma once
 
-#include <cstddef>
+#include <stdbool.h>
+#include <stdint.h>
 #include <cstdlib>
 #include <cstdio>
+#include <iostream>
+#include <cstddef>
+#include <cstddef>
 #include <cstring>
+#include <string>
+#include <vector>
 
 // Slice — non-owning view over a contiguous array of elements.
 struct Slice {

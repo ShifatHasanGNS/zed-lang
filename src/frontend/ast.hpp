@@ -53,10 +53,11 @@ class DeferStmt;
 class MatchStmt;
 class WhenStmt;
 class CompoundAssignStmt;
-class IncDecStmt;
+class HashAssertStmt;
 
 // New declaration nodes
 class EnumDecl;
+class HashAssertTopDecl;
 
 class Type;
 class NamedType;
@@ -121,13 +122,16 @@ public:
 
 class ArrayType : public Type {
 public:
-    uint64_t    size;        // compile-time constant (0 if size_name is set)
+    uint64_t    size;        // compile-time constant (0 if size_name or size_expr is set)
     std::string size_name;   // non-empty if size is a named constant
+    Expr*       size_expr;   // non-null if size is a constant expression (e.g. 2*N)
     Type*       elem;
     ArrayType(SourceRange r, uint64_t s, Type* e)
-        : size(s), elem(e) { range = r; }
+        : size(s), size_expr(nullptr), elem(e) { range = r; }
     ArrayType(SourceRange r, std::string n, Type* e)
-        : size(0), size_name(std::move(n)), elem(e) { range = r; }
+        : size(0), size_name(std::move(n)), size_expr(nullptr), elem(e) { range = r; }
+    ArrayType(SourceRange r, Expr* se, Type* e)
+        : size(0), size_expr(se), elem(e) { range = r; }
     Kind kind() const override { return ARRAY; }
 };
 
@@ -169,7 +173,7 @@ public:
 
 class Decl : public Node {
 public:
-    enum Kind { VAR, CONST, STRUCT, PROC, ENUM_DECL, CIMPORT = 20, IMPORT = 21, UNION_DECL = 22 };
+    enum Kind { VAR, CONST, STRUCT, PROC, ENUM_DECL, CIMPORT = 20, IMPORT = 21, UNION_DECL = 22, HASH_ASSERT_DECL = 23 };
     virtual Kind kind() const = 0;
     virtual const std::string& name() const = 0;
 };
@@ -248,10 +252,9 @@ public:
     std::vector<ParamGroup> params;
     // Single return: return_type non-null, return_types empty.
     // Multi-return:  return_type null,     return_types non-empty.
-    // Named returns: return_names parallel to return_types (empty = unnamed).
     Type*              return_type  = nullptr;
     std::vector<Type*> return_types;          // filled for -> (T1, T2, ...)
-    std::vector<std::string> return_names;    // filled for -> (n1: T1, n2: T2, ...)
+    std::vector<std::string> return_names;    // filled for named returns -> (val: T, ok: bool)
     BlockStmt* body = nullptr;                // null means "---" (extern)
     ProcDecl(SourceRange r, std::string n, std::vector<ParamGroup> p,
              Type* ret, std::vector<Type*> rets, BlockStmt* b)
@@ -262,12 +265,25 @@ public:
 };
 
 // ---------------------------------------------------------------------------
+// HashAssertTopDecl:  #assert <const-expr>  at top-level scope
+// Emits static_assert(...) in the global constants section of the C++ output.
+// ---------------------------------------------------------------------------
+class HashAssertTopDecl : public Decl {
+public:
+    Expr* cond;
+    static const std::string EMPTY_NAME;
+    HashAssertTopDecl(SourceRange r, Expr* c) : cond(c) { range = r; }
+    Kind kind() const override { return HASH_ASSERT_DECL; }
+    const std::string& name() const override { return EMPTY_NAME; }
+};
+
+// ---------------------------------------------------------------------------
 // Stmt (abstract)
 // ---------------------------------------------------------------------------
 class Stmt : public Node {
 public:
     enum Kind { BLOCK, RETURN, IF, LOOP, BREAK, CONTINUE, ASSIGN, EXPR, DECL_STMT,
-                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, INC_DEC, HASH_ASSERT,
+                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, HASH_ASSERT,
                  MULTI_ASSIGN, MULTI_DECL,
                  BREAK_LABEL, CONTINUE_LABEL };
     virtual Kind kind() const = 0;
@@ -525,6 +541,14 @@ public:
     Kind kind() const override { return SIZEOF_EXPR; }
 };
 
+// typeid(T) — evaluates to a compile-time u64 unique to the type
+class TypeIdExpr : public Expr {
+public:
+    Type* type_arg;
+    TypeIdExpr(SourceRange r, Type* t) : type_arg(t) { range = r; }
+    Kind kind() const override { return TYPEID_EXPR; }
+};
+
 // ---------------------------------------------------------------------------
 // ArrayInitExpr: { expr, expr, ... } — used in global/local var initializers
 // e.g.  verts: [5]Vec3 = { Vec3{...}, Vec3{...} }
@@ -551,17 +575,6 @@ public:
     Expr* inner;
     OrReturnExpr(SourceRange r, Expr* e) : inner(e) { range = r; }
     Kind kind() const override { return OR_RETURN_EXPR; }
-};
-
-// typeid(T)  — compile-time u64 unique identifier for a type.
-// Used in when conditions: when typeid(i32) == typeid(u32) { ... }
-// The value is stable within a compilation unit but not guaranteed
-// across different programs.
-class TypeIdExpr : public Expr {
-public:
-    Type* type_arg;  // always non-null
-    TypeIdExpr(SourceRange r, Type* t) : type_arg(t) { range = r; }
-    Kind kind() const override { return TYPEID_EXPR; }
 };
 
 // proc(x: i32) -> i32 { return x * 2 }  — anonymous proc literal
@@ -646,17 +659,6 @@ public:
     CompoundAssignStmt(SourceRange r, Expr* l, int o, Expr* rhs)
         : lvalue(l), op(o), rhs(rhs) { range = r; }
     Kind kind() const override { return COMPOUND_ASSIGN; }
-};
-
-// ---------------------------------------------------------------------------
-// IncDecStmt:  expr++  /  expr--  (statement-level only)
-// ---------------------------------------------------------------------------
-class IncDecStmt : public Stmt {
-public:
-    Expr* expr;
-    bool  inc;  // true = ++,  false = --
-    IncDecStmt(SourceRange r, Expr* e, bool i) : expr(e), inc(i) { range = r; }
-    Kind kind() const override { return INC_DEC; }
 };
 
 // ---------------------------------------------------------------------------

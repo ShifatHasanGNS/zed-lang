@@ -47,92 +47,90 @@
      TOK_IDENT = 262,
      TOK_KW_PROC = 263,
      TOK_KW_STRUCT = 264,
-     TOK_KW_IF = 265,
-     TOK_KW_ELSE = 266,
-     TOK_KW_LOOP = 267,
-     TOK_KW_IN = 268,
-     TOK_KW_RETURN = 269,
-     TOK_KW_BREAK = 270,
-     TOK_KW_CONTINUE = 271,
-     TOK_KW_NIL = 272,
-     TOK_KW_TRUE = 273,
-     TOK_KW_FALSE = 274,
-     TOK_DECL = 275,
-     TOK_DEF = 276,
-     TOK_COLON = 277,
-     TOK_ARROW = 278,
-     TOK_NOBODY = 279,
-     TOK_KW_CIMPORT = 280,
-     TOK_KW_IMPORT = 281,
-     TOK_KW_CAST = 282,
-     TOK_KW_FOR = 283,
-     TOK_KW_DEFER = 284,
-     TOK_KW_MATCH = 285,
-     TOK_KW_CASE = 286,
-     TOK_KW_WHEN = 287,
-     TOK_KW_ENUM = 288,
-     TOK_KW_STEP = 289,
-     TOK_LPAREN = 290,
-     TOK_RPAREN = 291,
-     TOK_LBRACE = 292,
-     TOK_RBRACE = 293,
-     TOK_LBRACKET = 294,
-     TOK_RBRACKET = 295,
-     TOK_DOT = 296,
-     TOK_COMMA = 297,
-     TOK_SEMI = 298,
-     TOK_DOTDOTLT = 299,
-     TOK_DOTDOTEQ = 300,
-     TOK_AMP = 301,
-     TOK_DEREF = 302,
-     TOK_NOT = 303,
-     TOK_PLUS = 304,
-     TOK_MINUS = 305,
-     TOK_STAR = 306,
-     TOK_SLASH = 307,
-     TOK_PERCENT = 308,
-     TOK_PIPE = 309,
-     TOK_SHL = 310,
-     TOK_SHR = 311,
-     TOK_EQ = 312,
-     TOK_NEQ = 313,
-     TOK_LT = 314,
-     TOK_LEQ = 315,
-     TOK_GT = 316,
-     TOK_GEQ = 317,
-     TOK_AND = 318,
-     TOK_OR = 319,
-     TOK_ASSIGN = 320,
-     TOK_XOR = 321,
-     TOK_PLUS_ASSIGN = 322,
-     TOK_MINUS_ASSIGN = 323,
-     TOK_STAR_ASSIGN = 324,
-     TOK_SLASH_ASSIGN = 325,
-     TOK_PERCENT_ASSIGN = 326,
-     TOK_AMP_ASSIGN = 327,
-     TOK_PIPE_ASSIGN = 328,
-     TOK_XOR_ASSIGN = 329,
-     TOK_HASH_ASSERT = 330,
-     TOK_DOTDOT = 331,
-     TOK_KW_SIZEOF = 332,
-     TOK_KW_ALIGNOF = 333,
-     TOK_KW_STRING = 334,
-     TOK_KW_DYNAMIC = 335,
-     TOK_KW_APPEND = 336,
-     TOK_KW_LEN = 337,
-     TOK_KW_CAP = 338,
-     TOK_KW_RESERVE = 339,
-     TOK_KW_DELETE_DYN = 340,
-     TOK_KW_OR_RETURN = 341,
-     TOK_KW_TO_CSTR = 342,
-     TOK_KW_FROM_CSTR = 343,
-     TOK_KW_UNION = 344,
-     TOK_KW_TYPEID = 345,
-     LOWER_THAN_ELSE = 346,
-     TOK_ELSE = 347,
-     UNARY_MINUS = 348,
-     UNARY_ADDR = 349,
-     POSTFIX_DEREF = 350
+     TOK_KW_UNION = 265,
+     TOK_KW_ENUM = 266,
+     TOK_KW_IF = 267,
+     TOK_KW_ELSE = 268,
+     TOK_KW_FOR = 269,
+     TOK_KW_IN = 270,
+     TOK_KW_STEP = 271,
+     TOK_KW_BREAK = 272,
+     TOK_KW_CONTINUE = 273,
+     TOK_KW_RETURN = 274,
+     TOK_KW_DEFER = 275,
+     TOK_KW_MATCH = 276,
+     TOK_KW_CASE = 277,
+     TOK_KW_WHEN = 278,
+     TOK_KW_NIL = 279,
+     TOK_KW_TRUE = 280,
+     TOK_KW_FALSE = 281,
+     TOK_KW_STRING = 282,
+     TOK_KW_DYNAMIC = 283,
+     TOK_KW_CAST = 284,
+     TOK_KW_SIZEOF = 285,
+     TOK_KW_ALIGNOF = 286,
+     TOK_KW_TYPEID = 287,
+     TOK_KW_LEN = 288,
+     TOK_KW_CAP = 289,
+     TOK_KW_APPEND = 290,
+     TOK_KW_RESERVE = 291,
+     TOK_KW_DELETE_DYN = 292,
+     TOK_KW_TO_CSTR = 293,
+     TOK_KW_FROM_CSTR = 294,
+     TOK_KW_OR_RETURN = 295,
+     TOK_KW_CIMPORT = 296,
+     TOK_KW_IMPORT = 297,
+     TOK_DECL = 298,
+     TOK_DEF = 299,
+     TOK_COLON = 300,
+     TOK_ARROW = 301,
+     TOK_NOBODY = 302,
+     TOK_HASH_ASSERT = 303,
+     TOK_LPAREN = 304,
+     TOK_RPAREN = 305,
+     TOK_LBRACE = 306,
+     TOK_RBRACE = 307,
+     TOK_LBRACKET = 308,
+     TOK_RBRACKET = 309,
+     TOK_DOT = 310,
+     TOK_DOTDOT = 311,
+     TOK_DOTDOTLT = 312,
+     TOK_DOTDOTEQ = 313,
+     TOK_COMMA = 314,
+     TOK_SEMI = 315,
+     TOK_AMP = 316,
+     TOK_DEREF = 317,
+     TOK_NOT = 318,
+     TOK_PLUS = 319,
+     TOK_MINUS = 320,
+     TOK_STAR = 321,
+     TOK_SLASH = 322,
+     TOK_PERCENT = 323,
+     TOK_PIPE = 324,
+     TOK_XOR = 325,
+     TOK_SHL = 326,
+     TOK_SHR = 327,
+     TOK_EQ = 328,
+     TOK_NEQ = 329,
+     TOK_LT = 330,
+     TOK_LEQ = 331,
+     TOK_GT = 332,
+     TOK_GEQ = 333,
+     TOK_AND = 334,
+     TOK_OR = 335,
+     TOK_ASSIGN = 336,
+     TOK_PLUS_ASSIGN = 337,
+     TOK_MINUS_ASSIGN = 338,
+     TOK_STAR_ASSIGN = 339,
+     TOK_SLASH_ASSIGN = 340,
+     TOK_PERCENT_ASSIGN = 341,
+     TOK_AMP_ASSIGN = 342,
+     TOK_PIPE_ASSIGN = 343,
+     TOK_XOR_ASSIGN = 344,
+     LOWER_THAN_ELSE = 345,
+     UNARY_MINUS = 346,
+     UNARY_ADDR = 347,
+     POSTFIX_DEREF = 348
    };
 #endif
 /* Tokens.  */
@@ -144,99 +142,97 @@
 #define TOK_IDENT 262
 #define TOK_KW_PROC 263
 #define TOK_KW_STRUCT 264
-#define TOK_KW_IF 265
-#define TOK_KW_ELSE 266
-#define TOK_KW_LOOP 267
-#define TOK_KW_IN 268
-#define TOK_KW_RETURN 269
-#define TOK_KW_BREAK 270
-#define TOK_KW_CONTINUE 271
-#define TOK_KW_NIL 272
-#define TOK_KW_TRUE 273
-#define TOK_KW_FALSE 274
-#define TOK_DECL 275
-#define TOK_DEF 276
-#define TOK_COLON 277
-#define TOK_ARROW 278
-#define TOK_NOBODY 279
-#define TOK_KW_CIMPORT 280
-#define TOK_KW_IMPORT 281
-#define TOK_KW_CAST 282
-#define TOK_KW_FOR 283
-#define TOK_KW_DEFER 284
-#define TOK_KW_MATCH 285
-#define TOK_KW_CASE 286
-#define TOK_KW_WHEN 287
-#define TOK_KW_ENUM 288
-#define TOK_KW_STEP 289
-#define TOK_LPAREN 290
-#define TOK_RPAREN 291
-#define TOK_LBRACE 292
-#define TOK_RBRACE 293
-#define TOK_LBRACKET 294
-#define TOK_RBRACKET 295
-#define TOK_DOT 296
-#define TOK_COMMA 297
-#define TOK_SEMI 298
-#define TOK_DOTDOTLT 299
-#define TOK_DOTDOTEQ 300
-#define TOK_AMP 301
-#define TOK_DEREF 302
-#define TOK_NOT 303
-#define TOK_PLUS 304
-#define TOK_MINUS 305
-#define TOK_STAR 306
-#define TOK_SLASH 307
-#define TOK_PERCENT 308
-#define TOK_PIPE 309
-#define TOK_SHL 310
-#define TOK_SHR 311
-#define TOK_EQ 312
-#define TOK_NEQ 313
-#define TOK_LT 314
-#define TOK_LEQ 315
-#define TOK_GT 316
-#define TOK_GEQ 317
-#define TOK_AND 318
-#define TOK_OR 319
-#define TOK_ASSIGN 320
-#define TOK_XOR 321
-#define TOK_PLUS_ASSIGN 322
-#define TOK_MINUS_ASSIGN 323
-#define TOK_STAR_ASSIGN 324
-#define TOK_SLASH_ASSIGN 325
-#define TOK_PERCENT_ASSIGN 326
-#define TOK_AMP_ASSIGN 327
-#define TOK_PIPE_ASSIGN 328
-#define TOK_XOR_ASSIGN 329
-#define TOK_HASH_ASSERT 330
-#define TOK_DOTDOT 331
-#define TOK_KW_SIZEOF 332
-#define TOK_KW_ALIGNOF 333
-#define TOK_KW_STRING 334
-#define TOK_KW_DYNAMIC 335
-#define TOK_KW_APPEND 336
-#define TOK_KW_LEN 337
-#define TOK_KW_CAP 338
-#define TOK_KW_RESERVE 339
-#define TOK_KW_DELETE_DYN 340
-#define TOK_KW_OR_RETURN 341
-#define TOK_KW_TO_CSTR 342
-#define TOK_KW_FROM_CSTR 343
-#define TOK_KW_UNION 344
-#define TOK_KW_TYPEID 345
-#define LOWER_THAN_ELSE 346
-#define TOK_ELSE 347
-#define UNARY_MINUS 348
-#define UNARY_ADDR 349
-#define POSTFIX_DEREF 350
+#define TOK_KW_UNION 265
+#define TOK_KW_ENUM 266
+#define TOK_KW_IF 267
+#define TOK_KW_ELSE 268
+#define TOK_KW_FOR 269
+#define TOK_KW_IN 270
+#define TOK_KW_STEP 271
+#define TOK_KW_BREAK 272
+#define TOK_KW_CONTINUE 273
+#define TOK_KW_RETURN 274
+#define TOK_KW_DEFER 275
+#define TOK_KW_MATCH 276
+#define TOK_KW_CASE 277
+#define TOK_KW_WHEN 278
+#define TOK_KW_NIL 279
+#define TOK_KW_TRUE 280
+#define TOK_KW_FALSE 281
+#define TOK_KW_STRING 282
+#define TOK_KW_DYNAMIC 283
+#define TOK_KW_CAST 284
+#define TOK_KW_SIZEOF 285
+#define TOK_KW_ALIGNOF 286
+#define TOK_KW_TYPEID 287
+#define TOK_KW_LEN 288
+#define TOK_KW_CAP 289
+#define TOK_KW_APPEND 290
+#define TOK_KW_RESERVE 291
+#define TOK_KW_DELETE_DYN 292
+#define TOK_KW_TO_CSTR 293
+#define TOK_KW_FROM_CSTR 294
+#define TOK_KW_OR_RETURN 295
+#define TOK_KW_CIMPORT 296
+#define TOK_KW_IMPORT 297
+#define TOK_DECL 298
+#define TOK_DEF 299
+#define TOK_COLON 300
+#define TOK_ARROW 301
+#define TOK_NOBODY 302
+#define TOK_HASH_ASSERT 303
+#define TOK_LPAREN 304
+#define TOK_RPAREN 305
+#define TOK_LBRACE 306
+#define TOK_RBRACE 307
+#define TOK_LBRACKET 308
+#define TOK_RBRACKET 309
+#define TOK_DOT 310
+#define TOK_DOTDOT 311
+#define TOK_DOTDOTLT 312
+#define TOK_DOTDOTEQ 313
+#define TOK_COMMA 314
+#define TOK_SEMI 315
+#define TOK_AMP 316
+#define TOK_DEREF 317
+#define TOK_NOT 318
+#define TOK_PLUS 319
+#define TOK_MINUS 320
+#define TOK_STAR 321
+#define TOK_SLASH 322
+#define TOK_PERCENT 323
+#define TOK_PIPE 324
+#define TOK_XOR 325
+#define TOK_SHL 326
+#define TOK_SHR 327
+#define TOK_EQ 328
+#define TOK_NEQ 329
+#define TOK_LT 330
+#define TOK_LEQ 331
+#define TOK_GT 332
+#define TOK_GEQ 333
+#define TOK_AND 334
+#define TOK_OR 335
+#define TOK_ASSIGN 336
+#define TOK_PLUS_ASSIGN 337
+#define TOK_MINUS_ASSIGN 338
+#define TOK_STAR_ASSIGN 339
+#define TOK_SLASH_ASSIGN 340
+#define TOK_PERCENT_ASSIGN 341
+#define TOK_AMP_ASSIGN 342
+#define TOK_PIPE_ASSIGN 343
+#define TOK_XOR_ASSIGN 344
+#define LOWER_THAN_ELSE 345
+#define UNARY_MINUS 346
+#define UNARY_ADDR 347
+#define POSTFIX_DEREF 348
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 44 "src/frontend/parser.y"
+#line 43 "src/frontend/parser.y"
 {
     /* ZedLang::Token omitted — contains std::string, illegal in C union */
     ZedLang::Decl*   decl;
@@ -271,7 +267,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 275 "src/flex_bison/parser.tab.hpp"
+#line 271 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

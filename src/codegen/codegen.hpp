@@ -67,7 +67,6 @@ private:
     void emit_match(MatchStmt* s);
     void emit_when(WhenStmt* s);
     void emit_compound_assign(CompoundAssignStmt* s);
-    void emit_inc_dec(IncDecStmt* s);
     void emit_hash_assert(HashAssertStmt* s);
     void emit_multi_decl(MultiDeclStmt* s);
     void emit_multi_assign(MultiAssignStmt* s);
@@ -97,10 +96,10 @@ private:
     void emit_tuple(TupleExpr* e);
     void emit_array_init(ArrayInitExpr* e);
     void emit_sizeof(SizeofExpr* e);
+    void emit_typeid(TypeIdExpr* e);
     void emit_builtin_call(BuiltinCallExpr* e);
     void emit_or_return(OrReturnExpr* e);
     void emit_proc_lit(ProcLitExpr* e);
-    void emit_typeid(TypeIdExpr* e);
 
     // ---- Type helpers ------------------------------------------------------
     // Emit the C type spelling for a SemanticType (e.g. "int32_t", "MyStruct*").
@@ -116,11 +115,14 @@ private:
     // Return the C operator string for a binary/unary op token.
     static std::string op_str(int tok);
 
+    // Mangle a ZedLang identifier to avoid clashing with C/C++ reserved words.
+    std::string c_safe_name(const std::string& n);
+
     TypeChecker& tc_;
     CEmitter     emit_;
     std::vector<Program*> imported_programs_;
-    std::string  current_proc_name_;        // for multi-return emit_return
-    std::vector<std::string> current_proc_return_names_;  // for named-return emit_return
+    std::string  current_proc_name_;               // for multi-return emit_return
+    std::vector<std::string> current_proc_return_names_;  // named return vars
     std::set<std::string> emitted_ret_structs_;  // avoid duplicate typedef
 };
 

@@ -42,6 +42,7 @@ void TypeChecker::check_decl(Decl* d) {
         case Decl::IMPORT:  break;
         case Decl::ENUM_DECL: break;  // handled in collect_globals
         case Decl::UNION_DECL: break;  // handled in collect_globals
+        case Decl::HASH_ASSERT_DECL: break;  // no type-check needed; codegen emits static_assert
     }
 }
 
@@ -208,21 +209,6 @@ void TypeChecker::check_proc_body(ProcDecl* pd) {
     }
     proc_scope->proc_return_type = ret;
 
-    // Named return variables: declare them as pre-initialized locals so that
-    // the proc body can assign to them and a bare 'return' is valid.
-    if (!pd->return_names.empty()) {
-        proc_scope->proc_has_named_returns = true;
-        auto* tt = ret->is_tuple() ? static_cast<sem::TupleType*>(ret) : nullptr;
-        for (size_t i = 0; i < pd->return_names.size(); ++i) {
-            TypeRef vty = (tt && i < tt->elems.size())
-                          ? tt->elems[i]
-                          : sym_.arena().ty_error();
-            Symbol named_sym(Symbol::Kind::VAR, pd->return_names[i], vty, pd->range.begin);
-            named_sym.initialized = true;
-            sym_.declare(named_sym);
-        }
-    }
-
     // collect_globals builds the proc symbol before bodies are checked, so it
     // may store return_type=nullptr for multi-return procs. Patch it here so
     // check_call returns the correct tuple type (fixes multi-decl type inference
@@ -282,7 +268,6 @@ void TypeChecker::check_stmt(Stmt* s) {
         case Stmt::MATCH:          check_match(static_cast<MatchStmt*>(s));                 break;
         case Stmt::WHEN:           check_when(static_cast<WhenStmt*>(s));                   break;
         case Stmt::COMPOUND_ASSIGN:check_compound_assign(static_cast<CompoundAssignStmt*>(s)); break;
-        case Stmt::INC_DEC:        check_inc_dec(static_cast<IncDecStmt*>(s));              break;
         case Stmt::HASH_ASSERT:    check_hash_assert(static_cast<HashAssertStmt*>(s));       break;
         case Stmt::MULTI_DECL:     check_multi_decl(static_cast<MultiDeclStmt*>(s));         break;
         case Stmt::MULTI_ASSIGN:   check_multi_assign(static_cast<MultiAssignStmt*>(s));      break;
@@ -352,13 +337,8 @@ void TypeChecker::check_return(ReturnStmt* s) {
             expect_type(got, expected, s->range.begin, "return value");
         }
     } else if (!expected->is_void()) {
-        // A bare 'return' is valid in a proc with named return variables —
-        // it implicitly returns all named vars in their current state.
-        Scope* proc_scope = sym_.current_scope()->enclosing_proc();
-        bool has_named = proc_scope && proc_scope->proc_has_named_returns;
-        if (!has_named)
-            err_.error(s->range.begin,
-                "missing return value; expected '" + expected->to_string() + "'");
+        err_.error(s->range.begin,
+            "missing return value; expected '" + expected->to_string() + "'");
     }
 }
 
@@ -405,15 +385,15 @@ TypeRef TypeChecker::check_expr(Expr* e) {
         case Expr::STRUCT_LIT: t = check_struct_lit(static_cast<StructLitExpr*>(e)); break;
         case Expr::TUPLE:      t = check_tuple(static_cast<TupleExpr*>(e));          break;
         case Expr::SIZEOF_EXPR:t = check_sizeof(static_cast<SizeofExpr*>(e));        break;
+        case Expr::TYPEID_EXPR:
+            // typeid(T) evaluates at compile time to a u64 type hash; just resolve the type.
+            resolve_type(static_cast<TypeIdExpr*>(e)->type_arg);
+            t = sym_.arena().ty_u64();
+            break;
         case Expr::ARRAY_INIT:    t = check_array_init(static_cast<ArrayInitExpr*>(e));   break;
         case Expr::BUILTIN_CALL:  t = check_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
         case Expr::OR_RETURN_EXPR: t = check_or_return(static_cast<OrReturnExpr *>(e)); break;
         case Expr::PROC_LIT: t = check_proc_lit(static_cast<ProcLitExpr *>(e)); break;
-        case Expr::TYPEID_EXPR:
-            // typeid(T) — just resolve the type to catch errors; result is u64
-            resolve_type(static_cast<TypeIdExpr*>(e)->type_arg);
-            t = sym_.arena().ty_u64();
-            break;
     }
     set_type(e, t);
     return t;
@@ -722,7 +702,7 @@ TypeRef TypeChecker::check_lit(LitExpr* e) {
             return sym_.arena().ty_i32();
         case LitExpr::FLOAT:  return sym_.arena().ty_f32();  // f32 default
         case LitExpr::BOOL:   return sym_.arena().ty_bool();
-        case LitExpr::STRING: return sym_.arena().ty_string();
+        case LitExpr::STRING: return sym_.arena().ty_cstr();
         case LitExpr::NIL:
             // nil is a pointer of unknown pointee — use *void as placeholder
             return sym_.arena().make_ptr(sym_.arena().ty_void());
@@ -824,6 +804,14 @@ TypeRef TypeChecker::resolve_type(Type* t) {
                     return sym_.arena().ty_error();
                 }
                 count = static_cast<uint64_t>(sym->const_int_val);
+            } else if (at->size_expr) {
+                int64_t val = 0;
+                if (!eval_const_int(at->size_expr, sym_, val) || val <= 0) {
+                    err_.error(t->range.begin,
+                        "array size expression must evaluate to a positive integer constant");
+                    return sym_.arena().ty_error();
+                }
+                count = static_cast<uint64_t>(val);
             }
             return sym_.arena().make_array(count, resolve_type(at->elem));
         }
@@ -976,18 +964,6 @@ void TypeChecker::check_compound_assign(CompoundAssignStmt* s) {
 }
 
 // ---------------------------------------------------------------------------
-// IncDecStmt  (++  --)
-// ---------------------------------------------------------------------------
-void TypeChecker::check_inc_dec(IncDecStmt* s) {
-    if (!check_lvalue(s->expr)) return;
-    TypeRef ty = check_expr(s->expr);
-    if (!ty->is_numeric() && !ty->is_error() && !ty->is_any_foreign())
-        err_.error(s->range.begin,
-            std::string(s->inc ? "'++'" : "'--'") +
-            " requires numeric type, got '" + ty->to_string() + "'");
-}
-
-// ---------------------------------------------------------------------------
 // HashAssertStmt  (#assert <const-expr>)
 // ---------------------------------------------------------------------------
 void TypeChecker::check_hash_assert(HashAssertStmt* s) {
@@ -1010,8 +986,9 @@ TypeRef TypeChecker::check_tuple(TupleExpr* e) {
 
 // ---------------------------------------------------------------------------
 // check_array_init — { expr, expr, ... } aggregate initializer
-// Returns the type of the first element (element type, not array type).
-// The actual array type is determined from context (var_decl or assign).
+// Returns make_array(N, elem_type) so the type is directly compatible with
+// a declared [N]T variable.  Codegen uses the var's declared array type for
+// the C emission; the count just needs to match.
 // ---------------------------------------------------------------------------
 TypeRef TypeChecker::check_array_init(ArrayInitExpr* e) {
     if (e->elems.empty()) return sym_.arena().ty_error();
@@ -1025,8 +1002,9 @@ TypeRef TypeChecker::check_array_init(ArrayInitExpr* e) {
                     " has type '" + t->to_string() +
                     "', expected '" + elem_ty->to_string() + "'");
     }
-    // Return element type — codegen uses the var's declared array type
-    return elem_ty;
+    // Return the concrete array type so var_decl compatibility checks pass.
+    // e.g. { Vec3{}, Vec3{}, Vec3{} } → [3]Vec3, not Vec3.
+    return sym_.arena().make_array(static_cast<uint64_t>(e->elems.size()), elem_ty);
 }
 
 // ---------------------------------------------------------------------------

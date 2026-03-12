@@ -74,7 +74,6 @@ private:
     void check_match(MatchStmt* s);
     void check_when(WhenStmt* s);
     void check_compound_assign(CompoundAssignStmt* s);
-    void check_inc_dec(IncDecStmt* s);
     void check_hash_assert(HashAssertStmt* s);
     void check_multi_decl(MultiDeclStmt* s);
     void check_multi_assign(MultiAssignStmt* s);
