@@ -1,0 +1,293 @@
+-- =============================================================================
+-- math_lib.z — Geometry and math library
+-- Keywords: proc struct if else loop break continue return true false
+--           cast cimport nil
+-- New surface: cimport, cast, nil pointer, *struct params
+-- =============================================================================
+
+cimport "math.h"
+
+-- ---------------------------------------------------------------------------
+-- Structs: Vec2, Vec3, Mat2 (2x2, stored row-major as flat [4]f64)
+-- ---------------------------------------------------------------------------
+
+Vec2 :: struct {
+    x : f64,
+    y : f64,
+}
+
+Vec3 :: struct {
+    x : f64,
+    y : f64,
+    z : f64,
+}
+
+-- 2x2 matrix stored row-major: [ a b ; c d ]
+Mat2 :: struct {
+    a : f64,
+    b : f64,
+    c : f64,
+    d : f64,
+}
+
+-- Optional Vec2 — demonstrates nil usage
+MaybeVec2 :: struct {
+    valid : bool,
+    v     : Vec2,
+}
+
+-- ---------------------------------------------------------------------------
+-- Vec2 operations
+-- ---------------------------------------------------------------------------
+
+vec2_add :: proc(a: Vec2, b: Vec2) -> Vec2 {
+    return Vec2{ x = a.x + b.x, y = a.y + b.y }
+}
+
+vec2_sub :: proc(a: Vec2, b: Vec2) -> Vec2 {
+    return Vec2{ x = a.x - b.x, y = a.y - b.y }
+}
+
+vec2_scale :: proc(v: Vec2, s: f64) -> Vec2 {
+    return Vec2{ x = v.x * s, y = v.y * s }
+}
+
+vec2_dot :: proc(a: Vec2, b: Vec2) -> f64 {
+    return a.x * b.x + a.y * b.y
+}
+
+vec2_len :: proc(v: Vec2) -> f64 {
+    return sqrt(v.x * v.x + v.y * v.y)
+}
+
+vec2_len_sq :: proc(v: Vec2) -> f64 {
+    return v.x * v.x + v.y * v.y
+}
+
+vec2_normalize :: proc(v: Vec2) -> Vec2 {
+    l := vec2_len(v)
+    if l == 0.0 { return Vec2{ x = 0.0, y = 0.0 } }
+    return Vec2{ x = v.x / l, y = v.y / l }
+}
+
+vec2_neg :: proc(v: Vec2) -> Vec2 {
+    return Vec2{ x = -v.x, y = -v.y }
+}
+
+-- Perpendicular (rotate 90 deg CCW)
+vec2_perp :: proc(v: Vec2) -> Vec2 {
+    return Vec2{ x = -v.y, y = v.x }
+}
+
+-- Cross product (returns scalar z-component)
+vec2_cross :: proc(a: Vec2, b: Vec2) -> f64 {
+    return a.x * b.y - a.y * b.x
+}
+
+-- In-place scale
+vec2_scale_ip :: proc(v: *Vec2, s: f64) {
+    v.*.x = v.*.x * s
+    v.*.y = v.*.y * s
+}
+
+-- Distance between two points
+vec2_dist :: proc(a: Vec2, b: Vec2) -> f64 {
+    dx := a.x - b.x
+    dy := a.y - b.y
+    return sqrt(dx * dx + dy * dy)
+}
+
+-- Linear interpolation
+vec2_lerp :: proc(a: Vec2, b: Vec2, t: f64) -> Vec2 {
+    return Vec2{
+        x = a.x + (b.x - a.x) * t,
+        y = a.y + (b.y - a.y) * t,
+    }
+}
+
+-- Reflect v around normal n (n must be unit)
+vec2_reflect :: proc(v: Vec2, n: Vec2) -> Vec2 {
+    d := 2.0 * vec2_dot(v, n)
+    return vec2_sub(v, vec2_scale(n, d))
+}
+
+-- ---------------------------------------------------------------------------
+-- Vec3 operations
+-- ---------------------------------------------------------------------------
+
+vec3_add :: proc(a: Vec3, b: Vec3) -> Vec3 {
+    return Vec3{ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
+}
+
+vec3_sub :: proc(a: Vec3, b: Vec3) -> Vec3 {
+    return Vec3{ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }
+}
+
+vec3_scale :: proc(v: Vec3, s: f64) -> Vec3 {
+    return Vec3{ x = v.x * s, y = v.y * s, z = v.z * s }
+}
+
+vec3_dot :: proc(a: Vec3, b: Vec3) -> f64 {
+    return a.x * b.x + a.y * b.y + a.z * b.z
+}
+
+vec3_cross :: proc(a: Vec3, b: Vec3) -> Vec3 {
+    return Vec3{
+        x = a.y * b.z - a.z * b.y,
+        y = a.z * b.x - a.x * b.z,
+        z = a.x * b.y - a.y * b.x,
+    }
+}
+
+vec3_len :: proc(v: Vec3) -> f64 {
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+}
+
+vec3_normalize :: proc(v: Vec3) -> Vec3 {
+    l := vec3_len(v)
+    if l == 0.0 { return Vec3{ x = 0.0, y = 0.0, z = 0.0 } }
+    return Vec3{ x = v.x / l, y = v.y / l, z = v.z / l }
+}
+
+vec3_lerp :: proc(a: Vec3, b: Vec3, t: f64) -> Vec3 {
+    return Vec3{
+        x = a.x + (b.x - a.x) * t,
+        y = a.y + (b.y - a.y) * t,
+        z = a.z + (b.z - a.z) * t,
+    }
+}
+
+-- ---------------------------------------------------------------------------
+-- Mat2 operations
+-- ---------------------------------------------------------------------------
+
+mat2_identity :: proc() -> Mat2 {
+    return Mat2{ a = 1.0, b = 0.0, c = 0.0, d = 1.0 }
+}
+
+mat2_mul :: proc(p: Mat2, q: Mat2) -> Mat2 {
+    return Mat2{
+        a = p.a * q.a + p.b * q.c,
+        b = p.a * q.b + p.b * q.d,
+        c = p.c * q.a + p.d * q.c,
+        d = p.c * q.b + p.d * q.d,
+    }
+}
+
+mat2_det :: proc(m: Mat2) -> f64 {
+    return m.a * m.d - m.b * m.c
+}
+
+mat2_transpose :: proc(m: Mat2) -> Mat2 {
+    return Mat2{ a = m.a, b = m.c, c = m.b, d = m.d }
+}
+
+-- Multiply matrix by Vec2 column vector
+mat2_mul_vec :: proc(m: Mat2, v: Vec2) -> Vec2 {
+    return Vec2{
+        x = m.a * v.x + m.b * v.y,
+        y = m.c * v.x + m.d * v.y,
+    }
+}
+
+-- Inverse (returns identity if singular)
+mat2_inverse :: proc(m: Mat2) -> Mat2 {
+    det := mat2_det(m)
+    if det == 0.0 { return mat2_identity() }
+    inv_det := 1.0 / det
+    return Mat2{
+        a =  m.d * inv_det,
+        b = -m.b * inv_det,
+        c = -m.c * inv_det,
+        d =  m.a * inv_det,
+    }
+}
+
+-- Rotation matrix for angle in radians
+mat2_rotation :: proc(angle: f64) -> Mat2 {
+    c := cos(angle)
+    s := sin(angle)
+    return Mat2{ a = c, b = -s, c = s, d = c }
+}
+
+-- ---------------------------------------------------------------------------
+-- Geometry utilities — demonstrate cast, nested if, early return
+-- ---------------------------------------------------------------------------
+
+-- Point-in-circle test
+point_in_circle :: proc(px: f64, py: f64, cx: f64, cy: f64, r: f64) -> bool {
+    dx := px - cx
+    dy := py - cy
+    return dx * dx + dy * dy <= r * r
+}
+
+-- Axis-aligned bounding box test
+point_in_aabb :: proc(px: f64, py: f64,
+                      ax: f64, ay: f64, bx: f64, by: f64) -> bool {
+    return px >= ax && px <= bx && py >= ay && py <= by
+}
+
+-- Sign of a 2D triangle orientation (positive = CCW)
+triangle_orientation :: proc(ax: f64, ay: f64,
+                              bx: f64, by: f64,
+                              cx: f64, cy: f64) -> f64 {
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+}
+
+-- Clamp float to [lo, hi]
+clamp_f64 :: proc(v: f64, lo: f64, hi: f64) -> f64 {
+    if v < lo { return lo }
+    if v > hi { return hi }
+    return v
+}
+
+-- Integer power via repeated multiplication + cast usage
+ipow_f64 :: proc(base: f64, exp: i64) -> f64 {
+    result : f64 = 1.0
+    i      : i64 = 0
+    for {
+        if i >= exp { break }
+        result = result * base
+        i = i + 1
+    }
+    return result
+}
+
+-- Map an integer index to a unit-circle point
+-- Demonstrates cast: i64 -> f64
+index_to_circle :: proc(idx: i64, total: i64) -> Vec2 {
+    angle := cast(f64) idx / cast(f64) total * 6.283185307179586
+    return Vec2{ x = cos(angle), y = sin(angle) }
+}
+
+-- Nearest point on segment to point p (demonstrates MaybeVec2 / nil-like)
+-- Returns a MaybeVec2 with valid=false when segment has zero length
+nearest_on_segment :: proc(px: f64, py: f64,
+                            ax: f64, ay: f64,
+                            bx: f64, by: f64) -> MaybeVec2 {
+    dx := bx - ax
+    dy := by - ay
+    len_sq := dx * dx + dy * dy
+    if len_sq == 0.0 {
+        zero_v := Vec2{ x = 0.0, y = 0.0 }
+        return MaybeVec2{ valid = false, v = zero_v }
+    }
+    t := ((px - ax) * dx + (py - ay) * dy) / len_sq
+    t = clamp_f64(t, 0.0, 1.0)
+    near_v := Vec2{ x = ax + t * dx, y = ay + t * dy }
+    return MaybeVec2{ valid = true, v = near_v }
+}
+
+-- Bilinear interpolation
+bilerp :: proc(a: f64, b: f64, c: f64, d: f64, u: f64, v: f64) -> f64 {
+    return a * (1.0 - u) * (1.0 - v)
+         + b * u         * (1.0 - v)
+         + c * (1.0 - u) * v
+         + d * u         * v
+}
+
+-- Smooth step (Ken Perlin)
+smoothstep :: proc(lo: f64, hi: f64, x: f64) -> f64 {
+    t := clamp_f64((x - lo) / (hi - lo), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+}

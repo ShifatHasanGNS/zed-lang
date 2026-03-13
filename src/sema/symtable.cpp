@@ -3,13 +3,55 @@
 // =============================================================================
 
 #include "../sema/symtable.hpp"
+#include "../frontend/tok_defs.hpp"
 
 #include <cassert>
 
 namespace ZedLang {
 
 // ---------------------------------------------------------------------------
-// resolve_ast_type
+// eval_const_int_simple — minimal constant folder used by collect_globals
+// sub-pass B0 to resolve integer constants before struct fields are typed.
+// Handles: integer literals, ident refs to already-folded consts, and
+// binary +/-/*/// over those. This mirrors the logic in type_checker.cpp
+// but operates only on the symbol table (no full type-checker dependency).
+// ---------------------------------------------------------------------------
+static bool eval_const_int_simple(Expr* e, SymbolTable& sym, int64_t& out);
+
+static bool eval_const_int_simple(Expr* e, SymbolTable& sym, int64_t& out) {
+    if (!e) return false;
+    if (auto* lit = dynamic_cast<LitExpr*>(e)) {
+        if (lit->lit_kind == LitExpr::INT) { out = static_cast<int64_t>(lit->int_val); return true; }
+        return false;
+    }
+    if (auto* id = dynamic_cast<IdentExpr*>(e)) {
+        Symbol* s = sym.lookup(id->name);
+        if (s && s->has_const_val) { out = s->const_int_val; return true; }
+        return false;
+    }
+    if (auto* bin = dynamic_cast<BinaryExpr*>(e)) {
+        int64_t lv, rv;
+        if (!eval_const_int_simple(bin->left, sym, lv)) return false;
+        if (!eval_const_int_simple(bin->right, sym, rv)) return false;
+        switch (bin->op) {
+            case TOK_PLUS:    out = lv + rv; return true;
+            case TOK_MINUS:   out = lv - rv; return true;
+            case TOK_STAR:    out = lv * rv; return true;
+            case TOK_SLASH:   if (rv == 0) return false; out = lv / rv; return true;
+            case TOK_PERCENT: if (rv == 0) return false; out = lv % rv; return true;
+            default: return false;
+        }
+    }
+    if (auto* un = dynamic_cast<UnaryExpr*>(e)) {
+        int64_t v;
+        if (!eval_const_int_simple(un->expr, sym, v)) return false;
+        if (un->op == TOK_MINUS) { out = -v; return true; }
+        return false;
+    }
+    return false;
+}
+
+
 // Translates an AST syntax Type node (ZedLang::Type from ast.hpp) into a
 // SemanticType (ZedLang::SemanticType from types.hpp).
 // The AST nodes ZedLang::PtrType / ZedLang::ArrayType / ZedLang::SliceType are in the
@@ -89,6 +131,41 @@ void SymbolTable::collect_globals(Program* prog) {
         Symbol sym(Symbol::Kind::STRUCT, tname, ty, d->range.begin);
         sym.initialized = true;
         declare(sym);
+    }
+
+    // Sub-pass B0: register all top-level constants and fold their integer values.
+    // This must run before sub-pass B so that array sizes like [SNAKE_MAX_SIZE]
+    // inside struct fields resolve correctly (resolve_ast_type looks up has_const_val).
+    // Multi-pass to handle chains like A :: 1; B :: A * 2; C :: B + 1.
+    {
+        // First: register all const symbols (with placeholder type).
+        for (Decl* d : prog->decls) {
+            if (d->kind() != Decl::CONST) continue;
+            auto* cd = static_cast<ConstDecl*>(d);
+            if (lookup(cd->const_name)) continue; // already declared
+            Symbol sym(Symbol::Kind::CONST, cd->const_name,
+                       arena().ty_error(), d->range.begin);
+            sym.initialized = true;
+            declare(sym);
+        }
+        // Then: fold integer values, iterating until no more progress.
+        // This resolves dependency chains in declaration order.
+        bool progress = true;
+        while (progress) {
+            progress = false;
+            for (Decl* d : prog->decls) {
+                if (d->kind() != Decl::CONST) continue;
+                auto* cd = static_cast<ConstDecl*>(d);
+                Symbol* sym = lookup(cd->const_name);
+                if (!sym || sym->has_const_val) continue;
+                int64_t val = 0;
+                if (eval_const_int_simple(cd->value, *this, val)) {
+                    sym->has_const_val = true;
+                    sym->const_int_val = val;
+                    progress = true;
+                }
+            }
+        }
     }
 
     // Sub-pass B: fill struct/union field lists.
@@ -177,6 +254,7 @@ void SymbolTable::collect_globals(Program* prog) {
 
         } else if (d->kind() == Decl::CONST) {
             auto* cd = static_cast<ConstDecl*>(d);
+            if (lookup(cd->const_name)) continue; // already registered by sub-pass B0
             Symbol sym(Symbol::Kind::CONST, cd->const_name,
                        arena().ty_error(), d->range.begin);
             sym.initialized = true;

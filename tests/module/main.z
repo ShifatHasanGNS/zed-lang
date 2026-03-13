@@ -1,0 +1,229 @@
+-- =============================================================================
+-- main.z — Tests the import keyword (multi-file module system)
+--
+-- Uses:
+--   import "collections"   -- no --- declarations needed
+--   import "math_lib"      -- structs and procs available automatically
+--
+-- Compile:
+--   ./zed tests/collections.z tests/math_lib.z tests/stress_import_main.z
+--   g++ -std=c++17 tests/collections.cpp tests/math_lib.cpp \
+--       tests/stress_import_main.cpp -lm -o stress_import && ./stress_import
+-- =============================================================================
+
+cimport "stdio.h"
+cimport "stdlib.h"
+
+import "./collections"
+import "./math_lib"
+
+-- No --- extern declarations needed. The zed injects all symbols from
+-- the imported modules automatically.
+
+-- ---------------------------------------------------------------------------
+-- Local helpers
+-- ---------------------------------------------------------------------------
+
+assert_true :: proc(cond: bool, msg: cstr) {
+    if !cond {
+        printf("FAIL: %s\n", msg)
+        exit(1)
+    }
+}
+
+assert_false :: proc(cond: bool, msg: cstr) {
+    if cond {
+        printf("FAIL: %s (expected false)\n", msg)
+        exit(1)
+    }
+}
+
+assert_eq_i64 :: proc(a: i64, b: i64, msg: cstr) {
+    if a != b {
+        printf("FAIL: %s (got %lld expected %lld)\n", msg, a, b)
+        exit(1)
+    }
+}
+
+assert_eq_f64 :: proc(a: f64, b: f64, msg: cstr) {
+    diff := a - b
+    if diff < 0.0 { diff = -diff }
+    if diff > 1e-7 {
+        printf("FAIL: %s (got %.15g expected %.15g)\n", msg, a, b)
+        exit(1)
+    }
+}
+
+-- ---------------------------------------------------------------------------
+-- 1. Use collections — all symbols available without ---
+-- ---------------------------------------------------------------------------
+
+test_import_collections :: proc() {
+    printf("1.  import collections......... ")
+
+    -- GCD / LCM from collections
+    assert_eq_i64(gcd(56, 98), 14, "gcd")
+    assert_eq_i64(lcm(4, 6),   12, "lcm")
+
+    -- Primes
+    assert_true(is_prime(101),  "101 prime")
+    assert_false(is_prime(100), "100 not prime")
+    assert_true(is_even(42),    "42 even")
+    assert_true(is_odd(7),      "7 odd")
+
+    -- SearchResult struct from collections
+    arr : [6]i64
+    arr[0] = 10   arr[1] = 20   arr[2] = 30
+    arr[3] = 40   arr[4] = 50   arr[5] = 60
+    s := arr[:]
+
+    r := linear_search(s, 6, 30)
+    assert_true(r.found,       "found 30")
+    assert_eq_i64(r.index, 2, "index of 30")
+
+    r2 := linear_search(s, 6, 99)
+    assert_false(r2.found,      "99 not found")
+
+    -- Sorting
+    data : [5]i64
+    data[0] = 5  data[1] = 1  data[2] = 4  data[3] = 2  data[4] = 3
+    ds := data[:]
+    bubble_sort(ds, 5)
+    assert_true(is_sorted_asc(ds, 5), "sorted")
+
+    -- Sum
+    assert_eq_i64(array_sum(ds, 5), 15, "sum 1..5")
+
+    -- RunResult struct from collections
+    runs : [7]i64
+    runs[0]=1  runs[1]=2  runs[2]=2  runs[3]=2  runs[4]=3  runs[5]=3  runs[6]=4
+    rs := runs[:]
+    rr := longest_run(rs, 7)
+    assert_eq_i64(rr.start,  1, "run start")
+    assert_eq_i64(rr.length, 3, "run len")
+
+    printf("OK\n")
+}
+
+-- ---------------------------------------------------------------------------
+-- 2. Use math_lib — Vec2, Vec3, Mat2, MaybeVec2 all available
+-- ---------------------------------------------------------------------------
+
+test_import_math_lib :: proc() {
+    printf("2.  import math_lib............ ")
+
+    eps :: 1e-9
+
+    -- Vec2 struct and operations
+    a := Vec2{ x = 3.0, y = 4.0 }
+    b := Vec2{ x = 1.0, y = 2.0 }
+
+    assert_eq_f64(vec2_len(a),              5.0,  "len 3-4-5")
+    assert_eq_f64(vec2_dot(a, b),          11.0,  "dot")
+    assert_eq_f64(vec2_cross(a, b),         2.0,  "cross")
+    assert_eq_f64(vec2_dist(a, b), vec2_len(vec2_sub(a, b)), "dist")
+
+    norm := vec2_normalize(a)
+    assert_eq_f64(vec2_len(norm), 1.0, "normalize")
+
+    -- Vec3 cross product
+    x3 := Vec3{ x = 1.0, y = 0.0, z = 0.0 }
+    y3 := Vec3{ x = 0.0, y = 1.0, z = 0.0 }
+    z3 := vec3_cross(x3, y3)
+    assert_eq_f64(z3.z, 1.0, "x cross y = z")
+    assert_eq_f64(vec3_dot(x3, y3), 0.0, "perp dot = 0")
+
+    -- Mat2 identity and inverse
+    I  := mat2_identity()
+    m  := Mat2{ a = 3.0, b = 1.0, c = 2.0, d = 4.0 }
+    mi := mat2_inverse(m)
+    prod := mat2_mul(m, mi)
+    assert_eq_f64(prod.a, 1.0, "M*Minv .a = 1")
+    assert_eq_f64(prod.b, 0.0, "M*Minv .b = 0")
+
+    -- MaybeVec2 (nil-like)
+    mv := nearest_on_segment(0.5, 0.0, 0.0, 0.0, 1.0, 0.0)
+    assert_true(mv.valid,         "nearest valid")
+    assert_eq_f64(mv.v.x, 0.5, "nearest.x")
+
+    bad := nearest_on_segment(1.0, 1.0, 0.0, 0.0, 0.0, 0.0)
+    assert_false(bad.valid, "degenerate segment")
+
+    -- Geometry utilities
+    assert_true(point_in_circle(0.0, 0.0, 0.0, 0.0, 1.0), "center in circle")
+    assert_eq_f64(smoothstep(0.0, 1.0, 0.0), 0.0, "smooth 0")
+    assert_eq_f64(smoothstep(0.0, 1.0, 1.0), 1.0, "smooth 1")
+    assert_eq_f64(clamp_f64(5.0, 0.0, 10.0), 5.0, "clamp")
+
+    printf("OK\n")
+}
+
+-- ---------------------------------------------------------------------------
+-- 3. Use both modules together in one computation
+-- ---------------------------------------------------------------------------
+
+test_cross_module :: proc() {
+    printf("3.  Cross-module usage......... ")
+
+    -- Compute centroid of points on unit circle
+    -- using index_to_circle (math_lib) and array_sum-style accumulation
+    n : i64 = 8
+    cx : f64 = 0.0
+    cy : f64 = 0.0
+    i  : i64 = 0
+    for {
+        if i >= n { break }
+        pt := index_to_circle(i, n)
+        cx = cx + pt.x
+        cy = cy + pt.y
+        i = i + 1
+    }
+    cx = cx / cast(f64) n
+    cy = cy / cast(f64) n
+    -- Centroid of equally-spaced points on unit circle is (0,0)
+    diff_x := cx
+    diff_y := cy
+    if diff_x < 0.0 { diff_x = -diff_x }
+    if diff_y < 0.0 { diff_y = -diff_y }
+    assert_true(diff_x < 1e-9, "centroid x ~ 0")
+    assert_true(diff_y < 1e-9, "centroid y ~ 0")
+
+    -- Sort the x-coordinates of 6 circle points using bubble_sort from collections
+    coords : [6]i64
+    j : i64 = 0
+    for {
+        if j >= 6 { break }
+        pt := index_to_circle(j, 6)
+        -- scale to integer for sorting (multiply by 1000 and round)
+        coords[j] = cast(i64) (pt.x * 1000.0)
+        j = j + 1
+    }
+    cs := coords[:]
+    bubble_sort(cs, 6)
+    assert_true(is_sorted_asc(cs, 6), "sorted circle x-coords")
+
+    -- Find a prime in a list of gcd results
+    gcds : [5]i64
+    gcds[0] = gcd(14, 21)   -- 7
+    gcds[1] = gcd(15, 25)   -- 5
+    gcds[2] = gcd(12, 18)   -- 6
+    gcds[3] = gcd(17, 34)   -- 17
+    gcds[4] = gcd(9, 12)    -- 3
+    gs := gcds[:]
+    assert_eq_i64(count_primes_in(gs, 5), 4, "prime gcds: 7,5,17,3")
+
+    printf("OK\n")
+}
+
+-- ---------------------------------------------------------------------------
+-- Main
+-- ---------------------------------------------------------------------------
+
+main :: proc() -> i32 {
+    printf("=== stress_import_main.z ===\n")
+    test_import_collections()
+    test_import_math_lib()
+    test_cross_module()
+    printf("=== All import tests passed! ===\n")
+    return 0
+}

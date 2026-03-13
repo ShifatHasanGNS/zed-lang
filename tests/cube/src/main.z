@@ -1,0 +1,197 @@
+cimport "raylib.h"
+cimport "math.h"
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Constants
+-- ═══════════════════════════════════════════════════════════════════════════
+
+WINDOW_WIDTH    :: 800
+GRID_WIDTH      :: 5
+CELL_WIDTH      :: 1
+CANVAS_WIDTH    :: GRID_WIDTH * CELL_WIDTH    -- = 5
+ZOOMING_FACTOR  :: 160                        -- WINDOW_WIDTH / CANVAS_WIDTH
+TICK_TIME       :: 0.2
+CAMERA_DIST     :: 5.0
+CANVAS_CENTER_X :: 2.5                        -- f32(CANVAS_WIDTH) / 2
+CANVAS_CENTER_Y :: 2.5
+
+NUM_VERTICES    :: 5
+NUM_EDGES       :: 8
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Types
+-- ═══════════════════════════════════════════════════════════════════════════
+
+Vec3 :: struct {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+Edge :: struct {
+    a: i32,
+    b: i32,
+}
+
+Proj2D :: struct {
+    x: f32,
+    y: f32,
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Global scene data
+-- ═══════════════════════════════════════════════════════════════════════════
+
+base_vertices : [NUM_VERTICES]Vec3
+edges         : [NUM_EDGES]Edge
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- rotate_y / rotate_x
+-- ═══════════════════════════════════════════════════════════════════════════
+
+rotate_y :: proc(v: Vec3, angle: f32) -> Vec3 {
+    cos_a := cosf(angle)
+    sin_a := sinf(angle)
+    return Vec3{
+        x = v.x * cos_a + v.z * sin_a,
+        y = v.y,
+        z = -v.x * sin_a + v.z * cos_a,
+    }
+}
+
+rotate_x :: proc(v: Vec3, angle: f32) -> Vec3 {
+    cos_a := cosf(angle)
+    sin_a := sinf(angle)
+    return Vec3{
+        x = v.x,
+        y = v.y * cos_a - v.z * sin_a,
+        z = v.y * sin_a + v.z * cos_a,
+    }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- center_of_mass
+-- ═══════════════════════════════════════════════════════════════════════════
+
+center_of_mass :: proc() -> Vec3 {
+    X : f32 = 0.0
+    Y : f32 = 0.0
+    Z : f32 = 0.0
+
+    for i in 0 ..< NUM_VERTICES {
+        X = X + base_vertices[i].x
+        Y = Y + base_vertices[i].y
+        Z = Z + base_vertices[i].z
+    }
+
+    n := cast(f32)(NUM_VERTICES)
+    return Vec3{ x = X / n, y = Y / n, z = Z / n }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- project_to_2d
+-- Simple perspective projection; returns screen-space (x, y).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+project_to_2d :: proc(v: Vec3) -> Proj2D {
+    z := v.z + CAMERA_DIST
+    if z <= 0.1 { z = 0.1 }
+    scale := CAMERA_DIST / z
+    return Proj2D{
+        x = v.x * scale + CANVAS_CENTER_X,
+        y = v.y * scale + CANVAS_CENTER_Y,
+    }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- init_scene — fill vertex and edge tables
+-- ═══════════════════════════════════════════════════════════════════════════
+
+init_scene :: proc() {
+    -- Pyramid: 5 vertices
+    base_vertices[0] = Vec3{ x = 0.5, y = -1.0, z = 0.5 }
+    base_vertices[1] = Vec3{ x = 0.0, y =  0.0, z = 0.0 }
+    base_vertices[2] = Vec3{ x = 1.0, y =  0.0, z = 0.0 }
+    base_vertices[3] = Vec3{ x = 1.0, y =  0.0, z = 1.0 }
+    base_vertices[4] = Vec3{ x = 0.0, y =  0.0, z = 1.0 }
+
+    -- Pyramid: 8 edges
+    edges[0] = Edge{ a = 0, b = 1 }
+    edges[1] = Edge{ a = 0, b = 2 }
+    edges[2] = Edge{ a = 0, b = 3 }
+    edges[3] = Edge{ a = 0, b = 4 }
+    edges[4] = Edge{ a = 1, b = 2 }
+    edges[5] = Edge{ a = 2, b = 3 }
+    edges[6] = Edge{ a = 3, b = 4 }
+    edges[7] = Edge{ a = 4, b = 1 }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- main
+-- ═══════════════════════════════════════════════════════════════════════════
+
+main :: proc() -> i32 {
+    init_scene()
+
+    SetConfigFlags(FLAG_VSYNC_HINT)
+    InitWindow(cast(i32)(WINDOW_WIDTH), cast(i32)(WINDOW_WIDTH), "Cube Simulation")
+    defer CloseWindow()
+
+    camera := Camera2D{}
+    camera.zoom = cast(f32)(ZOOMING_FACTOR)
+
+    rotation_y : f32 = 0.0
+    rotation_x : f32 = 0.0
+
+    vertices_center := center_of_mass()
+
+    for not WindowShouldClose() {
+        dt := GetFrameTime()
+
+        rotation_y += dt * 0.5
+        rotation_x += dt * 0.3
+
+        BeginDrawing()
+        defer EndDrawing()
+        BeginMode2D(camera)
+        defer EndMode2D()
+
+        ClearBackground(BLACK)
+
+        -- Transform all vertices: subtract center, rotate, store in local array
+        transformed : [NUM_VERTICES]Vec3
+        for i in 0 ..< NUM_VERTICES {
+            v := Vec3{
+                x = base_vertices[i].x - vertices_center.x,
+                y = base_vertices[i].y - vertices_center.y,
+                z = base_vertices[i].z - vertices_center.z,
+            }
+            v = rotate_y(v, rotation_y)
+            v = rotate_x(v, rotation_x)
+            transformed[i] = v
+        }
+
+        -- Draw edges
+        for i in 0 ..< NUM_EDGES {
+            v1 := transformed[edges[i].a]
+            v2 := transformed[edges[i].b]
+            p1 := project_to_2d(v1)
+            p2 := project_to_2d(v2)
+            DrawLineEx(
+                Vector2{ x = p1.x, y = p1.y },
+                Vector2{ x = p2.x, y = p2.y },
+                0.05,
+                SKYBLUE
+            )
+        }
+
+        -- Draw vertices
+        for i in 0 ..< NUM_VERTICES {
+            p           := project_to_2d(transformed[i])
+            vertex_rect := Rectangle{ x = p.x - 0.025, y = p.y - 0.025, width = 0.05, height = 0.05 }
+            DrawRectangleRec(vertex_rect, GOLD)
+        }
+    }
+
+    return 0
+}

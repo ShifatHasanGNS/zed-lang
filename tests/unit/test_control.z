@@ -1,0 +1,359 @@
+-- test_control.z
+-- Covers: if/else, all for forms, labeled break/continue, continue (no label),
+--         return (void/single/multi), defer (LIFO, loop, nested in if),
+--         procedures (basic, void, multi-return, named-return, or_return),
+--         proc type variable, multiple multi-return calls in same proc
+
+cimport "stdio.h"
+
+-- ── Procedures ───────────────────────────────────────────────────────────────
+
+add :: proc(a: i32, b: i32) -> i32 { return a + b }
+
+-- Void proc (no return type)
+greet_count := 0
+greet :: proc(name: cstr) {
+    greet_count += 1
+}
+
+-- Return from middle of body
+clamp :: proc(v: i32, lo: i32, hi: i32) -> i32 {
+    if v < lo { return lo }
+    if v > hi { return hi }
+    return v
+}
+
+-- Multi-return
+min_max :: proc(a: i32, b: i32) -> (i32, i32) {
+    if a < b { return a, b }
+    return b, a
+}
+
+-- Named-return: bare return (zero path)
+divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
+    if b == 0 { return }
+    result = a / b
+    ok = true
+    return
+}
+
+-- Named-return: multiple exit branches
+classify :: proc(n: i32) -> (label: cstr, positive: bool) {
+    if n > 0 {
+        label    = "positive"
+        positive = true
+        return
+    }
+    if n < 0 {
+        label    = "negative"
+        positive = false
+        return
+    }
+    label    = "zero"
+    positive = false
+    return
+}
+
+-- or_return source proc
+parse_positive :: proc(n: i32) -> (i32, bool) {
+    if n <= 0 { return 0, false }
+    return n, true
+}
+
+-- or_return consumer: propagates failure
+double_positive :: proc(a: i32, b: i32) -> (i32, bool) {
+    x := parse_positive(a) or_return
+    y := parse_positive(b) or_return
+    return x + y, true
+}
+
+-- or_return chain (three levels)
+triple_positive :: proc(a: i32, b: i32, c: i32) -> (i32, bool) {
+    x := parse_positive(a) or_return
+    y := parse_positive(b) or_return
+    z := parse_positive(c) or_return
+    return x + y + z, true
+}
+
+check_procs :: proc() -> bool {
+    -- Basic proc
+    if add(3, 4) != 7 { return false }
+
+    -- Void proc side-effect
+    greet("zed")
+    if greet_count != 1 { return false }
+
+    -- Return from middle
+    if clamp(15, 0, 10) != 10 { return false }
+    if clamp(-5, 0, 10) != 0  { return false }
+    if clamp(5,  0, 10) != 5  { return false }
+
+    -- Multi-return
+    lo, hi := min_max(7, 3)
+    if lo != 3 { return false }
+    if hi != 7 { return false }
+
+    -- Named-return: success path
+    q, ok := divide(10, 3)
+    if not ok  { return false }
+    if q != 3  { return false }
+
+    -- Named-return: zero path (b=0)
+    _, ok2 := divide(10, 0)
+    if ok2 { return false }
+
+    -- Named-return: multiple exit branches
+    lbl, pos := classify(5)
+    if pos         == false { return false }
+    if strcmp(lbl,   "positive") != 0 { return false }
+
+    lbl2, pos2 := classify(-3)
+    if pos2        == true  { return false }
+    if strcmp(lbl2,  "negative") != 0 { return false }
+
+    lbl3, pos3 := classify(0)
+    if pos3        == true  { return false }
+    if strcmp(lbl3,  "zero") != 0 { return false }
+
+    -- or_return: success
+    sum, ok3 := double_positive(4, 6)
+    if not ok3   { return false }
+    if sum != 10 { return false }
+
+    -- or_return: failure propagation
+    _, ok4 := double_positive(-1, 5)
+    if ok4 { return false }
+
+    -- or_return chain (3 levels)
+    total, ok5 := triple_positive(1, 2, 3)
+    if not ok5     { return false }
+    if total != 6  { return false }
+
+    _, ok6 := triple_positive(1, -1, 3)
+    if ok6 { return false }
+
+    -- Multiple multi-return calls in same proc (K2: unique tmp names)
+    q2, ok7 := divide(20, 4)
+    if not ok7 { return false }
+    if q2 != 5 { return false }
+
+    q3, ok8 := divide(9, 3)
+    if not ok8 { return false }
+    if q3 != 3 { return false }
+
+    return true
+}
+
+-- ── Proc type variable (function pointer) ────────────────────────────────────
+
+apply :: proc(f: proc(i32) -> i32, v: i32) -> i32 { return f(v) }
+
+check_proc_type_var :: proc() -> bool {
+    -- Proc variable holding a proc literal
+    double: proc(i32) -> i32 = proc(x: i32) -> i32 { return x * 2 }
+    if double(5) != 10 { return false }
+
+    -- Reassign proc variable
+    double = proc(x: i32) -> i32 { return x * 3 }
+    if double(5) != 15 { return false }
+
+    -- Passed as argument
+    r := apply(proc(x: i32) -> i32 { return x + 100 }, 7)
+    if r != 107 { return false }
+
+    -- Proc variable typed in annotation
+    callback: proc(i32) -> i32 = proc(x: i32) -> i32 { return x - 1 }
+    if callback(10) != 9 { return false }
+
+    return true
+}
+
+-- ── Control flow ─────────────────────────────────────────────────────────────
+
+check_if :: proc() -> bool {
+    x := 5
+    r := 0
+    if x > 10 {
+        r = 1
+    } else if x == 5 {
+        r = 2
+    } else {
+        r = 3
+    }
+    if r != 2 { return false }
+
+    -- Nested if
+    a := 3
+    b := 4
+    max := 0
+    if a > b { max = a } else { max = b }
+    if max != 4 { return false }
+
+    -- if as guard (no else)
+    flag := false
+    if true { flag = true }
+    if not flag { return false }
+
+    return true
+}
+
+check_for_infinite :: proc() -> bool {
+    n := 0
+    for {
+        n += 1
+        if n == 5 { break }
+    }
+    return n == 5
+}
+
+check_for_while :: proc() -> bool {
+    x := 10
+    for x > 0 { x -= 3 }
+    -- 10 → 7 → 4 → 1 → -2
+    return x == -2
+}
+
+check_for_range :: proc() -> bool {
+    -- Exclusive range 0 ..< 5  →  0,1,2,3,4
+    sum := 0
+    for i in 0 ..< 5 { sum += i }
+    if sum != 10 { return false }
+
+    -- Inclusive range 1 ..= 4  →  1,2,3,4
+    prod := 1
+    for i in 1 ..= 4 { prod *= i }
+    if prod != 24 { return false }
+
+    -- Inclusive with step: 0 ..= 10 step 2  →  0,2,4,6,8,10
+    total := 0
+    for i in 0 ..= 10 step 2 { total += i }
+    if total != 30 { return false }
+
+    -- Range producing zero iterations
+    count := 0
+    for i in 5 ..< 5 { count += 1 }
+    if count != 0 { return false }
+
+    return true
+}
+
+check_continue :: proc() -> bool {
+    -- continue without label (skips even numbers)
+    odds := 0
+    for i in 0 ..< 10 {
+        if i % 2 == 0 { continue }
+        odds += 1
+    }
+    if odds != 5 { return false }
+
+    -- continue in while-style for
+    x := 0
+    evens := 0
+    for x < 10 {
+        x += 1
+        if x % 2 != 0 { continue }
+        evens += 1
+    }
+    if evens != 5 { return false }
+
+    return true
+}
+
+check_labeled_loops :: proc() -> bool {
+    -- break outer from inner
+    hit := 0
+    i := 0
+    outer: for {
+        i += 1
+        j := 0
+        for {
+            j += 1
+            if j == 3 { break }
+            hit += 1
+        }
+        if i == 3 { break outer }
+    }
+    if hit != 6 { return false }
+
+    -- continue outer from inner
+    skipped := 0
+    count   := 0
+    k := 0
+    outer2: for {
+        k += 1
+        if k > 5 { break outer2 }
+        l := 0
+        for {
+            l += 1
+            if l == 2 { skipped += 1  continue outer2 }
+            count += 1
+        }
+    }
+    if skipped != 5 { return false }
+    if count   != 5 { return false }
+
+    return true
+}
+
+-- ── Defer ────────────────────────────────────────────────────────────────────
+
+defer_order := 0
+defer_log: [8]i32
+
+record_defer :: proc(v: i32) {
+    defer_log[defer_order] = v
+    defer_order += 1
+}
+
+check_defer :: proc() -> bool {
+    -- LIFO order in a block
+    defer_order = 0
+    {
+        defer record_defer(1)
+        defer record_defer(2)
+        defer record_defer(3)
+    }
+    if defer_log[0] != 3 { return false }
+    if defer_log[1] != 2 { return false }
+    if defer_log[2] != 1 { return false }
+
+    -- Defer fires every loop iteration
+    defer_order = 0
+    for i in 0 ..< 3 {
+        defer record_defer(i)
+    }
+    if defer_order != 3 { return false }
+    -- Each iteration fired once: values are 0, 1, 2
+    if defer_log[0] != 0 { return false }
+    if defer_log[1] != 1 { return false }
+    if defer_log[2] != 2 { return false }
+
+    -- Defer inside if block
+    defer_order = 0
+    x := true
+    if x {
+        defer record_defer(7)
+        defer record_defer(8)
+    }
+    if defer_log[0] != 8 { return false }
+    if defer_log[1] != 7 { return false }
+
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    if not check_procs()         { printf("FAIL procs\n")         return 1 }
+    if not check_proc_type_var() { printf("FAIL proc_type_var\n") return 1 }
+    if not check_if()            { printf("FAIL if\n")            return 1 }
+    if not check_for_infinite()  { printf("FAIL for_infinite\n")  return 1 }
+    if not check_for_while()     { printf("FAIL for_while\n")     return 1 }
+    if not check_for_range()     { printf("FAIL for_range\n")     return 1 }
+    if not check_continue()      { printf("FAIL continue\n")      return 1 }
+    if not check_labeled_loops() { printf("FAIL labeled_loops\n") return 1 }
+    if not check_defer()         { printf("FAIL defer\n")         return 1 }
+
+    printf("test_control: OK\n\n\n")
+    return 0
+}

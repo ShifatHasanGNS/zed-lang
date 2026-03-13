@@ -130,7 +130,7 @@ Global variables are declared at the top level (outside any proc).
 **Bitwise:** `&  |  ^  <<  >>`
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
-**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
+**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=  <<=  >>=`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
 
 > Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.

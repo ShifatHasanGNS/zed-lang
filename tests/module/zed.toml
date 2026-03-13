@@ -1,0 +1,20 @@
+[project]
+name = "module"
+version = "0.1.0"
+
+[build]
+sources = ["collections.z", "math_lib.z", "main.z"]
+output = "module"
+compiler = "g++"
+std = "c++17"
+
+[compile]
+flags = []
+include_dirs = []
+defines = []
+
+[link]
+libs = ["m"]
+lib_dirs = []
+frameworks = []
+flags = []

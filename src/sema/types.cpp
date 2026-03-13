@@ -198,9 +198,12 @@ bool SemanticType::operator==(const SemanticType& o) const {
             if (a.params.size() != b.params.size()) return false;
             for (size_t i = 0; i < a.params.size(); ++i)
                 if (*a.params[i].type != *b.params[i].type) return false;
-            if (a.return_type && b.return_type)
-                return *a.return_type == *b.return_type;
-            return a.return_type == b.return_type;
+            // nullptr return_type means void — treat them as equal.
+            bool a_void = !a.return_type || a.return_type->is_void();
+            bool b_void = !b.return_type || b.return_type->is_void();
+            if (a_void && b_void) return true;
+            if (a_void != b_void) return false;
+            return *a.return_type == *b.return_type;
         }
         default:
             return true;  // primitives — kind equality is sufficient

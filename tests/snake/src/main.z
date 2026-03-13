@@ -1,0 +1,330 @@
+cimport "math.h"
+cimport "raylib.h"
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Config constants  (mirrors snake.odin top-level constants)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+WINDOW_SIZE         :: 800
+GRID_SIZE           :: 20
+CELL_SIZE           :: 16
+CANVAS_SIZE         :: GRID_SIZE * CELL_SIZE          -- 320
+SNAKE_MAX_SIZE      :: GRID_SIZE * GRID_SIZE          -- 400
+TICK_TIME           :: 0.2                            -- seconds per tick (>= 100 ms)
+SNAKE_SIZE_AT_START :: 3
+ZOOMING_FACTOR      :: 2.5                            -- WINDOW_SIZE / CANVAS_SIZE
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Types
+-- ═══════════════════════════════════════════════════════════════════════════
+
+Vec2i :: struct {
+    x: i32,
+    y: i32,
+}
+
+Snake :: struct {
+    size     : i32,
+    bodyparts: [SNAKE_MAX_SIZE]Vec2i,
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Global state
+-- ═══════════════════════════════════════════════════════════════════════════
+
+sprite_food: Texture
+sprite_head: Texture
+sprite_body: Texture
+sprite_tail: Texture
+sound_eat  : Sound
+sound_crash: Sound
+
+game_over         := false
+move_dir          := Vec2i{ x = 0, y = 0 }
+tick_timer        := TICK_TIME
+score             := 0
+high_score        := 0
+is_food_available := false
+food_pos          := Vec2i{ x = 0, y = 0 }
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- load_system_font
+-- ═══════════════════════════════════════════════════════════════════════════
+
+load_system_font :: proc() -> Font {
+    return GetFontDefault()
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- restart  —  reset all game state and re-place the snake
+-- ═══════════════════════════════════════════════════════════════════════════
+
+restart :: proc(snake: *Snake) {
+    game_over         = false
+    is_food_available = false
+    move_dir          = Vec2i{ x = 0, y = 0 }
+
+    for i in 0 ..< SNAKE_SIZE_AT_START {
+        snake.*.bodyparts[i].x = GRID_SIZE / 2
+        snake.*.bodyparts[i].y = GRID_SIZE / 2 + i
+    }
+    snake.*.size = SNAKE_SIZE_AT_START
+
+    if score > high_score { high_score = score }
+    score = 0
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- set_move_direction_from_keypress
+-- Prevents reversing direction (cannot go right while moving left, etc.)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+set_move_direction_from_keypress :: proc() {
+    new_dir := move_dir
+
+    if IsKeyDown(KEY_UP)    and move_dir.y != 1  { new_dir.x = 0   new_dir.y = -1 }
+    if IsKeyDown(KEY_DOWN)  and move_dir.y != -1 { new_dir.x = 0   new_dir.y = 1  }
+    if IsKeyDown(KEY_LEFT)  and move_dir.x != 1  { new_dir.x = -1  new_dir.y = 0  }
+    if IsKeyDown(KEY_RIGHT) and move_dir.x != -1 { new_dir.x = 1   new_dir.y = 0  }
+
+    -- Reset tick timer on first input so movement is immediate
+    if move_dir.x == 0 and move_dir.y == 0 and (new_dir.x != 0 or new_dir.y != 0) {
+        tick_timer = TICK_TIME
+    }
+
+    move_dir = new_dir
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- move_snake
+-- ═══════════════════════════════════════════════════════════════════════════
+
+move_snake :: proc(snake: *Snake) {
+    new_head := Vec2i{
+        x = snake.*.bodyparts[0].x + move_dir.x,
+        y = snake.*.bodyparts[0].y + move_dir.y,
+    }
+    current_tail := snake.*.bodyparts[snake.*.size - 1]
+
+    -- Wall collision
+    out_of_box := new_head.x < 0 or new_head.y < 0 or
+                  new_head.x >= GRID_SIZE or new_head.y >= GRID_SIZE
+    if out_of_box {
+        PlaySound(sound_crash)
+        game_over = true
+        return
+    }
+
+    -- Self collision
+    for i in 1 ..< snake.*.size {
+        if new_head.x == snake.*.bodyparts[i].x and
+           new_head.y == snake.*.bodyparts[i].y {
+            PlaySound(sound_crash)
+            game_over = true
+            return
+        }
+    }
+
+    -- Shift body segments backward
+    for i in 1 ..< snake.*.size {
+        idx := snake.*.size - i
+        snake.*.bodyparts[idx] = snake.*.bodyparts[idx - 1]
+    }
+    snake.*.bodyparts[0] = new_head
+
+    -- Eat food
+    if new_head.x == food_pos.x and new_head.y == food_pos.y {
+        PlaySound(sound_eat)
+        score = score + 1
+        snake.*.bodyparts[snake.*.size] = current_tail
+        snake.*.size = snake.*.size + 1
+        is_food_available = false
+    }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- generate_food
+-- ═══════════════════════════════════════════════════════════════════════════
+
+generate_food :: proc(snake: *Snake) {
+    free_cells: [SNAKE_MAX_SIZE]Vec2i
+    free_count: i32 = 0
+
+    for x in 0 ..< GRID_SIZE {
+        for y in 0 ..< GRID_SIZE {
+            occupied: bool = false
+            for i in 0 ..< snake.*.size {
+                if snake.*.bodyparts[i].x == x and snake.*.bodyparts[i].y == y {
+                    occupied = true
+                    break
+                }
+            }
+            if not occupied {
+                free_cells[free_count].x = x
+                free_cells[free_count].y = y
+                free_count = free_count + 1
+            }
+        }
+    }
+
+    if free_count > 0 {
+        rnd      := GetRandomValue(0, free_count - 1)
+        food_pos  = free_cells[rnd]
+        is_food_available = true
+    }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- draw_food
+-- ═══════════════════════════════════════════════════════════════════════════
+
+draw_food :: proc() {
+    if is_food_available {
+        pos := Vector2{
+            x = cast(f32)(food_pos.x) * cast(f32)(CELL_SIZE),
+            y = cast(f32)(food_pos.y) * cast(f32)(CELL_SIZE),
+        }
+        DrawTextureV(sprite_food, pos, WHITE)
+    }
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- draw_snake
+-- Draws head (rotated to face direction), body, and tail (rotated).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+draw_snake :: proc(snake: *Snake) {
+    cs      := cast(f32)(CELL_SIZE)
+    half_cs := cs * 0.5
+
+
+    head_dir := Vec2i{
+        x = snake.*.bodyparts[0].x - snake.*.bodyparts[1].x,
+        y = snake.*.bodyparts[0].y - snake.*.bodyparts[1].y,
+    }
+    tail_dir := Vec2i{
+        x = snake.*.bodyparts[snake.*.size - 2].x - snake.*.bodyparts[snake.*.size - 1].x,
+        y = snake.*.bodyparts[snake.*.size - 2].y - snake.*.bodyparts[snake.*.size - 1].y,
+    }
+
+    origin := Vector2{ x = half_cs, y = half_cs }
+
+    -- ── Head ────────────────────────────────────────────────────────────────
+    rotation      := atan2f(cast(f32)(head_dir.y), cast(f32)(head_dir.x)) * 57.29577951
+    head_dir_sign := 1
+    abs_rot       := rotation
+    if abs_rot < 0.0 { abs_rot = -abs_rot }
+    if abs_rot == 180.0 { head_dir_sign = -1 }
+
+    head_src := Rectangle{
+        x      = 0.0,
+        y      = 0.0,
+        width  = cast(f32)(sprite_head.width),
+        height = cast(f32)(head_dir_sign) * cast(f32)(sprite_head.height),
+    }
+    head_dest := Rectangle{
+        x      = cast(f32)(snake.*.bodyparts[0].x) * cs + half_cs,
+        y      = cast(f32)(snake.*.bodyparts[0].y) * cs + half_cs,
+        width  = cs,
+        height = cs,
+    }
+    DrawTexturePro(sprite_head, head_src, head_dest, origin, rotation, WHITE)
+
+    -- ── Body ────────────────────────────────────────────────────────────────
+    for i in 1 ..< (snake.*.size - 1) {
+        pos := Vector2{
+            x = cast(f32)(snake.*.bodyparts[i].x) * cs,
+            y = cast(f32)(snake.*.bodyparts[i].y) * cs,
+        }
+        DrawTextureV(sprite_body, pos, GREEN)
+    }
+
+    -- ── Tail ────────────────────────────────────────────────────────────────
+    tail_rot := atan2f(cast(f32)(tail_dir.y), cast(f32)(tail_dir.x)) * 57.29577951
+
+    tail_src := Rectangle{
+        x      = 0.0,
+        y      = 0.0,
+        width  = cast(f32)(sprite_tail.width),
+        height = cast(f32)(sprite_tail.height),
+    }
+    tail_dest := Rectangle{
+        x      = cast(f32)(snake.*.bodyparts[snake.*.size - 1].x) * cs + half_cs,
+        y      = cast(f32)(snake.*.bodyparts[snake.*.size - 1].y) * cs + half_cs,
+        width  = cs,
+        height = cs,
+    }
+    DrawTexturePro(sprite_tail, tail_src, tail_dest, origin, tail_rot, WHITE)
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- main
+-- ═══════════════════════════════════════════════════════════════════════════
+
+main :: proc() -> i32 {
+    SetConfigFlags(FLAG_VSYNC_HINT)
+    InitWindow(cast(i32)(WINDOW_SIZE), cast(i32)(WINDOW_SIZE), "Snake Game")
+    InitAudioDevice()
+    defer CloseWindow()
+    defer CloseAudioDevice()
+
+    font := load_system_font()
+    defer UnloadFont(font)
+
+    sprite_food = LoadTexture("tests/snake/Assets/food.png")
+    sprite_head = LoadTexture("tests/snake/Assets/head.png")
+    sprite_body = LoadTexture("tests/snake/Assets/body.png")
+    sprite_tail = LoadTexture("tests/snake/Assets/tail.png")
+    defer UnloadTexture(sprite_food)
+    defer UnloadTexture(sprite_head)
+    defer UnloadTexture(sprite_body)
+    defer UnloadTexture(sprite_tail)
+
+    sound_eat   = LoadSound("tests/snake/Assets/eat.wav")
+    sound_crash = LoadSound("tests/snake/Assets/crash.wav")
+    defer UnloadSound(sound_eat)
+    defer UnloadSound(sound_crash)
+
+    camera := Camera2D{}
+    camera.zoom = cast(f32)(ZOOMING_FACTOR)
+
+    snake: Snake
+    restart(&snake)
+
+    for not WindowShouldClose() {
+        BeginDrawing()
+        defer EndDrawing()
+        BeginMode2D(camera)
+        defer EndMode2D()
+
+        set_move_direction_from_keypress()
+
+        if game_over {
+            if IsKeyPressed(KEY_ENTER) { restart(&snake) }
+        } else {
+            tick_timer = tick_timer - GetFrameTime()
+        }
+
+        if tick_timer <= 0.0 and (move_dir.x != 0 or move_dir.y != 0) {
+            move_snake(&snake)
+            tick_timer += TICK_TIME
+        }
+
+        ClearBackground(Color{ r = 76, g = 53, b = 83, a = 255 })
+
+        if not is_food_available { generate_food(&snake) }
+        draw_food()
+        draw_snake(&snake)
+
+        if not game_over {
+            DrawTextEx(font, TextFormat("Score: %d",      cast(i32)(score)),      Vector2{ x = 4.0,   y = 4.0  }, 14.0, 1.0, GOLD)
+            DrawTextEx(font, TextFormat("High Score: %d", cast(i32)(high_score)), Vector2{ x = 4.0,   y = 20.0 }, 12.0, 1.0, BROWN)
+            DrawTextEx(font, TextFormat("FPS: %2d",       GetFPS()),               Vector2{ x = 270.0, y = 4.0  }, 13.0, 1.0, SKYBLUE)
+        } else {
+            DrawTextEx(font, "Better Luck Next Time! :(",   Vector2{ x = 4.0, y = 4.0  }, 16.0, 1.0, GOLD)
+            DrawTextEx(font, "Press [ENTER] to Restart...", Vector2{ x = 4.0, y = 30.0 }, 14.0, 1.0, GRAY)
+        }
+    }
+
+    return 0
+}

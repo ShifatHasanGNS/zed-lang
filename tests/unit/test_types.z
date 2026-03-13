@@ -1,0 +1,338 @@
+-- test_types.z
+-- Covers: structs (literal, field access, spread, pointer, nested literal,
+--         zero-init, const-expr array field), unions, enums, match (integer
+--         and enum, dot-shorthand, full-name, else), proc literals,
+--         strings (cstr/string, len, conversion)
+
+cimport "stdio.h"
+cimport "string.h"
+
+-- ── Structs ──────────────────────────────────────────────────────────────────
+
+Vec2 :: struct {
+    x: f32,
+    y: f32,
+}
+
+Rect :: struct {
+    pos:  Vec2,
+    size: Vec2,
+}
+
+-- Struct with a const-expr sized array field
+MAX_PTS :: 4
+Polygon :: struct {
+    count:  i32,
+    points: [MAX_PTS]Vec2,
+}
+
+check_structs :: proc() -> bool {
+    -- Literal + field access
+    v := Vec2{ x = 3.0, y = 4.0 }
+    if v.x != 3.0 { return false }
+    if v.y != 4.0 { return false }
+
+    -- Field mutation
+    v.x = 10.0
+    if v.x != 10.0 { return false }
+
+    -- Spread / struct update
+    v2 := Vec2{ ..v, y = 99.0 }
+    if v2.x != 10.0 { return false }
+    if v2.y != 99.0 { return false }
+    -- Original unchanged
+    if v.y != 4.0 { return false }
+
+    -- Pointer to struct
+    p := &v
+    p.*.y = 7.0
+    if v.y != 7.0 { return false }
+
+    -- Zero-init struct (no literal)
+    z: Vec2
+    if z.x != 0.0 { return false }
+    if z.y != 0.0 { return false }
+
+    -- Nested struct literal (K3 fix)
+    r := Rect{ pos = Vec2{ x=1.0, y=2.0 }, size = Vec2{ x=100.0, y=50.0 } }
+    if r.pos.x  != 1.0   { return false }
+    if r.pos.y  != 2.0   { return false }
+    if r.size.x != 100.0 { return false }
+    if r.size.y != 50.0  { return false }
+
+    -- Nested spread
+    r2 := Rect{ ..r, size = Vec2{ x=200.0, y=100.0 } }
+    if r2.pos.x  != 1.0   { return false }
+    if r2.size.x != 200.0 { return false }
+
+    -- Aggregate initializer
+    pts: [2]Vec2 = { Vec2{x=0.0,y=0.0}, Vec2{x=1.0,y=1.0} }
+    if pts[1].x != 1.0 { return false }
+    if pts[0].y != 0.0 { return false }
+
+    return true
+}
+
+-- ── Struct with const-expr array field ───────────────────────────────────────
+
+check_struct_array_field :: proc() -> bool {
+    -- Zero-init
+    poly: Polygon
+    if poly.count      != 0   { return false }
+    if poly.points[0].x != 0.0 { return false }
+
+    -- Assign
+    poly.count = 3
+    poly.points[0].x = 1.0
+    poly.points[0].y = 0.0
+    poly.points[1].x = 0.0
+    poly.points[1].y = 1.0
+    poly.points[2].x = 1.0
+    poly.points[2].y = 1.0
+
+    if poly.count != 3 { return false }
+    if poly.points[2].x != 1.0 { return false }
+
+    return true
+}
+
+-- ── Unions ───────────────────────────────────────────────────────────────────
+
+Variant :: union {
+    as_i32: i32,
+    as_f32: f32,
+    as_u8:  u8,
+}
+
+check_unions :: proc() -> bool {
+    v: Variant
+
+    -- Write and read i32
+    v.as_i32 = 1234
+    if v.as_i32 != 1234 { return false }
+
+    -- Write and read f32
+    v.as_f32 = 2.5
+    if v.as_f32 != 2.5 { return false }
+
+    -- Write and read u8
+    v.as_u8 = 255
+    if v.as_u8 != 255 { return false }
+
+    -- sizeof union == at least size of largest field
+    if sizeof(Variant) < sizeof(i32) { return false }
+    if sizeof(Variant) < sizeof(f32) { return false }
+
+    return true
+}
+
+-- ── Enums ────────────────────────────────────────────────────────────────────
+
+Dir :: enum { North, South, East, West, }
+
+Status :: enum {
+    Ok    = 0,
+    Error = 1,
+    Retry = 2,
+}
+
+dir_to_int :: proc(d: Dir) -> i32 {
+    match d {
+        case .North { return 0 }
+        case .South { return 1 }
+        case .East  { return 2 }
+        case .West  { return 3 }
+    }
+    return -1
+}
+
+check_enums :: proc() -> bool {
+    -- Implicit values (North=0, South=1, ...)
+    d := Dir.North
+    if dir_to_int(d)          != 0 { return false }
+    if dir_to_int(Dir.South)  != 1 { return false }
+    if dir_to_int(Dir.East)   != 2 { return false }
+    if dir_to_int(Dir.West)   != 3 { return false }
+
+    -- Explicit values
+    if cast(i32)(Status.Ok)    != 0 { return false }
+    if cast(i32)(Status.Error) != 1 { return false }
+    if cast(i32)(Status.Retry) != 2 { return false }
+
+    -- match with full name + else
+    result := 0
+    match d {
+        case Dir.North { result = 10 }
+        case Dir.South { result = 20 }
+        else           { result = 99 }
+    }
+    if result != 10 { return false }
+
+    -- match with dot-shorthand (all branches)
+    for_each_dir := 0
+    dd := Dir.West
+    match dd {
+        case .North { for_each_dir = 1 }
+        case .South { for_each_dir = 2 }
+        case .East  { for_each_dir = 3 }
+        case .West  { for_each_dir = 4 }
+    }
+    if for_each_dir != 4 { return false }
+
+    -- else branch fires for unmatched case
+    se := Status.Retry
+    r2 := 0
+    match se {
+        case Status.Ok    { r2 = 1 }
+        case Status.Error { r2 = 2 }
+        else              { r2 = 3 }
+    }
+    if r2 != 3 { return false }
+
+    return true
+}
+
+-- ── Integer match ─────────────────────────────────────────────────────────────
+
+check_integer_match :: proc() -> bool {
+    -- match on i32 literal values
+    val := 2
+    result := 0
+    match val {
+        case 1 { result = 10 }
+        case 2 { result = 20 }
+        case 3 { result = 30 }
+        else   { result = 99 }
+    }
+    if result != 20 { return false }
+
+    -- else branch
+    val2 := 7
+    r2 := 0
+    match val2 {
+        case 1 { r2 = 1 }
+        case 2 { r2 = 2 }
+        else   { r2 = 99 }
+    }
+    if r2 != 99 { return false }
+
+    -- match on u8
+    code: u8 = 0
+    msg := "none"
+    match code {
+        case 0 { msg = "zero" }
+        case 1 { msg = "one" }
+        else   { msg = "other" }
+    }
+    if strcmp(msg, "zero") != 0 { return false }
+
+    return true
+}
+
+-- ── Proc Literals ────────────────────────────────────────────────────────────
+
+apply :: proc(f: proc(i32) -> i32, v: i32) -> i32 { return f(v) }
+
+check_proc_literals :: proc() -> bool {
+    -- Stored in variable, called
+    double: proc(i32) -> i32 = proc(x: i32) -> i32 { return x * 2 }
+    if double(7) != 14 { return false }
+
+    -- Passed directly as argument
+    r := apply(proc(x: i32) -> i32 { return x + 100 }, 5)
+    if r != 105 { return false }
+
+    -- Capture by copy (closure)
+    offset := 42
+    add_offset: proc(i32) -> i32 = proc(x: i32) -> i32 { return x + offset }
+    if add_offset(8) != 50 { return false }
+
+    -- Capture remains stable after outer variable changes
+    offset = 100
+    if add_offset(8) != 50 { return false }   -- still uses captured 42
+
+    -- Multi-capture
+    base := 10
+    mult := 3
+    combined: proc(i32) -> i32 = proc(x: i32) -> i32 { return base + mult * x }
+    if combined(5) != 25 { return false }
+
+    return true
+}
+
+-- ── Strings ──────────────────────────────────────────────────────────────────
+
+check_strings :: proc() -> bool {
+    -- String literal defaults to cstr
+    a := "hello"
+    if strcmp(a, "hello") != 0 { return false }
+
+    -- Explicit cstr annotation
+    b: cstr = "world"
+    if strcmp(b, "world") != 0 { return false }
+
+    -- cstr literal coerced to string via type annotation
+    c: string = "zed"
+    if len(c) != 3 { return false }
+
+    -- from_cstr: cstr → string (copies)
+    raw: cstr = "abc"
+    s := from_cstr(raw)
+    if len(s) != 3 { return false }
+
+    -- to_cstr: string → cstr (points into buffer)
+    cs := to_cstr(s)
+    if strcmp(cs, "abc") != 0 { return false }
+
+    -- String length
+    greeting: string = "hello world"
+    if len(greeting) != 11 { return false }
+
+    -- Empty string
+    empty: string = ""
+    if len(empty) != 0 { return false }
+
+    -- Const cstr
+    MSG :: "constant"
+    if strcmp(MSG, "constant") != 0 { return false }
+
+    return true
+}
+
+-- ── Struct with string field ──────────────────────────────────────────────────
+
+Named :: struct {
+    tag:   cstr,
+    score: i32,
+}
+
+check_struct_string_field :: proc() -> bool {
+    n := Named{ tag = "player1", score = 100 }
+    if strcmp(n.tag, "player1") != 0 { return false }
+    if n.score != 100 { return false }
+
+    n.score = 200
+    if n.score != 200 { return false }
+
+    -- Zero-init struct: tag should be nil, score 0
+    n2: Named
+    if n2.score != 0 { return false }
+
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    if not check_structs()            { printf("FAIL structs\n")            return 1 }
+    if not check_struct_array_field() { printf("FAIL struct_array_field\n") return 1 }
+    if not check_unions()             { printf("FAIL unions\n")             return 1 }
+    if not check_enums()              { printf("FAIL enums\n")              return 1 }
+    if not check_integer_match()      { printf("FAIL integer_match\n")      return 1 }
+    if not check_proc_literals()      { printf("FAIL proc_literals\n")      return 1 }
+    if not check_strings()            { printf("FAIL strings\n")            return 1 }
+    if not check_struct_string_field(){ printf("FAIL struct_string_field\n")return 1 }
+
+    printf("test_types: OK\n\n\n")
+    return 0
+}

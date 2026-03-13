@@ -1,0 +1,336 @@
+-- test_basics.z
+-- Covers: literals, constants, variables, operators, casts, pointers,
+--         sizeof/alignof, #assert, when, typeid, nil, C-keyword shadowing
+
+cimport "stdio.h"
+cimport "string.h"
+
+-- ── Constants — full expression folding ──────────────────────────────────────
+
+GRID      :: 16
+CELL      :: 4
+TOTAL     :: GRID * GRID       -- 256
+HALF      :: TOTAL / 2         -- 128
+QUARTER   :: TOTAL / 4         -- 64
+NEG_ONE   :: 0 - 1             -- -1 (const unary minus via subtraction)
+PI        :: 3.14159265
+MSG       :: "hello"           -- cstr constant
+
+#assert TOTAL   == 256
+#assert HALF    == 128
+#assert QUARTER == 64
+#assert sizeof(i32) == 4
+#assert sizeof(i64) == 8
+#assert alignof(i64) == 8
+#assert typeid(i32) != typeid(f32)
+#assert typeid(i64) != typeid(u64)
+#assert typeid(i32) == typeid(i32)
+
+-- Compile-time conditional flags
+DEBUG       :: false
+PLATFORM_64 :: sizeof(i64) == 8
+
+-- Global variable — type inferred, zero-init
+global_score := 0
+
+-- ── Arithmetic & bitwise operators ───────────────────────────────────────────
+
+check_ops :: proc() -> bool {
+    -- Arithmetic
+    a := 10
+    b := 3
+    if a + b != 13 { return false }
+    if a - b != 7  { return false }
+    if a * b != 30 { return false }
+    if a / b != 3  { return false }
+    if a % b != 1  { return false }
+
+    -- Compound assign: arithmetic
+    x := 5
+    x += 3   if x != 8  { return false }
+    x -= 2   if x != 6  { return false }
+    x *= 4   if x != 24 { return false }
+    x /= 6   if x != 4  { return false }
+    x %= 3   if x != 1  { return false }
+
+    -- Bitwise binary
+    p := 0b1100
+    q := 0b1010
+    if (p & q) != 0b1000  { return false }
+    if (p | q) != 0b1110  { return false }
+    if (p ^ q) != 0b0110  { return false }
+    if (p << 1) != 0b11000 { return false }
+    if (p >> 1) != 0b0110  { return false }
+
+    -- Compound assign: bitwise
+    r := 0xFF
+    r &= 0x0F   if r != 0x0F { return false }
+    r |= 0xF0   if r != 0xFF { return false }
+    r ^= 0xFF   if r != 0    { return false }
+    r  = 0b0001
+    r <<= 3     if r != 0b1000 { return false }
+    r >>= 1     if r != 0b0100 { return false }
+
+    -- Comparisons
+    if not (1 < 2)  { return false }
+    if not (2 <= 2) { return false }
+    if not (3 > 2)  { return false }
+    if not (3 >= 3) { return false }
+    if not (1 == 1) { return false }
+    if not (1 != 2) { return false }
+
+    -- Logical: keyword and symbol forms
+    if not (true and true)   { return false }
+    if not (false or true)   { return false }
+    if not (true && true)    { return false }
+    if not (false || true)   { return false }
+    if (not false) == false  { return false }
+    if (!false)    == false  { return false }
+
+    return true
+}
+
+-- ── Literal forms ─────────────────────────────────────────────────────────────
+
+check_literals :: proc() -> bool {
+    -- Decimal
+    d := 255
+    if d != 255 { return false }
+
+    -- Hex
+    h := 0xFF
+    if h != 255 { return false }
+
+    -- Binary
+    bi := 0b11111111
+    if bi != 255 { return false }
+
+    -- Octal
+    o := 0o377
+    if o != 255 { return false }
+
+    -- All four are equal
+    if d != h  { return false }
+    if d != bi { return false }
+    if d != o  { return false }
+
+    -- Float: f32 default
+    f: f32 = 1.5
+    if f != 1.5 { return false }
+
+    -- Float: explicit f64
+    g: f64 = 3.14
+    if g != 3.14 { return false }
+
+    -- Bool literals
+    t := true
+    fa := false
+    if t  == false { return false }
+    if fa == true  { return false }
+
+    return true
+}
+
+-- ── Type casts ────────────────────────────────────────────────────────────────
+
+check_casts :: proc() -> bool {
+    -- i32 → f32
+    i := 7
+    f := cast(f32)(i)
+    if f != 7.0 { return false }
+
+    -- f64 → i32 (truncation)
+    f2: f64 = 3.9
+    i2 := cast(i32)(f2)
+    if i2 != 3 { return false }
+
+    -- u8 → i32 (zero-extension)
+    b: u8 = 255
+    i3 := cast(i32)(b)
+    if i3 != 255 { return false }
+
+    -- i32 → u8 (truncation)
+    big := 256 + 7
+    small := cast(u8)(big)
+    if small != 7 { return false }
+
+    -- i32 → i64
+    n: i32 = 100
+    wide := cast(i64)(n)
+    if wide != 100 { return false }
+
+    -- f32 → f64
+    fs: f32 = 2.0
+    fd := cast(f64)(fs)
+    if fd != 2.0 { return false }
+
+    return true
+}
+
+-- ── Pointers ─────────────────────────────────────────────────────────────────
+
+check_pointers :: proc() -> bool {
+    -- Basic deref and write-through
+    x := 42
+    p := &x
+    if p.* != 42 { return false }
+    p.* = 99
+    if x != 99 { return false }
+
+    -- Pointer arithmetic: +
+    arr: [4]i32
+    arr[0] = 10
+    arr[1] = 20
+    arr[2] = 30
+    arr[3] = 40
+    ptr := &arr[0]
+    if (ptr + 1).* != 20 { return false }
+    if (ptr + 2).* != 30 { return false }
+    if (ptr + 3).* != 40 { return false }
+
+    -- Pointer arithmetic: -
+    ptr2 := &arr[3]
+    if (ptr2 - 1).* != 30 { return false }
+
+    -- Pointer subtraction (ptr - ptr → i64)
+    diff := cast(i64)(ptr2) - cast(i64)(ptr)
+    if diff != 12 { return false }   -- 3 × sizeof(i32) = 12 bytes
+
+    -- nil pointer check (pointer comparison to nil)
+    q: *i32 = nil
+    if q != nil { return false }
+
+    return true
+}
+
+-- ── sizeof / alignof ─────────────────────────────────────────────────────────
+
+check_sizeof :: proc() -> bool {
+    if sizeof(i8)  != 1 { return false }
+    if sizeof(i16) != 2 { return false }
+    if sizeof(i32) != 4 { return false }
+    if sizeof(i64) != 8 { return false }
+    if sizeof(u8)  != 1 { return false }
+    if sizeof(f32) != 4 { return false }
+    if sizeof(f64) != 8 { return false }
+
+    -- sizeof of a variable
+    val: f64 = 1.0
+    if sizeof(val) != 8 { return false }
+
+    -- alignof
+    if alignof(i64) != 8 { return false }
+    if alignof(i8)  != 1 { return false }
+
+    return true
+}
+
+-- ── when / else when ─────────────────────────────────────────────────────────
+
+LEVEL :: 2
+
+check_when :: proc() -> bool {
+    -- Simple when/else
+    result := 0
+    when DEBUG {
+        result = 1
+    } else {
+        result = 2
+    }
+    if result != 2 { return false }
+
+    -- when true branch executes
+    when PLATFORM_64 {
+        if sizeof(i64) != 8 { return false }
+    }
+
+    -- else when chain
+    tier := 0
+    when LEVEL == 1 {
+        tier = 1
+    } else when LEVEL == 2 {
+        tier = 2
+    } else {
+        tier = 3
+    }
+    if tier != 2 { return false }
+
+    return true
+}
+
+-- ── typeid in when ───────────────────────────────────────────────────────────
+
+-- Generic-style: selects branch based on type identity at compile time.
+type_name_i32 :: proc() -> cstr {
+    when typeid(i32) == typeid(i32) {
+        return "i32"
+    } else {
+        return "other"
+    }
+}
+
+check_typeid :: proc() -> bool {
+    #assert typeid(i32) != typeid(i64)
+    #assert typeid(f32) != typeid(f64)
+    #assert typeid(bool) != typeid(u8)
+
+    -- typeid used in when inside a proc
+    if strcmp(type_name_i32(), "i32") != 0 { return false }
+
+    return true
+}
+
+-- ── C keyword shadowing ──────────────────────────────────────────────────────
+-- Variable names that are C/C++ reserved words get a _zl_ prefix in output.
+
+check_c_keyword_shadow :: proc() -> bool {
+    double := 2.0         -- 'double' is a C type name
+    float  := 1.0         -- 'float' is a C type name
+    int    := 42          -- 'int' is a C keyword
+    if double != 2.0 { return false }
+    if float  != 1.0 { return false }
+    if int    != 42  { return false }
+
+    -- Arithmetic using shadowed names
+    result: f64 = double + float
+    if result != 3.0 { return false }
+
+    return true
+}
+
+-- ── Global zero-init ─────────────────────────────────────────────────────────
+
+global_i32:    i32
+global_f64:    f64
+global_bool:   bool
+global_ptr:    *i32
+global_arr:    [4]i32
+
+check_global_zero_init :: proc() -> bool {
+    if global_i32    != 0     { return false }
+    if global_f64    != 0.0   { return false }
+    if global_bool   != false { return false }
+    if global_ptr    != nil   { return false }
+    if global_arr[0] != 0     { return false }
+    if global_arr[3] != 0     { return false }
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    #assert TOTAL == 256
+
+    if not check_ops()              { printf("FAIL ops\n")              return 1 }
+    if not check_literals()         { printf("FAIL literals\n")         return 1 }
+    if not check_casts()            { printf("FAIL casts\n")            return 1 }
+    if not check_pointers()         { printf("FAIL pointers\n")         return 1 }
+    if not check_sizeof()           { printf("FAIL sizeof\n")           return 1 }
+    if not check_when()             { printf("FAIL when\n")             return 1 }
+    if not check_typeid()           { printf("FAIL typeid\n")           return 1 }
+    if not check_c_keyword_shadow() { printf("FAIL c_keyword_shadow\n") return 1 }
+    if not check_global_zero_init() { printf("FAIL global_zero_init\n") return 1 }
+
+    printf("test_basics: OK\n\n\n")
+    return 0
+}

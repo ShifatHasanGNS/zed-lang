@@ -117,6 +117,8 @@ std::string_view token_kind_name(int k) {
         case TOK_AMP_ASSIGN:       return "'&='";
         case TOK_PIPE_ASSIGN:      return "'|='";
         case TOK_XOR_ASSIGN:       return "'^='";
+        case TOK_SHL_ASSIGN:       return "'<<='";
+        case TOK_SHR_ASSIGN:       return "'>>='";
         default:                   return "<unknown token>";
     }
 }

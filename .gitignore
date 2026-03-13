@@ -1,9 +1,8 @@
 **/.DS_Store
 zed.dSYM/
 build/
-zed
-tests/
 backup/
+**/*.txt
+zed
 *.swp
 *.swo
-**/*.txt

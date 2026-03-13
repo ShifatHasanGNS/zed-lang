@@ -205,6 +205,8 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_AMP_ASSIGN     "'&='"
 %token TOK_PIPE_ASSIGN    "'|='"
 %token TOK_XOR_ASSIGN     "'^='"
+%token TOK_SHL_ASSIGN     "'<<='"
+%token TOK_SHR_ASSIGN     "'>>='"
 
 // =============================================================================
 // Non-terminals
@@ -1106,6 +1108,10 @@ expr_stmt
         { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_PIPE,   $3); }
     | expr TOK_XOR_ASSIGN expr
         { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_XOR,    $3); }
+    | expr TOK_SHL_ASSIGN expr
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_SHL,    $3); }
+    | expr TOK_SHR_ASSIGN expr
+        { SourceRange r = to_sourcerange(@$, filename); $$ = new CompoundAssignStmt(r,$1,TOK_SHR,    $3); }
     ;
 
 block

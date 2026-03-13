@@ -605,6 +605,8 @@ void CodeGen::emit_compound_assign(CompoundAssignStmt* s) {
         case TOK_AMP:     emit_.emit(" &= "); break;
         case TOK_PIPE:    emit_.emit(" |= "); break;
         case TOK_XOR:     emit_.emit(" ^= "); break;
+        case TOK_SHL:     emit_.emit(" <<= "); break;
+        case TOK_SHR:     emit_.emit(" >>= "); break;
         default:          emit_.emit(" += "); break;
     }
     emit_expr(s->rhs);

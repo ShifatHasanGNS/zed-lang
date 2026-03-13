@@ -170,6 +170,8 @@ using namespace ZedLang;
 "&="    { return TOK_AMP_ASSIGN; }
 "|="    { return TOK_PIPE_ASSIGN; }
 "^="    { return TOK_XOR_ASSIGN; }
+"<<="   { return TOK_SHL_ASSIGN; }
+">>="   { return TOK_SHR_ASSIGN; }
 "<<"    { return TOK_SHL; }
 ">>"    { return TOK_SHR; }
 "=="    { return TOK_EQ; }

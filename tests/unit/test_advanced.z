@@ -1,0 +1,338 @@
+-- test_advanced.z
+-- Covers: global zero-init for all container types, named-return multi-branch,
+--         proc literals (void return, nested captures), match on all types,
+--         dynamic array patterns (growth, repeated clear/append cycles),
+--         pointer chains, struct with dynamic field, deep const chains,
+--         or_return with discard, C keyword shadowing (global scope)
+
+cimport "stdio.h"
+cimport "string.h"
+
+-- ── Deep constant chains ─────────────────────────────────────────────────────
+
+A :: 2
+B :: A * 3         -- 6
+C :: B + A         -- 8
+D :: C * C         -- 64
+E :: D / A         -- 32
+F :: E - B         -- 26
+
+#assert A == 2
+#assert B == 6
+#assert C == 8
+#assert D == 64
+#assert E == 32
+#assert F == 26
+
+-- Arrays sized by end of chain
+BUF :: F / 2   -- 13
+
+check_deep_consts :: proc() -> bool {
+    buf: [BUF]i32
+    if len(buf) != 13 { return false }
+    buf[12] = 99
+    if buf[12] != 99 { return false }
+    return true
+}
+
+-- ── Global zero-init: every type ────────────────────────────────────────────
+
+g_i8:   i8
+g_i16:  i16
+g_i32:  i32
+g_i64:  i64
+g_u8:   u8
+g_u16:  u16
+g_u32:  u32
+g_u64:  u64
+g_f32:  f32
+g_f64:  f64
+g_bool: bool
+g_ptr:  *i32
+g_arr:  [4]i32
+g_dyn:  [dynamic]i32
+
+Vec2 :: struct { x: f32, y: f32, }
+g_struct: Vec2
+
+check_global_zero_init :: proc() -> bool {
+    if g_i8   != 0     { return false }
+    if g_i16  != 0     { return false }
+    if g_i32  != 0     { return false }
+    if g_i64  != 0     { return false }
+    if g_u8   != 0     { return false }
+    if g_u16  != 0     { return false }
+    if g_u32  != 0     { return false }
+    if g_u64  != 0     { return false }
+    if g_f32  != 0.0   { return false }
+    if g_f64  != 0.0   { return false }
+    if g_bool != false { return false }
+    if g_ptr  != nil   { return false }
+
+    if g_arr[0] != 0 { return false }
+    if g_arr[3] != 0 { return false }
+
+    if len(g_dyn) != 0 { return false }
+
+    if g_struct.x != 0.0 { return false }
+    if g_struct.y != 0.0 { return false }
+
+    return true
+}
+
+-- ── Named-return: every exit branch returns distinct values ──────────────────
+
+Grade :: proc(score: i32) -> (letter: cstr, pass: bool) {
+    if score >= 90 {
+        letter = "A"
+        pass   = true
+        return
+    }
+    if score >= 70 {
+        letter = "B"
+        pass   = true
+        return
+    }
+    if score >= 50 {
+        letter = "C"
+        pass   = true
+        return
+    }
+    -- fail path — bare return, zero-values apply then we override
+    letter = "F"
+    pass   = false
+    return
+}
+
+check_named_return_branches :: proc() -> bool {
+    l, ok := Grade(95)
+    if not ok                   { return false }
+    if strcmp(l, "A") != 0      { return false }
+
+    l2, ok2 := Grade(80)
+    if not ok2                  { return false }
+    if strcmp(l2, "B") != 0     { return false }
+
+    l3, ok3 := Grade(55)
+    if not ok3                  { return false }
+    if strcmp(l3, "C") != 0     { return false }
+
+    l4, ok4 := Grade(30)
+    if ok4                      { return false }
+    if strcmp(l4, "F") != 0     { return false }
+
+    return true
+}
+
+-- ── or_return: discard result, check only bool ───────────────────────────────
+
+try_parse :: proc(n: i32) -> (i32, bool) {
+    if n < 0 { return 0, false }
+    return n * 10, true
+}
+
+pipeline :: proc(a: i32, b: i32) -> (i32, bool) {
+    x := try_parse(a) or_return
+    y := try_parse(b) or_return
+    return x + y, true
+}
+
+check_or_return :: proc() -> bool {
+    -- Success path
+    sum, ok := pipeline(3, 4)
+    if not ok       { return false }
+    if sum != 70    { return false }  -- 30 + 40
+
+    -- First arg fails
+    _, ok2 := pipeline(-1, 4)
+    if ok2 { return false }
+
+    -- Second arg fails
+    _, ok3 := pipeline(3, -1)
+    if ok3 { return false }
+
+    -- Discard result entirely, just test bool
+    _, ok4 := try_parse(5)
+    if not ok4 { return false }
+
+    _, ok5 := try_parse(-5)
+    if ok5 { return false }
+
+    return true
+}
+
+-- ── Pointer chains ────────────────────────────────────────────────────────────
+
+check_pointer_chains :: proc() -> bool {
+    a := 1
+    b := 2
+    c := 3
+
+    pa := &a
+    pb := &b
+    pc := &c
+
+    -- Write through multiple pointers
+    pa.* = 10
+    pb.* = 20
+    pc.* = 30
+
+    if a != 10 { return false }
+    if b != 20 { return false }
+    if c != 30 { return false }
+
+    -- Pointer to pointer (double indirection)
+    pp := &pa        -- *(*i32)
+    pp.*.* = 99
+    if a != 99 { return false }
+
+    -- Array of pointers
+    ptrs: [3]*i32
+    ptrs[0] = &a
+    ptrs[1] = &b
+    ptrs[2] = &c
+
+    ptrs[1].* = 55
+    if b != 55 { return false }
+
+    return true
+}
+
+-- ── Dynamic array: growth and cycle patterns ─────────────────────────────────
+
+check_dyn_growth :: proc() -> bool {
+    buf: [dynamic]i32
+
+    -- Grow past initial reservation
+    reserve(&buf, 4)
+    for i in 0 ..< 100 {
+        append(&buf, i)
+    }
+    if len(buf) != 100    { return false }
+    if buf[0]   != 0      { return false }
+    if buf[99]  != 99     { return false }
+
+    -- Clear and reuse multiple times
+    for cycle in 0 ..< 3 {
+        clear(&buf)
+        if len(buf) != 0 { return false }
+        for i in 0 ..< 5 {
+            append(&buf, cycle * 10 + i)
+        }
+        if len(buf) != 5 { return false }
+    }
+    -- After 3 cycles the last cycle wrote: 20,21,22,23,24
+    if buf[0] != 20 { return false }
+    if buf[4] != 24 { return false }
+
+    return true
+}
+
+-- ── Struct with dynamic array field ──────────────────────────────────────────
+
+Bag :: struct {
+    label: cstr,
+    items: [dynamic]i32,
+}
+
+check_struct_dyn_field :: proc() -> bool {
+    b: Bag
+    b.label = "test"
+    if strcmp(b.label, "test") != 0 { return false }
+    if len(b.items) != 0 { return false }
+
+    append(&b.items, 10)
+    append(&b.items, 20)
+    if len(b.items) != 2  { return false }
+    if b.items[0]   != 10 { return false }
+    if b.items[1]   != 20 { return false }
+
+    clear(&b.items)
+    if len(b.items) != 0 { return false }
+
+    return true
+}
+
+-- ── C keyword shadowing (global scope) ───────────────────────────────────────
+-- Variables whose names are C/C++ keywords → _zl_ prefix in generated output.
+
+double  := 2.0
+float   := 1.5
+int     := 7
+auto_v  := 0    -- 'auto' is a C++ keyword
+
+check_c_shadow_globals :: proc() -> bool {
+    if double != 2.0 { return false }
+    if float  != 1.5 { return false }
+    if int    != 7   { return false }
+
+    -- Modify and read back
+    double = 4.0
+    float  = 3.0
+    int    = 14
+    if double != 4.0 { return false }
+    if float  != 3.0 { return false }
+    if int    != 14  { return false }
+
+    return true
+}
+
+-- ── Proc literal: void return ────────────────────────────────────────────────
+
+void_call_count := 0
+
+check_void_proc_literal :: proc() -> bool {
+    inc: proc() = proc() { void_call_count += 1 }
+    inc()
+    inc()
+    if void_call_count != 2 { return false }
+
+    -- Void proc literal passed to higher-order proc
+    run :: proc(f: proc()) { f() }
+    run(proc() { void_call_count += 10 })
+    if void_call_count != 12 { return false }
+
+    return true
+}
+
+-- ── Slice mutations across multiple slices ───────────────────────────────────
+
+check_slice_aliasing :: proc() -> bool {
+    data: [6]i32
+    for i in 0 ..< 6 { data[i] = i }
+    -- data = [0,1,2,3,4,5]
+
+    left  := data[0 ..< 3]   -- [0,1,2]
+    right := data[3 ..< 6]   -- [3,4,5]
+
+    left[0]  = 100
+    right[2] = 999
+
+    if data[0] != 100 { return false }
+    if data[5] != 999 { return false }
+
+    -- Overlapping slices share memory
+    overlap := data[1 ..= 4]  -- [1,2,3,4] (after mutations: [1,2,3,4])
+    overlap[0] = 77
+    if data[1] != 77 { return false }
+
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    if not check_deep_consts()           { printf("FAIL deep_consts\n")           return 1 }
+    if not check_global_zero_init()      { printf("FAIL global_zero_init\n")      return 1 }
+    if not check_named_return_branches() { printf("FAIL named_return_branches\n") return 1 }
+    if not check_or_return()             { printf("FAIL or_return\n")             return 1 }
+    if not check_pointer_chains()        { printf("FAIL pointer_chains\n")        return 1 }
+    if not check_dyn_growth()            { printf("FAIL dyn_growth\n")            return 1 }
+    if not check_struct_dyn_field()      { printf("FAIL struct_dyn_field\n")      return 1 }
+    if not check_c_shadow_globals()      { printf("FAIL c_shadow_globals\n")      return 1 }
+    if not check_void_proc_literal()     { printf("FAIL void_proc_literal\n")     return 1 }
+    if not check_slice_aliasing()        { printf("FAIL slice_aliasing\n")        return 1 }
+
+    printf("test_advanced: OK\n\n\n")
+    return 0
+}

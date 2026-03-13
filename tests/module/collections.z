@@ -1,0 +1,322 @@
+-- =============================================================================
+-- collections.z — Pure algorithm library (no cimport)
+-- Keywords: proc struct if else loop break continue return true false
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Structs
+-- ---------------------------------------------------------------------------
+
+SearchResult :: struct {
+    found : bool,
+    index : i64,
+}
+
+RunResult :: struct {
+    start  : i64,
+    length : i64,
+}
+
+-- ---------------------------------------------------------------------------
+-- Swap helpers
+-- ---------------------------------------------------------------------------
+
+swap_i64 :: proc(a: *i64, b: *i64) {
+    tmp := a.*
+    a.* = b.*
+    b.* = tmp
+}
+
+swap_f64 :: proc(a: *f64, b: *f64) {
+    tmp := a.*
+    a.* = b.*
+    b.* = tmp
+}
+
+-- ---------------------------------------------------------------------------
+-- Predicates
+-- ---------------------------------------------------------------------------
+
+is_even :: proc(n: i64) -> bool {
+    return n % 2 == 0
+}
+
+is_odd :: proc(n: i64) -> bool {
+    return !is_even(n)
+}
+
+is_prime :: proc(n: i64) -> bool {
+    if n < 2        { return false }
+    if n == 2       { return true  }
+    if is_even(n)   { return false }
+    i : i64 = 3
+    for {
+        if i * i > n  { break }
+        if n % i == 0 { return false }
+        i = i + 2
+    }
+    return true
+}
+
+-- ---------------------------------------------------------------------------
+-- Reductions
+-- ---------------------------------------------------------------------------
+
+array_sum :: proc(data: []i64, n: i64) -> i64 {
+    acc : i64 = 0
+    i   : i64 = 0
+    for {
+        if i >= n { break }
+        acc = acc + data[i]
+        i = i + 1
+    }
+    return acc
+}
+
+array_min :: proc(data: []i64, n: i64) -> i64 {
+    m := data[0]
+    i : i64 = 1
+    for {
+        if i >= n { break }
+        if data[i] < m { m = data[i] }
+        i = i + 1
+    }
+    return m
+}
+
+array_max :: proc(data: []i64, n: i64) -> i64 {
+    m := data[0]
+    i : i64 = 1
+    for {
+        if i >= n { break }
+        if data[i] > m { m = data[i] }
+        i = i + 1
+    }
+    return m
+}
+
+count_evens :: proc(data: []i64, n: i64) -> i64 {
+    cnt : i64 = 0
+    i   : i64 = 0
+    for {
+        if i >= n { break }
+        if is_even(data[i]) { cnt = cnt + 1 }
+        i = i + 1
+    }
+    return cnt
+}
+
+count_primes_in :: proc(data: []i64, n: i64) -> i64 {
+    cnt : i64 = 0
+    i   : i64 = 0
+    for {
+        if i >= n { break }
+        if is_prime(data[i]) { cnt = cnt + 1 }
+        i = i + 1
+    }
+    return cnt
+}
+
+-- ---------------------------------------------------------------------------
+-- In-place mutation
+-- ---------------------------------------------------------------------------
+
+array_reverse :: proc(data: []i64, n: i64) {
+    lo : i64 = 0
+    hi : i64 = n - 1
+    for {
+        if lo >= hi { break }
+        swap_i64(&data[lo], &data[hi])
+        lo = lo + 1
+        hi = hi - 1
+    }
+}
+
+array_negate :: proc(data: []i64, n: i64) {
+    i : i64 = 0
+    for {
+        if i >= n { break }
+        data[i] = -data[i]
+        i = i + 1
+    }
+}
+
+-- ---------------------------------------------------------------------------
+-- Predicates on whole arrays
+-- ---------------------------------------------------------------------------
+
+is_sorted_asc :: proc(data: []i64, n: i64) -> bool {
+    i : i64 = 1
+    for {
+        if i >= n { break }
+        if data[i] < data[i - 1] { return false }
+        i = i + 1
+    }
+    return true
+}
+
+arrays_equal :: proc(a: []i64, b: []i64, n: i64) -> bool {
+    i : i64 = 0
+    for {
+        if i >= n { break }
+        if a[i] != b[i] { return false }
+        i = i + 1
+    }
+    return true
+}
+
+-- ---------------------------------------------------------------------------
+-- Sorting: bubble, selection, insertion
+-- ---------------------------------------------------------------------------
+
+bubble_sort :: proc(data: []i64, n: i64) {
+    i : i64 = 0
+    for {
+        if i >= n - 1 { break }
+        j : i64 = 0
+        for {
+            if j >= n - 1 - i { break }
+            if data[j] > data[j + 1] {
+                swap_i64(&data[j], &data[j + 1])
+            }
+            j = j + 1
+        }
+        i = i + 1
+    }
+}
+
+selection_sort :: proc(data: []i64, n: i64) {
+    i : i64 = 0
+    for {
+        if i >= n - 1 { break }
+        min_idx := i
+        j : i64 = i + 1
+        for {
+            if j >= n { break }
+            if data[j] < data[min_idx] { min_idx = j }
+            j = j + 1
+        }
+        if min_idx != i {
+            swap_i64(&data[i], &data[min_idx])
+        }
+        i = i + 1
+    }
+}
+
+insertion_sort :: proc(data: []i64, n: i64) {
+    i : i64 = 1
+    for {
+        if i >= n { break }
+        key := data[i]
+        j   := i - 1
+        for {
+            if j < 0          { break }
+            if data[j] <= key { break }
+            data[j + 1] = data[j]
+            j = j - 1
+        }
+        data[j + 1] = key
+        i = i + 1
+    }
+}
+
+-- ---------------------------------------------------------------------------
+-- Searching
+-- ---------------------------------------------------------------------------
+
+linear_search :: proc(data: []i64, n: i64, val: i64) -> SearchResult {
+    i : i64 = 0
+    for {
+        if i >= n { break }
+        if data[i] == val {
+            return SearchResult{ found = true, index = i }
+        }
+        i = i + 1
+    }
+    return SearchResult{ found = false, index = -1 }
+}
+
+binary_search :: proc(data: []i64, n: i64, val: i64) -> i64 {
+    lo : i64 = 0
+    hi : i64 = n - 1
+    for {
+        if lo > hi { break }
+        mid := lo + (hi - lo) / 2
+        if data[mid] == val { return mid }
+        if data[mid] < val  { lo = mid + 1 }
+        else                { hi = mid - 1 }
+    }
+    return -1
+}
+
+count_occurrences :: proc(data: []i64, n: i64, val: i64) -> i64 {
+    cnt : i64 = 0
+    i   : i64 = 0
+    for {
+        if i >= n { break }
+        if data[i] == val { cnt = cnt + 1 }
+        i = i + 1
+    }
+    return cnt
+}
+
+-- ---------------------------------------------------------------------------
+-- Number theory
+-- ---------------------------------------------------------------------------
+
+gcd :: proc(a: i64, b: i64) -> i64 {
+    for {
+        if b == 0 { break }
+        tmp := b
+        b = a % b
+        a = tmp
+    }
+    return a
+}
+
+lcm :: proc(a: i64, b: i64) -> i64 {
+    return a / gcd(a, b) * b
+}
+
+-- Longest run of equal consecutive values
+longest_run :: proc(data: []i64, n: i64) -> RunResult {
+    if n == 0 { return RunResult{ start = -1, length = 0 } }
+    best_start : i64 = 0
+    best_len   : i64 = 1
+    cur_start  : i64 = 0
+    cur_len    : i64 = 1
+    i          : i64 = 1
+    for {
+        if i >= n { break }
+        if data[i] == data[i - 1] {
+            cur_len = cur_len + 1
+            if cur_len > best_len {
+                best_len  = cur_len
+                best_start = cur_start
+            }
+        } else {
+            cur_start = i
+            cur_len   = 1
+        }
+        i = i + 1
+    }
+    return RunResult{ start = best_start, length = best_len }
+}
+
+-- Rotate array left by k positions
+array_rotate_left :: proc(data: []i64, n: i64, k: i64) {
+    steps := k % n
+    i : i64 = 0
+    for {
+        if i >= steps { break }
+        first := data[0]
+        j : i64 = 0
+        for {
+            if j >= n - 1 { break }
+            data[j] = data[j + 1]
+            j = j + 1
+        }
+        data[n - 1] = first
+        i = i + 1
+    }
+}
