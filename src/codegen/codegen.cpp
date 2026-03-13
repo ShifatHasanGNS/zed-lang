@@ -50,9 +50,9 @@ void CodeGen::generate(Program* prog) {
         emit_.blank();
     }
 
-    emit_forward_decls(prog);
-    emit_.blank();
     emit_enum_decls(prog);
+    emit_.blank();
+    emit_forward_decls(prog);
     emit_.blank();
     emit_struct_defs(prog);
     emit_.blank();
@@ -259,7 +259,7 @@ void CodeGen::emit_global_var(VarDecl* vd) {
             emit_.emit("[" + std::to_string(at->count) + "])");
         }
         emit_expr(vd->init);
-    } else if (!ty->is_array()) {
+    } else {
         emit_.emit(" = {}");
     }
     emit_.emit(";\n");
@@ -346,6 +346,10 @@ void CodeGen::emit_proc_defs(Program* prog) {
 
 void CodeGen::emit_proc_def(ProcDecl* pd) {
     if (!pd->body) return;
+
+    // Reset per-proc tmp counter so multi-return call names are unique within
+    // each proc body even when the same callee is called more than once.
+    tmp_counter_ = 0;
 
     TypeRef ty = tc_.sym_ref().lookup(pd->proc_name) ?
                  tc_.sym_ref().lookup(pd->proc_name)->type : nullptr;
@@ -779,14 +783,8 @@ void CodeGen::emit_var_decl_local(VarDecl* vd) {
     emit_var_decl(ty, vd->var_name);   // emit_var_decl sanitizes name internally
     if (vd->init) {
         emit_.emit(" = ");
-        // if (dynamic_cast<ArrayInitExpr*>(vd->init) && ty->is_array()) {
-        //     auto* at = static_cast<sem::ArrayType*>(ty);
-        //     emit_.emit("(");
-        //     emit_c_type(at->elem);
-        //     emit_.emit("[" + std::to_string(at->count) + "])");
-        // }
         emit_expr_hint(vd->init, ty);
-    } else if (!ty->is_array()) {
+    } else {
         emit_.emit(" = {}");
     }
     emit_.emit(";\n");
@@ -890,6 +888,16 @@ void CodeGen::emit_index(IndexExpr* e) {
         auto* st = static_cast<sem::SliceType*>(bty);
         emit_.emit("SLICE_IDX(");
         emit_c_type(st->elem);
+        emit_.emit(", ");
+        emit_expr(e->base);
+        emit_.emit(", ");
+        emit_expr(e->index);
+        emit_.emit(")");
+    } else if (bty->is_dyn_array()) {
+        // Dynamic array (std::vector) — use DYN_IDX for bounds-checked access
+        auto* da = static_cast<sem::DynArrayType*>(bty);
+        emit_.emit("DYN_IDX(");
+        emit_c_type(da->elem);
         emit_.emit(", ");
         emit_expr(e->base);
         emit_.emit(", ");
@@ -1306,8 +1314,11 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
         // each variable as a flat statement in the enclosing scope (NOT inside
         // a braced block — that would hide the variables from subsequent stmts).
         if (!ret_struct.empty()) {
-            // e.g.: __ret_div_rem _zed_tmp_div_rem_ = div_rem(17, 5);
-            std::string tmp = "_zed_tmp_" + ret_struct.substr(7) + "_";
+            // e.g.: __ret_divide _zed_tmp_divide_0_ = divide(10, 3);
+            // The counter suffix prevents redefinition when the same proc
+            // is called more than once in the same scope.
+            std::string tmp = "_zed_tmp_" + ret_struct.substr(7)
+                              + "_" + std::to_string(tmp_counter_++) + "_";
             emit_.begin_line(ret_struct + " " + tmp + " = ");
             emit_expr(s->rhs);
             emit_.emit(";\n");
@@ -1318,12 +1329,12 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
                 emit_.emit(" = " + tmp + "._" + std::to_string(i) + ";\n");
             }
         } else {
-            // No struct name (shouldn't happen after type-check); emit each var uninitialized
+            // No struct name (shouldn't happen after type-check); zero-init each var
             for (size_t i = 0; i < s->names.size() && i < tt->elems.size(); ++i) {
                 if (s->names[i] == "_") continue;
                 emit_.emit_indent();
                 emit_var_decl(tt->elems[i], s->names[i]);
-                emit_.emit(";\n");
+                emit_.emit(" = {};\n");
             }
         }
     } else {
@@ -1389,7 +1400,7 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             } else if (arg_ty && arg_ty->is_string()) {
                 emit_.emit("(");
                 emit_expr(e->args[0]);
-                emit_.emit(").len");
+                emit_.emit(").size()");
             } else {
                 // Slice or unknown
                 emit_.emit("(");
@@ -1421,17 +1432,19 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             break;
         }
         case TOK_KW_RESERVE: {
+            // reserve(&x, n) — sets capacity, len stays 0, reserved slots zero-initialized.
+            // Delegates to _zed_dyn_reserve() in runtime.hpp.
             Expr* arr = e->args[0];
             if (arr->kind() == Expr::ADDR)
                 arr = static_cast<AddrExpr*>(arr)->expr;
-            emit_.emit("(");
+            emit_.emit("_zed_dyn_reserve(");
             emit_expr(arr);
-            emit_.emit(").reserve(");
+            emit_.emit(", ");
             emit_expr(e->args[1]);
             emit_.emit(")");
             break;
         }
-        case TOK_KW_DELETE_DYN: {
+        case TOK_KW_CLEAR: {
             Expr* arr = e->args[0];
             if (arr->kind() == Expr::ADDR)
                 arr = static_cast<AddrExpr*>(arr)->expr;
@@ -1499,7 +1512,7 @@ void CodeGen::emit_proc_lit(ProcLitExpr* e) {
     TypeRef proc_ty = tc_.type_of(e);
     auto* pt = proc_ty ? static_cast<sem::ProcType*>(proc_ty) : nullptr;
 
-    emit_.emit("[](");
+    emit_.emit("[=](");
     bool first = true;
     size_t pi = 0;
     for (const ParamGroup& pg : e->params) {

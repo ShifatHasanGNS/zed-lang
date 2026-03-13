@@ -124,6 +124,7 @@ private:
     std::string  current_proc_name_;               // for multi-return emit_return
     std::vector<std::string> current_proc_return_names_;  // named return vars
     std::set<std::string> emitted_ret_structs_;  // avoid duplicate typedef
+    int          tmp_counter_ = 0;               // unique suffix for multi-return tmps
 };
 
 } // namespace ZedLang

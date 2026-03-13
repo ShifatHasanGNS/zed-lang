@@ -208,6 +208,7 @@ void TypeChecker::check_proc_body(ProcDecl* pd) {
                               : sym_.arena().ty_void();
     }
     proc_scope->proc_return_type = ret;
+    proc_scope->proc_has_named_returns = !pd->return_names.empty();
 
     // collect_globals builds the proc symbol before bodies are checked, so it
     // may store return_type=nullptr for multi-return procs. Patch it here so
@@ -337,8 +338,13 @@ void TypeChecker::check_return(ReturnStmt* s) {
             expect_type(got, expected, s->range.begin, "return value");
         }
     } else if (!expected->is_void()) {
-        err_.error(s->range.begin,
-            "missing return value; expected '" + expected->to_string() + "'");
+        // A bare 'return' is valid inside a named-return proc: the caller
+        // collects the current values of the named return variables.
+        Scope* proc_scope = sym_.current_scope()->enclosing_proc();
+        if (!proc_scope || !proc_scope->proc_has_named_returns) {
+            err_.error(s->range.begin,
+                "missing return value; expected '" + expected->to_string() + "'");
+        }
     }
 }
 
@@ -565,6 +571,7 @@ TypeRef TypeChecker::check_index(IndexExpr* e) {
     if (bty->is_array()) return static_cast<sem::ArrayType*>(bty)->elem;
     if (bty->is_slice()) return static_cast<sem::SliceType*>(bty)->elem;
     if (bty->is_ptr())   return static_cast<sem::PtrType*>(bty)->pointee;
+    if (bty->is_dyn_array()) return static_cast<sem::DynArrayType*>(bty)->elem;
 
     if (!bty->is_error())
         err_.error(e->base->range.begin,
@@ -1093,7 +1100,7 @@ TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
         case TOK_KW_LEN:       return ar.ty_u64();
         case TOK_KW_CAP:       return ar.ty_u64();
         case TOK_KW_RESERVE:   return ar.ty_void();
-        case TOK_KW_DELETE_DYN:return ar.ty_void();
+        case TOK_KW_CLEAR:     return ar.ty_void();
         case TOK_KW_TO_CSTR:   return ar.ty_cstr();
         case TOK_KW_FROM_CSTR: return ar.ty_string();
         default:

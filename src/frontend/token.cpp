@@ -56,7 +56,7 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_CAP:           return "'cap'";
         case TOK_KW_APPEND:        return "'append'";
         case TOK_KW_RESERVE:       return "'reserve'";
-        case TOK_KW_DELETE_DYN:    return "'delete_dyn'";
+        case TOK_KW_CLEAR:         return "'clear'";
         case TOK_KW_TO_CSTR:       return "'to_cstr'";
         case TOK_KW_FROM_CSTR:     return "'from_cstr'";
         case TOK_KW_OR_RETURN:     return "'or_return'";
@@ -161,7 +161,7 @@ int keyword_lookup(std::string_view s) {
         { "cap",          TOK_KW_CAP       },
         { "append",       TOK_KW_APPEND    },
         { "reserve",      TOK_KW_RESERVE   },
-        { "delete_dyn",   TOK_KW_DELETE_DYN},
+        { "clear",        TOK_KW_CLEAR     },
         { "to_cstr",      TOK_KW_TO_CSTR   },
         { "c_str",        TOK_KW_TO_CSTR   },  // alias for to_cstr
         { "from_cstr",    TOK_KW_FROM_CSTR },

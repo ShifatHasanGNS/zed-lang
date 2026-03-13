@@ -128,7 +128,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_CAP        "cap"
 %token TOK_KW_APPEND     "append"
 %token TOK_KW_RESERVE    "reserve"
-%token TOK_KW_DELETE_DYN "delete_dyn"
+%token TOK_KW_CLEAR      "clear"
 %token TOK_KW_TO_CSTR    "to_cstr"
 %token TOK_KW_FROM_CSTR  "from_cstr"
 %token TOK_KW_OR_RETURN  "or_return"
@@ -448,7 +448,7 @@ kw_ident
     | TOK_KW_CAP        { $$ = new std::string("cap");        }
     | TOK_KW_APPEND     { $$ = new std::string("append");     }
     | TOK_KW_RESERVE    { $$ = new std::string("reserve");    }
-    | TOK_KW_DELETE_DYN { $$ = new std::string("delete_dyn"); }
+    | TOK_KW_CLEAR      { $$ = new std::string("clear");      }
     | TOK_KW_TO_CSTR    { $$ = new std::string("to_cstr");    }
     | TOK_KW_FROM_CSTR  { $$ = new std::string("from_cstr");  }
     ;
@@ -1360,6 +1360,15 @@ expr_primary
     | sizeof_expr       { $$ = $1; }
     | builtin_call_expr { $$ = $1; }
     | proc_lit_expr     { $$ = $1; }
+    | kw_ident
+        {
+            // Soft keyword used as a plain identifier (e.g. `len` after `len :=`).
+            // When followed by '(' the builtin_call_expr alternative takes priority
+            // via Bison's default shift-over-reduce preference.
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new IdentExpr(r, *$1);
+            delete $1;
+        }
     ;
 
 // Anonymous proc literal: proc(x: i32) -> i32 { return x * 2 }
@@ -1448,10 +1457,10 @@ builtin_call_expr
             $$ = new BuiltinCallExpr(r, TOK_KW_RESERVE, *$3);
             delete $3;
         }
-    | TOK_KW_DELETE_DYN TOK_LPAREN expr TOK_RPAREN
+    | TOK_KW_CLEAR TOK_LPAREN expr TOK_RPAREN
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new BuiltinCallExpr(r, TOK_KW_DELETE_DYN, {$3});
+            $$ = new BuiltinCallExpr(r, TOK_KW_CLEAR, {$3});
         }
     | TOK_KW_TO_CSTR TOK_LPAREN expr TOK_RPAREN
         {
@@ -1547,6 +1556,14 @@ field_init_list_commas
 
 field_init
     : TOK_IDENT TOK_ASSIGN expr
+        {
+            $$ = new FieldInit();
+            $$->name = *$1;
+            $$->value = $3;
+            $$->loc = SourceLoc(filename, @1.first_line, @1.first_column);
+            delete $1;
+        }
+    | TOK_IDENT TOK_ASSIGN struct_lit
         {
             $$ = new FieldInit();
             $$->name = *$1;

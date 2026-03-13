@@ -96,13 +96,17 @@ PI      :: 3.14159265
 
 ## Variables
 
+All variables and containers are **zero-initialized by default** when no explicit initializer is given. This applies to every type: scalars become `0`/`false`/`nil`, fixed arrays are filled with zeros, `string` and `[dynamic]T` start empty, and struct fields are zeroed recursively.
+
 ```zed
 -- Type-inferred declaration (:=)
 x := 42
-name := "zed"
+name := "zed"          -- inferred as cstr
 
 -- Explicit type, no init (zero-initialised)
-count: i32
+count: i32             -- 0
+arr:   [4]i32          -- [0, 0, 0, 0]
+buf:   [dynamic]i32    -- empty, len=0
 
 -- Explicit type with init
 speed: f32 = 0.5
@@ -110,17 +114,11 @@ speed: f32 = 0.5
 -- Multiple declaration from multi-return call
 ok, val := parse_int(s)
 
--- Discard (_)
-_ := expensive_call()
+-- Discard with _
+_, val2 := fallible_call()
 ```
 
 Global variables are declared at the top level (outside any proc).
-Foreign C types declared globally are zero-initialised with `= {}`:
-
-```zed
-window: Window          -- foreign C type, zero-init
-score  := 0             -- global, type inferred
-```
 
 > **C keyword shadowing.** Zed allows variable names that happen to be C/C++ reserved words (`double`, `float`, `int`, …). The code generator automatically renames them with a `_zl_` prefix in the output so compilation is never affected. The names remain usable as-is in Zed source.
 
@@ -168,28 +166,33 @@ arr_ptr + 1        -- pointer arithmetic
 
 ## Arrays & Slices
 
-**Fixed arrays** — size must be a compile-time constant or constant expression. Any arithmetic combination of integer literals and `::` constants is accepted.
+**Fixed arrays** — size must be a compile-time integer literal, a `::` constant, or any arithmetic expression (`+`, `-`, `*`, `/`, `%`) over those. All elements are zero-initialized when no initializer is provided.
 
 ```zed
-nums: [4]i32
+nums: [4]i32           -- [0, 0, 0, 0]
 nums[0] = 1
 
 -- Aggregate initializer
 verts: [3]Vec3 = { Vec3{x=0.0,y=0.0,z=0.0}, Vec3{x=1.0,y=0.0,z=0.0}, Vec3{x=0.0,y=1.0,z=0.0} }
 
+-- Named constant as size
+MAX_ITEMS :: 64
+buf: [MAX_ITEMS]u8
+
 -- Const-expr size (full arithmetic supported)
 GRID      :: 20
 CELL_SIZE :: 4
-cells:  [GRID * GRID]i32         -- 400 elements
+cells:  [GRID * GRID]i32              -- 400 elements
 pixels: [GRID * GRID * CELL_SIZE]u8   -- 1600 elements
+border: [(GRID + 2) * (GRID + 2)]i32  -- with padding
 ```
 
 **Slices** — fat pointer (data + length).
 
 ```zed
 s: []i32
-sub := arr[1 ..< 4]    -- exclusive upper bound
-sub2 := arr[1 ..= 4]   -- inclusive
+sub  := arr[1 ..< 4]   -- exclusive upper bound  [1, 4)
+sub2 := arr[1 ..= 4]   -- inclusive upper bound  [1, 4]
 full := arr[:]          -- full slice
 ```
 
@@ -209,22 +212,26 @@ append(&nums, 20)
 
 -- Length and capacity
 n       := len(nums)   -- current element count  → u64
-cap_val := cap(nums)   -- current capacity        → u64
+cap_val := cap(nums)   -- current capacity       → u64
 
--- Pre-allocate capacity (avoids repeated reallocations)
+-- Pre-allocate capacity
+-- Sets capacity to n; len stays 0.
+-- All reserved slots are zero-initialized and accessible via index up to cap-1.
 reserve(&nums, 100)
 
 -- Index (same syntax as fixed arrays)
 first := nums[0]
 nums[1] = 99
 
--- Free the backing allocation
-delete_dyn(&nums)
+-- Clear the array (sets len to 0, retains allocation)
+clear(&nums)
 ```
 
-`len` also works on fixed arrays, slices, and `string` values.
+> **`reserve` semantics.** `reserve(&x, n)` allocates backing memory for at least `n` elements and zero-initializes all reserved slots. `len(x)` remains `0`; `cap(x)` returns `n`. Elements in the reserved range `[0, cap-1]` read as zero and can be written directly by index. Use `append` to formally extend `len`.
 
-> `len`, `cap`, `append`, `reserve`, `delete_dyn`, `to_cstr`, and `from_cstr` are **soft keywords** — they are recognised as built-in calls only when immediately used as calls. They may freely be used as variable names in other positions (`cap_val := cap(nums)` or `len := 0` both work).
+`len` works on fixed arrays, slices, `string`, and dynamic arrays.
+
+> **Soft keywords.** `len`, `cap`, `append`, `reserve`, `clear`, `to_cstr`, and `from_cstr` are recognised as built-in calls only when used as calls. They may freely be used as variable names in other positions (`cap_val := cap(nums)` or `len := 0` both work).
 
 ---
 
@@ -239,10 +246,14 @@ Vec2 :: struct {
 -- Literal
 v := Vec2{ x = 1.0, y = 2.0 }
 
+-- Nested struct literal
+Rect :: struct { pos: Vec2, size: Vec2 }
+r := Rect{ pos = Vec2{ x = 0.0, y = 0.0 }, size = Vec2{ x = 10.0, y = 10.0 } }
+
 -- Field access
 v.x = 3.0
 
--- Struct update (spread) — copy base, override fields
+-- Struct update (spread) — copy base, override named fields
 v2 := Vec2{ ..v, x = 10.0 }
 
 -- Pointer to struct
@@ -332,14 +343,13 @@ puts :: proc(s: cstr) -> i32 ---
 
 ### or_return
 
-Postfix operator for propagating errors out of a proc. The callee must return `(T, bool)`; if the bool is `false`, the enclosing proc returns immediately.
+Postfix operator for propagating errors out of a proc. The callee must return `(T, bool)`; if the bool is `false`, the enclosing proc immediately returns a zero-value `T` and `false`.
 
 ```zed
--- proc that can fail returns (value, bool)
 read_int :: proc(s: cstr) -> (i32, bool) { ... }
 
 parse :: proc(input: cstr) -> (i32, bool) {
-    n := read_int(input) or_return   -- on failure: returns (zero-value of i32, false)
+    n := read_int(input) or_return   -- on failure: returns (0, false)
     return n * 2, true
 }
 ```
@@ -348,7 +358,7 @@ parse :: proc(input: cstr) -> (i32, bool) {
 
 ## Named Return Values
 
-Return variables can be given names in the signature. They are zero-initialised automatically and a bare `return` commits whatever values they hold at that point.
+Return variables can be given names in the signature. They are zero-initialized automatically and a bare `return` commits whatever values they hold at that point.
 
 ```zed
 divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
@@ -406,17 +416,23 @@ for x > 0 { x -= 1 }
 -- Range (exclusive)
 for i in 0 ..< 10 { }
 
--- Range (inclusive) with step
+-- Range (inclusive) with optional step
 for i in 0 ..= 100 step 5 { }
 ```
 
 ### break / continue (with labels)
 
+Labels apply to infinite and while-style loops. Place the label before the `for` keyword; `break` and `continue` can target any enclosing labelled loop.
+
 ```zed
+i := 0
 outer: for {
-    for {
-        break outer
-        continue outer
+    i += 1
+    j := 0
+    inner: for {
+        j += 1
+        if j == 3 { continue outer }
+        if i == 5 { break outer }
     }
 }
 ```
@@ -439,14 +455,13 @@ Runs at the **end of the enclosing block** (LIFO order). Works inside loops — 
 open_file :: proc() {
     f := fopen("data.bin", "rb")
     defer fclose(f)         -- runs when proc returns
-
     -- ...
 }
 
 -- Inside a loop — fires every iteration
 for not WindowShouldClose() {
     BeginDrawing()
-    defer EndDrawing()      -- guaranteed even on early break
+    defer EndDrawing()
     BeginMode2D(camera)
     defer EndMode2D()
     -- ...
@@ -457,7 +472,7 @@ for not WindowShouldClose() {
 
 ## Match
 
-Pattern-match on any integer or enum value. `else` is the default case (alias for bare `case`).
+Pattern-match on any integer or enum value. `else` is the default case.
 
 ```zed
 match direction {
@@ -469,14 +484,14 @@ match direction {
 
 ### Enum dot-shorthand
 
-When matching on an enum value the type name can be omitted — write `.Variant` and Zed infers the enum from the match expression.
+When matching on an enum value the type name can be omitted — write `.Variant` and Zed infers the enum type from the match expression.
 
 ```zed
 match direction {
     case .North { go_north() }
     case .South { go_south() }
     case .East  { go_east()  }
-    else        { stop()     }
+    case .West  { go_west()  }
 }
 ```
 
@@ -484,7 +499,7 @@ match direction {
 
 ## When
 
-Compile-time conditional (like `#if`). Condition must be a compile-time constant.
+Compile-time conditional (like `#if`). The condition must be a compile-time constant expression. Branches that do not match are not emitted into the output.
 
 ```zed
 DEBUG :: true
@@ -500,7 +515,14 @@ when DEBUG {
 
 ## typeid
 
-`typeid(T)` produces a **compile-time `u64` hash** that uniquely identifies a type. Its only intended use is as a constant in `when` conditions.
+`typeid(T)` produces a **compile-time `u64` hash** that uniquely identifies the type `T`. No runtime cost is incurred — the value folds away entirely at compile time.
+
+```zed
+id_i32 :: typeid(i32)   -- u64 constant
+#assert typeid(i32) != typeid(f32)
+```
+
+`typeid` is most useful in `when` conditions to branch on type identity:
 
 ```zed
 when typeid(T) == typeid(i32) {
@@ -510,13 +532,11 @@ when typeid(T) == typeid(i32) {
 }
 ```
 
-`typeid` expressions are evaluated entirely at compile time and fold away with `when`; no runtime cost is incurred.
-
 ---
 
 ## Compile-time Assert
 
-`#assert` is valid both at the **top level** (outside any proc) and inside proc bodies. It emits a C `static_assert` with a `file:line` message.
+`#assert` is valid both at the **top level** (outside any proc) and inside proc bodies. It emits a C++ `static_assert` with a `file:line` diagnostic message.
 
 ```zed
 -- top-level
@@ -541,13 +561,13 @@ Zed has two string types with distinct semantics:
 | `cstr`   | `const char*` | No      | No (pointer)   |
 | `string` | `std::string` | Yes     | Yes            |
 
-**String literals `"..."` default to `cstr`.** To get a `string`, annotate the variable explicitly or call `from_cstr`.
+**String literals `"..."` always produce `cstr`.** Assign to a `string`-typed variable to get a `string` (the compiler inserts the implicit conversion).
 
 ```zed
 a : cstr   = "hello"          -- cstr  (explicit)
-b : string = "hello"          -- string (literal → string coercion allowed)
-c := "hello"                  -- cstr  (inferred default)
-d :: "hello"                  -- cstr  (const, inferred default)
+b : string = "hello"          -- string (cstr literal coerced to string)
+c := "hello"                  -- cstr  (inferred)
+d :: "hello"                  -- cstr  (const)
 e := from_cstr("hello")       -- string (explicit conversion)
 ```
 
@@ -556,10 +576,10 @@ e := from_cstr("hello")       -- string (explicit conversion)
 ```zed
 s : string = "world"
 cs: cstr   = to_cstr(s)       -- string → cstr  (points into s's buffer)
-s2: string = from_cstr(cs)    -- cstr   → string (copies into new std::string)
+s2: string = from_cstr(cs)    -- cstr   → string (copies)
 ```
 
-Assigning a runtime `cstr` variable directly to a `string` (or vice-versa) **without** a conversion call is a type error.
+Assigning a runtime `cstr` variable directly to a `string` (or vice-versa) without a conversion call is a type error.
 
 ---
 
@@ -575,14 +595,14 @@ cimport "math.h"
 cimport "stdio.h"
 ```
 
-- C types (e.g. `Texture`, `Camera2D`, `Sound`) are used by name as foreign types.
+- C types (e.g. `Texture`, `Camera2D`) are used by name as foreign types.
 - C macros (e.g. `WHITE`, `FLAG_VSYNC_HINT`) pass through to the generated C++.
 - C functions are called directly with no wrapper needed.
 
 ```zed
-tex := LoadTexture("sprite.png")     -- returns Texture (foreign named type)
-cosf(angle)                          -- from math.h
-printf("%d\n", cast(i32)(score))     -- from stdio.h
+tex := LoadTexture("sprite.png")
+cosf(angle)
+printf("%d\n", cast(i32)(score))
 ```
 
 ### Extern proc declarations
@@ -604,7 +624,7 @@ import "math_utils"     -- imports math_utils.z
 import "engine/render"  -- path relative to project src/
 ```
 
-- All top-level `proc`, `struct`, `const`, and global `var` declarations from the imported file become visible.
+- All top-level `proc`, `struct`, `union`, `enum`, `const`, and global `var` declarations from the imported file become visible.
 - When using `zed build --project`, source files are discovered automatically via `zed.toml`; explicit `import` is only needed for symbol visibility.
 - When using `zed build --file` or the low-level CLI, list all `.z` files on the command line in dependency order.
 
@@ -618,7 +638,7 @@ n2 := sizeof(my_var)     -- size of variable's type
 a  := alignof(i64)       -- alignment in bytes → u64
 ```
 
-Emits C `sizeof(...)` / `alignof(...)` directly. Useful for `malloc`, `memcpy`, and layout calculations.
+Emits C++ `sizeof(...)` / `alignof(...)` directly. Useful for `malloc`, `memcpy`, and layout calculations.
 
 ---
 
@@ -651,14 +671,16 @@ main :: proc() -> i32 {
 }
 ```
 
-## Zed Init (`zed init <NAME>`)
+---
 
-```zed
+## Zed Init (`zed init <n>`)
+
+```
   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
   ┃           Zed Project Initialized           ┃
   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-  ◆ <NAME>/
+  ◆ <n>/
   │
   ├── src/
   │ │
@@ -673,19 +695,19 @@ main :: proc() -> i32 {
   ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
   build:
-      zed build debug   --project <NAME>/
-      zed build release --project <NAME>/
+      zed build debug   --project <n>/
+      zed build release --project <n>/
 
   run:
-      zed run   debug   --project <NAME>/
-      zed run   release --project <NAME>/
+      zed run   debug   --project <n>/
+      zed run   release --project <n>/
 
   clean:
-      zed clean         --project <NAME>/
+      zed clean         --project <n>/
 
   ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
-  ▶▶  cd <NAME> && zed run debug --project .
+  ▶▶  cd <n> && zed run debug --project .
 
   ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 ```
