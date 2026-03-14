@@ -207,6 +207,11 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_XOR_ASSIGN     "'^='"
 %token TOK_SHL_ASSIGN     "'<<='"
 %token TOK_SHR_ASSIGN     "'>>='"
+// New builtin-call keywords — always append here, never insert above
+%token TOK_KW_PANIC      "panic"
+%token TOK_KW_FREE       "free"
+%token TOK_KW_COPY       "copy"
+%token TOK_KW_ENUM_NAME  "enum_name"
 
 // =============================================================================
 // Non-terminals
@@ -453,6 +458,10 @@ kw_ident
     | TOK_KW_CLEAR      { $$ = new std::string("clear");      }
     | TOK_KW_TO_CSTR    { $$ = new std::string("to_cstr");    }
     | TOK_KW_FROM_CSTR  { $$ = new std::string("from_cstr");  }
+    | TOK_KW_PANIC      { $$ = new std::string("panic");      }
+    | TOK_KW_FREE       { $$ = new std::string("free");       }
+    | TOK_KW_COPY       { $$ = new std::string("copy");       }
+    | TOK_KW_ENUM_NAME  { $$ = new std::string("enum_name");  }
     ;
 
 // Procedure declarations – expanded to avoid pair in union
@@ -842,6 +851,20 @@ for_stmt
             SourceRange r = to_sourcerange(@$, filename);
             auto* s = new ForRangeStmt(r, *$2, $4, $6, true, $9);
             s->step_expr = $8; delete $2; $$ = s;
+        }
+    // ── for-each: for item in collection ─────────────────────────────────
+    | TOK_KW_FOR TOK_IDENT TOK_KW_IN expr block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ForEachStmt(r, "", *$2, $4, $5);
+            delete $2;
+        }
+    // ── for-each with index: for i, item in collection ───────────────────
+    | TOK_KW_FOR TOK_IDENT TOK_COMMA TOK_IDENT TOK_KW_IN expr block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new ForEachStmt(r, *$2, *$4, $6, $7);
+            delete $2; delete $4;
         }
     ;
 
@@ -1477,6 +1500,26 @@ builtin_call_expr
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new BuiltinCallExpr(r, TOK_KW_FROM_CSTR, {$3});
+        }
+    | TOK_KW_PANIC TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_PANIC, {$3});
+        }
+    | TOK_KW_FREE TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_FREE, {$3});
+        }
+    | TOK_KW_COPY TOK_LPAREN expr TOK_COMMA expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_COPY, {$3, $5});
+        }
+    | TOK_KW_ENUM_NAME TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_ENUM_NAME, {$3});
         }
     ;
 

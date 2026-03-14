@@ -351,6 +351,21 @@ void AstPrinter::print(Stmt* stmt) {
             dedent();
             break;
         }
+        case Stmt::FOR_EACH: {
+            ForEachStmt* fe = static_cast<ForEachStmt*>(stmt);
+            emit_indent(out, current_indent);
+            out << "ForEach";
+            if (!fe->index_var.empty()) out << " index=" << fe->index_var;
+            out << " value=" << fe->value_var;
+            print_location(fe);
+            out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "Collection:\n";
+            indent(); print(fe->collection); dedent();
+            print(fe->body);
+            dedent();
+            break;
+        }
         case Stmt::DEFER: {
             DeferStmt* ds = static_cast<DeferStmt*>(stmt);
             emit_indent(out, current_indent);

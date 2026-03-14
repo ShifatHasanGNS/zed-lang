@@ -31,9 +31,10 @@ Pointer dereference operator: `.*` (Zig-style).
 21. [typeid](#typeid)
 22. [Compile-time Assert](#compile-time-assert)
 23. [String Types & Conversion](#string-types--conversion)
-24. [C Interop](#c-interop)
-25. [Multi-file Projects](#multi-file-projects)
-26. [sizeof / alignof](#sizeof--alignof)
+24. [Built-in Operations](#built-in-operations)
+25. [C Interop](#c-interop)
+26. [Multi-file Projects](#multi-file-projects)
+27. [sizeof / alignof](#sizeof--alignof)
 
 ---
 
@@ -96,17 +97,13 @@ PI      :: 3.14159265
 
 ## Variables
 
-All variables and containers are **zero-initialized by default** when no explicit initializer is given. This applies to every type: scalars become `0`/`false`/`nil`, fixed arrays are filled with zeros, `string` and `[dynamic]T` start empty, and struct fields are zeroed recursively.
-
 ```zed
 -- Type-inferred declaration (:=)
 x := 42
 name := "zed"          -- inferred as cstr
 
 -- Explicit type, no init (zero-initialised)
-count: i32             -- 0
-arr:   [4]i32          -- [0, 0, 0, 0]
-buf:   [dynamic]i32    -- empty, len=0
+count: i32
 
 -- Explicit type with init
 speed: f32 = 0.5
@@ -119,6 +116,12 @@ _, val2 := fallible_call()
 ```
 
 Global variables are declared at the top level (outside any proc).
+Foreign C types declared globally are zero-initialised with `= {}`:
+
+```zed
+window: Window          -- foreign C type, zero-init
+score  := 0             -- global, type inferred
+```
 
 > **C keyword shadowing.** Zed allows variable names that happen to be C/C++ reserved words (`double`, `float`, `int`, …). The code generator automatically renames them with a `_zl_` prefix in the output so compilation is never affected. The names remain usable as-is in Zed source.
 
@@ -130,7 +133,7 @@ Global variables are declared at the top level (outside any proc).
 **Bitwise:** `&  |  ^  <<  >>`
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
-**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
+**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^= <<= >>=`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
 
 > Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.
@@ -166,10 +169,10 @@ arr_ptr + 1        -- pointer arithmetic
 
 ## Arrays & Slices
 
-**Fixed arrays** — size must be a compile-time integer literal, a `::` constant, or any arithmetic expression (`+`, `-`, `*`, `/`, `%`) over those. All elements are zero-initialized when no initializer is provided.
+**Fixed arrays** — size must be a compile-time integer literal, a `::` constant, or any arithmetic expression (`+`, `-`, `*`, `/`, `%`) over those.
 
 ```zed
-nums: [4]i32           -- [0, 0, 0, 0]
+nums: [4]i32
 nums[0] = 1
 
 -- Aggregate initializer
@@ -191,8 +194,8 @@ border: [(GRID + 2) * (GRID + 2)]i32  -- with padding
 
 ```zed
 s: []i32
-sub  := arr[1 ..< 4]   -- exclusive upper bound  [1, 4)
-sub2 := arr[1 ..= 4]   -- inclusive upper bound  [1, 4]
+sub  := arr[1 ..< 4]   -- exclusive upper bound [1, 4)
+sub2 := arr[1 ..= 4]   -- inclusive upper bound [1, 4]
 full := arr[:]          -- full slice
 ```
 
@@ -215,23 +218,22 @@ n       := len(nums)   -- current element count  → u64
 cap_val := cap(nums)   -- current capacity       → u64
 
 -- Pre-allocate capacity
--- Sets capacity to n; len stays 0.
--- All reserved slots are zero-initialized and accessible via index up to cap-1.
+-- Sets capacity to n; len stays 0. Reserved slots are zero-initialized.
 reserve(&nums, 100)
 
 -- Index (same syntax as fixed arrays)
 first := nums[0]
 nums[1] = 99
 
--- Clear the array (sets len to 0, retains allocation)
+-- Clear the array (len → 0, retains allocation)
 clear(&nums)
 ```
 
-> **`reserve` semantics.** `reserve(&x, n)` allocates backing memory for at least `n` elements and zero-initializes all reserved slots. `len(x)` remains `0`; `cap(x)` returns `n`. Elements in the reserved range `[0, cap-1]` read as zero and can be written directly by index. Use `append` to formally extend `len`.
+> **`reserve` semantics.** `reserve(&x, n)` allocates backing memory for at least `n` elements and zero-initializes all reserved slots. `len(x)` remains `0`; `cap(x)` returns `n`. Elements in the reserved range `[0, cap-1]` read as zero and can be written directly by index.
 
 `len` works on fixed arrays, slices, `string`, and dynamic arrays.
 
-> **Soft keywords.** `len`, `cap`, `append`, `reserve`, `clear`, `to_cstr`, and `from_cstr` are recognised as built-in calls only when used as calls. They may freely be used as variable names in other positions (`cap_val := cap(nums)` or `len := 0` both work).
+> **Soft keywords.** `len`, `cap`, `append`, `reserve`, `clear`, `to_cstr`, `from_cstr`, `panic`, `free`, `copy`, and `enum_name` are recognised as built-in calls only when used as calls. They may freely be used as variable names in other positions (`cap_val := cap(nums)` or `len := 0` both work).
 
 ---
 
@@ -245,10 +247,6 @@ Vec2 :: struct {
 
 -- Literal
 v := Vec2{ x = 1.0, y = 2.0 }
-
--- Nested struct literal
-Rect :: struct { pos: Vec2, size: Vec2 }
-r := Rect{ pos = Vec2{ x = 0.0, y = 0.0 }, size = Vec2{ x = 10.0, y = 10.0 } }
 
 -- Field access
 v.x = 3.0
@@ -358,7 +356,7 @@ parse :: proc(input: cstr) -> (i32, bool) {
 
 ## Named Return Values
 
-Return variables can be given names in the signature. They are zero-initialized automatically and a bare `return` commits whatever values they hold at that point.
+Return variables can be given names in the signature. They are zero-initialised automatically and a bare `return` commits whatever values they hold at that point.
 
 ```zed
 divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
@@ -404,7 +402,7 @@ if x > 0 {
 }
 ```
 
-### for — four forms
+### for — six forms
 
 ```zed
 -- Infinite loop
@@ -418,7 +416,17 @@ for i in 0 ..< 10 { }
 
 -- Range (inclusive) with optional step
 for i in 0 ..= 100 step 5 { }
+
+-- For-each: iterate over array, slice, [dynamic]T, or string
+for item in nums { }
+
+-- For-each with index
+for i, item in nums { }
 ```
+
+The index variable in `for i, item in coll` is typed `i64`. The element variable is the element type of the collection (`u8` for `string`).
+
+For-each variables are read-write — mutating `item` writes back into the collection for arrays, slices, and dynamic arrays.
 
 ### break / continue (with labels)
 
@@ -581,6 +589,73 @@ s2: string = from_cstr(cs)    -- cstr   → string (copies)
 
 Assigning a runtime `cstr` variable directly to a `string` (or vice-versa) without a conversion call is a type error.
 
+**String concatenation** uses `+`. At least one operand must be a `string`; the other may be `string` or `cstr`. The result is always `string`.
+
+```zed
+greeting: string = "Hello, "
+name:     string = "Zed"
+full  := greeting + name        -- "Hello, Zed"
+full2 := greeting + "World"     -- string + cstr → string
+```
+
+**String indexing** returns the byte at position `i` as `u8`.
+
+```zed
+s: string = "abc"
+b := s[0]     -- u8 = 97 ('a')
+```
+
+**String for-each** iterates over bytes.
+
+```zed
+for byte in s { }           -- byte: u8
+for i, byte in s { }        -- i: i64, byte: u8
+```
+
+---
+
+## Built-in Operations
+
+These are soft keywords — usable as variable names outside a call position.
+
+| Call                | Description                                               | Return type |
+| ------------------- | --------------------------------------------------------- | ----------- |
+| `len(x)`            | Element count of array, slice, `[dynamic]T`, or `string`  | `u64`       |
+| `cap(x)`            | Capacity of a `[dynamic]T`                                | `u64`       |
+| `append(&arr, val)` | Append element to dynamic array                           | `void`      |
+| `reserve(&arr, n)`  | Pre-allocate capacity; len stays 0; slots zeroed          | `void`      |
+| `clear(&arr)`       | Set len to 0; retain allocation                           | `void`      |
+| `copy(dst, src)`    | Copy `min(len(dst), len(src))` elements; returns count    | `i64`       |
+| `free(ptr)`         | Release heap memory obtained via C `malloc` / `mem_alloc` | `void`      |
+| `panic(msg)`        | Print message to stderr and abort — never returns         | `void`      |
+| `to_cstr(s)`        | `string` → `cstr` (points into string buffer)             | `cstr`      |
+| `from_cstr(cs)`     | `cstr` → `string` (copies)                                | `string`    |
+| `enum_name(val)`    | Enum variant → its source name as `cstr`                  | `cstr`      |
+| `sizeof(T\|x)`      | Size in bytes of a type or variable                       | `u64`       |
+| `alignof(T)`        | Alignment in bytes                                        | `u64`       |
+| `typeid(T)`         | Compile-time `u64` hash unique to `T`                     | `u64`       |
+
+```zed
+-- panic: runtime abort with message
+if ptr == nil { panic("unexpected nil pointer") }
+
+-- free: release raw allocation
+buf := cast(*u8)(mem_alloc(1024))
+mem_zero(buf, 1024)
+free(buf)
+
+-- copy: slice/dynamic array copy
+src: [dynamic]i32
+dst: [dynamic]i32
+reserve(&dst, 5)
+n := copy(dst, src)   -- copies min(cap(dst), len(src)) elements
+
+-- enum_name: get variant name at runtime
+Dir :: enum { North, South, East, West }
+d := Dir.East
+printf("%s\n", enum_name(d))   -- prints "East"
+```
+
 ---
 
 ## C Interop
@@ -670,8 +745,6 @@ main :: proc() -> i32 {
     return 0
 }
 ```
-
----
 
 ## Zed Init (`zed init <n>`)
 

@@ -64,6 +64,7 @@ private:
     void emit_if(IfStmt* s);
     void emit_loop(LoopStmt* s);
     void emit_for_range(ForRangeStmt* s);
+    void emit_for_each(ForEachStmt* s);
     void emit_match(MatchStmt* s);
     void emit_when(WhenStmt* s);
     void emit_compound_assign(CompoundAssignStmt* s);

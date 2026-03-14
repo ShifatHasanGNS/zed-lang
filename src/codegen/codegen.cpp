@@ -433,6 +433,7 @@ void CodeGen::emit_stmt(Stmt* s) {
             break;
         }
         case Stmt::FOR_RANGE:      emit_for_range(static_cast<ForRangeStmt*>(s));          break;
+        case Stmt::FOR_EACH:       emit_for_each(static_cast<ForEachStmt*>(s));            break;
         case Stmt::DEFER:          /* deferred — emitted at return/block end */             break;
         case Stmt::MATCH:          emit_match(static_cast<MatchStmt*>(s));                  break;
         case Stmt::WHEN:           emit_when(static_cast<WhenStmt*>(s));                    break;
@@ -529,6 +530,70 @@ void CodeGen::emit_for_range(ForRangeStmt* s) {
     else emit_.emit("1");
     emit_.emit(")");
     emit_block(s->body, true);
+}
+
+// ---------------------------------------------------------------------------
+// emit_for_each — for item in coll { }  /  for i, item in coll { }
+// Expands to a C++ indexed for loop so both index and element are available.
+// Works for fixed arrays, slices, dynamic arrays, and strings.
+// ---------------------------------------------------------------------------
+void CodeGen::emit_for_each(ForEachStmt* s) {
+    TypeRef cty = tc_.type_of(s->collection);
+
+    // Emit the collection expression into a const reference to avoid
+    // re-evaluating a complex expression multiple times.
+    const std::string coll_tmp = "_zed_coll_" + c_safe_name(s->value_var) + "_";
+    emit_.begin_line("{\n");
+    emit_.indent();
+
+    // Store collection in a temp
+    emit_.emit_indent();
+    emit_.emit("auto& " + coll_tmp + " = ");
+    emit_expr(s->collection);
+    emit_.emit(";\n");
+
+    // Length expression
+    std::string len_expr;
+    if (cty && cty->is_array())
+        len_expr = std::to_string(static_cast<sem::ArrayType*>(cty)->count);
+    else if (cty && cty->is_dyn_array())
+        len_expr = coll_tmp + ".size()";
+    else if (cty && cty->is_string())
+        len_expr = coll_tmp + ".size()";
+    else
+        len_expr = coll_tmp + ".len";  // Slice
+
+    const std::string idx_var = s->index_var.empty()
+        ? ("_zed_i_" + c_safe_name(s->value_var) + "_")
+        : c_safe_name(s->index_var);
+
+    emit_.emit_indent();
+    emit_.emit("for (int64_t " + idx_var + " = 0; "
+               + idx_var + " < (int64_t)(" + len_expr + "); "
+               + "++" + idx_var + ") {\n");
+    emit_.indent();
+
+    // Element variable
+    const std::string val_var = c_safe_name(s->value_var);
+    emit_.emit_indent();
+    if (cty && cty->is_slice()) {
+        auto* st = static_cast<sem::SliceType*>(cty);
+        emit_.emit("auto& " + val_var + " = SLICE_IDX(");
+        emit_c_type(st->elem);
+        emit_.emit(", " + coll_tmp + ", " + idx_var + ");\n");
+    } else if (cty && cty->is_string()) {
+        emit_.emit("uint8_t " + val_var + " = (uint8_t)" + coll_tmp + "[" + idx_var + "];\n");
+    } else {
+        emit_.emit("auto& " + val_var + " = " + coll_tmp + "[" + idx_var + "];\n");
+    }
+
+    // Body statements
+    for (Stmt* st : s->body->stmts) emit_stmt(st);
+
+    emit_.dedent();
+    emit_.line("}");
+    emit_.dedent();
+    emit_.line("}");
 }
 
 // ---------------------------------------------------------------------------
@@ -727,6 +792,17 @@ void CodeGen::emit_return(ReturnStmt* s) {
 }
 
 void CodeGen::emit_assign(AssignStmt* s) {
+    // _ = expr  →  evaluate for side-effects only, discard result
+    if (s->lvalue->kind() == Expr::IDENT) {
+        auto* id = static_cast<IdentExpr*>(s->lvalue);
+        if (id->name == "_") {
+            emit_.emit_indent();
+            emit_.emit("(void)(");
+            emit_expr(s->rhs);
+            emit_.emit(");\n");
+            return;
+        }
+    }
     emit_.emit_indent();
     emit_expr(s->lvalue);
     emit_.emit(" = ");
@@ -850,7 +926,22 @@ void CodeGen::emit_expr_hint(Expr* e, TypeRef hint) {
 }
 
 void CodeGen::emit_binary(BinaryExpr* e) {
-    TypeRef operand_ty = tc_.type_of(e->left);
+    TypeRef lty = tc_.type_of(e->left);
+    TypeRef rty = tc_.type_of(e->right);
+
+    // String concatenation: emit std::string(lhs) + rhs to ensure operator+ works
+    if (e->op == TOK_PLUS && lty && rty &&
+        (lty->is_string() || lty->is_cstr()) &&
+        (rty->is_string() || rty->is_cstr())) {
+        emit_.emit("(std::string(");
+        emit_expr(e->left);
+        emit_.emit(") + std::string(");
+        emit_expr(e->right);
+        emit_.emit("))");
+        return;
+    }
+
+    TypeRef operand_ty = lty;
     emit_.emit("(");
     emit_expr_hint(e->left, operand_ty);
     emit_.emit(" " + op_str(e->op) + " ");
@@ -905,6 +996,13 @@ void CodeGen::emit_index(IndexExpr* e) {
         emit_.emit(", ");
         emit_expr(e->index);
         emit_.emit(")");
+    } else if (bty->is_string()) {
+        // string[i] → (uint8_t)(s[i])
+        emit_.emit("((uint8_t)(");
+        emit_expr(e->base);
+        emit_.emit(")[");
+        emit_expr(e->index);
+        emit_.emit("])");
     } else {
         // Plain array indexing
         emit_expr(e->base);
@@ -1467,6 +1565,51 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             emit_.emit("std::string(");
             emit_expr(e->args[0]);
             emit_.emit(")");
+            break;
+        }
+        case TOK_KW_PANIC: {
+            // panic(msg)  →  mem_panic(msg)
+            emit_.emit("mem_panic(");
+            emit_expr(e->args[0]);
+            emit_.emit(")");
+            break;
+        }
+        case TOK_KW_FREE: {
+            // free(ptr)  →  mem_free(ptr)
+            emit_.emit("mem_free(");
+            emit_expr(e->args[0]);
+            emit_.emit(")");
+            break;
+        }
+        case TOK_KW_COPY: {
+            // copy(dst, src)  →  _zed_slice_copy(dst, src)
+            // Works for slices and dynamic arrays
+            emit_.emit("_zed_slice_copy(");
+            emit_expr(e->args[0]);
+            emit_.emit(", ");
+            emit_expr(e->args[1]);
+            emit_.emit(")");
+            break;
+        }
+        case TOK_KW_ENUM_NAME: {
+            // enum_name(val)  →  _zed_enum_name_TYPENAME(val)
+            // The type checker resolved the arg type; codegen emits a call to
+            // a generated helper. We emit a generic stringify via switch inline.
+            TypeRef arg_ty = e->args.empty() ? nullptr : tc_.type_of(e->args[0]);
+            if (arg_ty && arg_ty->is_enum()) {
+                auto* et = static_cast<sem::EnumType*>(arg_ty);
+                // Emit an inline switch that maps enum values to name strings
+                emit_.emit("([&]() -> const char* { switch((int)(");
+                emit_expr(e->args[0]);
+                emit_.emit(")) {");
+                for (const auto& v : et->variants) {
+                    emit_.emit(" case " + std::to_string(v.value)
+                               + ": return \"" + v.name + "\";");
+                }
+                emit_.emit(" default: return \"<unknown>\"; } }())");
+            } else {
+                emit_.emit("\"<unknown>\"");
+            }
             break;
         }
         default:

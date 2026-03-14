@@ -118,4 +118,9 @@ enum {
     TOK_XOR_ASSIGN        = 344,
     TOK_SHL_ASSIGN        = 345,
     TOK_SHR_ASSIGN        = 346,
+    // New builtin-call keywords
+    TOK_KW_PANIC          = 347,
+    TOK_KW_FREE           = 348,
+    TOK_KW_COPY           = 349,
+    TOK_KW_ENUM_NAME      = 350,
 };

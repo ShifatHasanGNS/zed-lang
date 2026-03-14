@@ -70,6 +70,7 @@ private:
     void check_expr_stmt(ExprStmt* s);
     void check_decl_stmt(DeclStmt* s);
     void check_for_range(ForRangeStmt* s);
+    void check_for_each(ForEachStmt* s);
     void check_defer(DeferStmt* s);
     void check_match(MatchStmt* s);
     void check_when(WhenStmt* s);

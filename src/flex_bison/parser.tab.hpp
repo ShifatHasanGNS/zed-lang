@@ -129,10 +129,14 @@
      TOK_XOR_ASSIGN = 344,
      TOK_SHL_ASSIGN = 345,
      TOK_SHR_ASSIGN = 346,
-     LOWER_THAN_ELSE = 347,
-     UNARY_MINUS = 348,
-     UNARY_ADDR = 349,
-     POSTFIX_DEREF = 350
+     TOK_KW_PANIC = 347,
+     TOK_KW_FREE = 348,
+     TOK_KW_COPY = 349,
+     TOK_KW_ENUM_NAME = 350,
+     LOWER_THAN_ELSE = 351,
+     UNARY_MINUS = 352,
+     UNARY_ADDR = 353,
+     POSTFIX_DEREF = 354
    };
 #endif
 /* Tokens.  */
@@ -226,10 +230,14 @@
 #define TOK_XOR_ASSIGN 344
 #define TOK_SHL_ASSIGN 345
 #define TOK_SHR_ASSIGN 346
-#define LOWER_THAN_ELSE 347
-#define UNARY_MINUS 348
-#define UNARY_ADDR 349
-#define POSTFIX_DEREF 350
+#define TOK_KW_PANIC 347
+#define TOK_KW_FREE 348
+#define TOK_KW_COPY 349
+#define TOK_KW_ENUM_NAME 350
+#define LOWER_THAN_ELSE 351
+#define UNARY_MINUS 352
+#define UNARY_ADDR 353
+#define POSTFIX_DEREF 354
 
 
 
@@ -271,7 +279,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 275 "src/flex_bison/parser.tab.hpp"
+#line 283 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

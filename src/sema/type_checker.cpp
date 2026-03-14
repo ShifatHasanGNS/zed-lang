@@ -265,6 +265,7 @@ void TypeChecker::check_stmt(Stmt* s) {
                     + std::string(" outside of loop"));
             break;
         case Stmt::FOR_RANGE:      check_for_range(static_cast<ForRangeStmt*>(s));          break;
+        case Stmt::FOR_EACH:       check_for_each(static_cast<ForEachStmt*>(s));            break;
         case Stmt::DEFER:          check_defer(static_cast<DeferStmt*>(s));                 break;
         case Stmt::MATCH:          check_match(static_cast<MatchStmt*>(s));                 break;
         case Stmt::WHEN:           check_when(static_cast<WhenStmt*>(s));                   break;
@@ -438,6 +439,15 @@ TypeRef TypeChecker::check_binary(BinaryExpr* e) {
                 return lty;
             if (e->op == TOK_MINUS && lty->is_ptr() && rty->is_ptr())
                 return sym_.arena().ty_i64();   // pointer difference
+            // String concatenation: string + string → string
+            if (e->op == TOK_PLUS && lty->is_string() && rty->is_string())
+                return sym_.arena().ty_string();
+            if (e->op == TOK_PLUS && lty->is_string() && rty->is_cstr())
+                return sym_.arena().ty_string();
+            if (e->op == TOK_PLUS && lty->is_cstr() && rty->is_string())
+                return sym_.arena().ty_string();
+            if (e->op == TOK_PLUS && lty->is_cstr() && rty->is_cstr())
+                return sym_.arena().ty_string();
             // Fallthrough to numeric check
             [[fallthrough]];
         case TOK_STAR:
@@ -572,6 +582,7 @@ TypeRef TypeChecker::check_index(IndexExpr* e) {
     if (bty->is_slice()) return static_cast<sem::SliceType*>(bty)->elem;
     if (bty->is_ptr())   return static_cast<sem::PtrType*>(bty)->pointee;
     if (bty->is_dyn_array()) return static_cast<sem::DynArrayType*>(bty)->elem;
+    if (bty->is_string()) return sym_.arena().ty_u8();  // string[i] → u8
 
     if (!bty->is_error())
         err_.error(e->base->range.begin,
@@ -923,6 +934,40 @@ void TypeChecker::check_for_range(ForRangeStmt* s) {
 }
 
 // ---------------------------------------------------------------------------
+// ForEachStmt:  for item in arr { }  /  for i, item in arr { }
+// ---------------------------------------------------------------------------
+void TypeChecker::check_for_each(ForEachStmt* s) {
+    TypeRef cty = check_expr(s->collection);
+    TypeRef elem_ty = sym_.arena().ty_error();
+
+    if (cty->is_array())
+        elem_ty = static_cast<sem::ArrayType*>(cty)->elem;
+    else if (cty->is_slice())
+        elem_ty = static_cast<sem::SliceType*>(cty)->elem;
+    else if (cty->is_dyn_array())
+        elem_ty = static_cast<sem::DynArrayType*>(cty)->elem;
+    else if (cty->is_string())
+        elem_ty = sym_.arena().ty_u8();
+    else if (!cty->is_error() && !cty->is_any_foreign())
+        err_.error(s->collection->range.begin,
+            "for-each requires array, slice, [dynamic]T, or string; got '"
+            + cty->to_string() + "'");
+
+    sym_.push_scope(Scope::Kind::LOOP);
+    if (!s->index_var.empty()) {
+        Symbol idx_sym(Symbol::Kind::VAR, s->index_var,
+                       sym_.arena().ty_i64(), s->range.begin);
+        idx_sym.initialized = true;
+        sym_.declare(idx_sym);
+    }
+    Symbol val_sym(Symbol::Kind::VAR, s->value_var, elem_ty, s->range.begin);
+    val_sym.initialized = true;
+    sym_.declare(val_sym);
+    for (Stmt* st : s->body->stmts) check_stmt(st);
+    sym_.pop_scope();
+}
+
+// ---------------------------------------------------------------------------
 // DeferStmt
 // ---------------------------------------------------------------------------
 void TypeChecker::check_defer(DeferStmt* s) {
@@ -1103,6 +1148,19 @@ TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
         case TOK_KW_CLEAR:     return ar.ty_void();
         case TOK_KW_TO_CSTR:   return ar.ty_cstr();
         case TOK_KW_FROM_CSTR: return ar.ty_string();
+        case TOK_KW_PANIC:
+            // panic(msg: cstr) → noreturn; we return void for type purposes
+            return ar.ty_void();
+        case TOK_KW_FREE:
+            // free(ptr) → void
+            return ar.ty_void();
+        case TOK_KW_COPY: {
+            // copy(dst: []T, src: []T) → i64 (elements copied)
+            return ar.ty_i64();
+        }
+        case TOK_KW_ENUM_NAME:
+            // enum_name(val) → cstr
+            return ar.ty_cstr();
         default:
             err_.error(e->range.begin, "unknown builtin");
             return ar.ty_error();

@@ -119,6 +119,10 @@ std::string_view token_kind_name(int k) {
         case TOK_XOR_ASSIGN:       return "'^='";
         case TOK_SHL_ASSIGN:       return "'<<='";
         case TOK_SHR_ASSIGN:       return "'>>='";
+        case TOK_KW_PANIC:         return "'panic'";
+        case TOK_KW_FREE:          return "'free'";
+        case TOK_KW_COPY:          return "'copy'";
+        case TOK_KW_ENUM_NAME:     return "'enum_name'";
         default:                   return "<unknown token>";
     }
 }
@@ -169,6 +173,11 @@ int keyword_lookup(std::string_view s) {
         { "from_cstr",    TOK_KW_FROM_CSTR },
         { "to_string",    TOK_KW_FROM_CSTR },  // alias for from_cstr
         { "or_return",    TOK_KW_OR_RETURN },
+        // New builtins
+        { "panic",        TOK_KW_PANIC     },
+        { "free",         TOK_KW_FREE      },
+        { "copy",         TOK_KW_COPY      },
+        { "enum_name",    TOK_KW_ENUM_NAME },
         // Import keywords
         { "cimport",      TOK_KW_CIMPORT   },
         { "import",       TOK_KW_IMPORT    },

@@ -68,3 +68,20 @@ inline void _zed_dyn_reserve(std::vector<T>& v, size_t n) {
     if (n > 0)
         ::memset(v.data(), 0, v.capacity() * sizeof(T));
 }
+
+// _zed_slice_copy — copy(dst, src): copies min(dst.len, src.len) elements.
+// Returns the number of elements copied (i64).
+// Overloaded for Slice→Slice, vector→vector, and mixed combinations.
+template<typename T>
+inline int64_t _zed_slice_copy(std::vector<T>& dst, const std::vector<T>& src) {
+    // Use capacity() for dst — after reserve(), size()=0 but capacity()=n.
+    size_t n = dst.capacity() < src.size() ? dst.capacity() : src.size();
+    for (size_t i = 0; i < n; ++i) dst[i] = src[i];
+    return static_cast<int64_t>(n);
+}
+
+inline int64_t _zed_slice_copy(Slice dst, Slice src) {
+    size_t n = dst.len < src.len ? dst.len : src.len;
+    if (n > 0) ::memcpy(dst.ptr, src.ptr, n);
+    return static_cast<int64_t>(n);
+}

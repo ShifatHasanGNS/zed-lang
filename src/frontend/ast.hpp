@@ -283,7 +283,7 @@ public:
 class Stmt : public Node {
 public:
     enum Kind { BLOCK, RETURN, IF, LOOP, BREAK, CONTINUE, ASSIGN, EXPR, DECL_STMT,
-                 FOR_RANGE, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, HASH_ASSERT,
+                 FOR_RANGE, FOR_EACH, DEFER, MATCH, WHEN, COMPOUND_ASSIGN, HASH_ASSERT,
                  MULTI_ASSIGN, MULTI_DECL,
                  BREAK_LABEL, CONTINUE_LABEL };
     virtual Kind kind() const = 0;
@@ -605,6 +605,24 @@ public:
     ForRangeStmt(SourceRange r, std::string v, Expr* l, Expr* h, bool inc, BlockStmt* b)
         : var(std::move(v)), lo(l), hi(h), inclusive(inc), body(b) { range = r; }
     Kind kind() const override { return FOR_RANGE; }
+};
+
+// ---------------------------------------------------------------------------
+// ForEachStmt:  for item in arr { }  /  for i, item in arr { }
+// Iterates over fixed arrays, slices, dynamic arrays, and strings.
+// ---------------------------------------------------------------------------
+class ForEachStmt : public Stmt {
+public:
+    std::string index_var;   // optional index variable (empty if not present)
+    std::string value_var;   // element variable name
+    Expr*       collection;  // the collection expression
+    BlockStmt*  body;
+    std::string label;       // optional loop label
+    ForEachStmt(SourceRange r, std::string idx, std::string val,
+                Expr* coll, BlockStmt* b)
+        : index_var(std::move(idx)), value_var(std::move(val)),
+          collection(coll), body(b) { range = r; }
+    Kind kind() const override { return FOR_EACH; }
 };
 
 // ---------------------------------------------------------------------------
