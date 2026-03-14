@@ -1,0 +1,190 @@
+-- test_batch3.z
+-- Covers:
+--   ternary operator (cond ? a : b)
+--   tuple literal declaration (a, b, c := 1, "x", 3.0)
+--   tuple literal assignment (a, b = b, a  — swap)
+--   multi-value assignment from proc (existing, regression check)
+--   min/max/abs/clamp no double-evaluation (side-effect correctness)
+
+cimport "stdio.h"
+cimport "string.h"
+
+-- ── Ternary operator ─────────────────────────────────────────────────────────
+
+check_ternary :: proc() -> bool {
+    -- Basic true/false branches
+    x := 5
+    r := x > 3 ? 10 : 20
+    if r != 10 { return false }
+
+    r2 := x > 10 ? 10 : 20
+    if r2 != 20 { return false }
+
+    -- With variables in branches
+    a := 100
+    b := 200
+    bigger := a > b ? a : b
+    if bigger != 200 { return false }
+
+    -- Nested ternary (right-associative)
+    score := 75
+    grade: cstr = score >= 90 ? "A" : score >= 70 ? "B" : "C"
+    if strcmp(grade, "B") != 0 { return false }
+
+    -- Ternary in arithmetic
+    val := 3
+    result := val * (val > 0 ? 1 : -1)
+    if result != 3 { return false }
+
+    -- Ternary with bool result
+    flag := true
+    inv := flag ? false : true
+    if inv != false { return false }
+
+    -- Ternary as function argument
+    printf_noop :: proc(s: cstr) {}
+    printf_noop(x > 0 ? "pos" : "neg")
+
+    -- Chained ternary
+    n := 0
+    s: cstr = n < 0 ? "negative" : n > 0 ? "positive" : "zero"
+    if strcmp(s, "zero") != 0 { return false }
+
+    return true
+}
+
+-- ── Tuple literal declaration ─────────────────────────────────────────────────
+
+check_tuple_decl :: proc() -> bool {
+    -- Basic: two values
+    a, b := 1, 2
+    if a != 1 { return false }
+    if b != 2 { return false }
+
+    -- Three values, mixed types
+    x, y, z := 10, "hello", true
+    if x != 10                      { return false }
+    if strcmp(y, "hello") != 0      { return false }
+    if z != true                    { return false }
+
+    -- Four values
+    p, q, r, s := 1, 2, 3, 4
+    if p + q + r + s != 10 { return false }
+
+    -- Discard with _
+    _, val := 99, 42
+    if val != 42 { return false }
+
+    -- Floats
+    f1, f2 := 1.5, 2.5
+    if f1 + f2 != 4.0 { return false }
+
+    return true
+}
+
+-- ── Tuple assignment (including swap) ─────────────────────────────────────────
+
+check_tuple_assign :: proc() -> bool {
+    -- Basic assignment
+    a := 1
+    b := 2
+    a, b = 10, 20
+    if a != 10 { return false }
+    if b != 20 { return false }
+
+    -- Swap: a, b = b, a
+    x := 100
+    y := 200
+    x, y = y, x
+    if x != 200 { return false }
+    if y != 100 { return false }
+
+    -- Three-way rotation: a, b, c = c, a, b
+    p := 1
+    q := 2
+    r := 3
+    p, q, r = r, p, q
+    -- p=3, q=1, r=2
+    if p != 3 { return false }
+    if q != 1 { return false }
+    if r != 2 { return false }
+
+    -- Assignment with expressions on RHS
+    m := 5
+    n := 10
+    m, n = n * 2, m + 3
+    if m != 20 { return false }
+    if n != 8  { return false }
+
+    return true
+}
+
+-- ── Multi-return proc (regression check) ─────────────────────────────────────
+
+divide :: proc(a: i32, b: i32) -> (result: i32, ok: bool) {
+    if b == 0 { return }
+    result = a / b
+    ok = true
+    return
+}
+
+check_multi_return :: proc() -> bool {
+    q, ok := divide(10, 2)
+    if not ok  { return false }
+    if q != 5  { return false }
+
+    _, ok2 := divide(10, 0)
+    if ok2 { return false }
+
+    return true
+}
+
+-- ── min/max/abs/clamp: no double-evaluation ───────────────────────────────────
+
+call_count := 0
+
+side_effect_fn :: proc(v: i32) -> i32 {
+    call_count += 1
+    return v
+}
+
+check_no_double_eval :: proc() -> bool {
+    -- min: each arg evaluated exactly once
+    call_count = 0
+    r := min(side_effect_fn(3), side_effect_fn(7))
+    if r != 3         { return false }
+    if call_count != 2 { return false }
+
+    -- max: each arg evaluated exactly once
+    call_count = 0
+    r2 := max(side_effect_fn(3), side_effect_fn(7))
+    if r2 != 7         { return false }
+    if call_count != 2  { return false }
+
+    -- abs: arg evaluated exactly once
+    call_count = 0
+    r3 := abs(side_effect_fn(-5))
+    if r3 != 5         { return false }
+    if call_count != 1  { return false }
+
+    -- clamp: each arg evaluated exactly once (3 args, 3 calls)
+    call_count = 0
+    r4 := clamp(side_effect_fn(15), side_effect_fn(0), side_effect_fn(10))
+    if r4 != 10        { return false }
+    if call_count != 3  { return false }
+
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    if not check_ternary()        { printf("FAIL ternary\n")        return 1 }
+    if not check_tuple_decl()     { printf("FAIL tuple_decl\n")     return 1 }
+    if not check_tuple_assign()   { printf("FAIL tuple_assign\n")   return 1 }
+    if not check_multi_return()   { printf("FAIL multi_return\n")   return 1 }
+    if not check_no_double_eval() { printf("FAIL no_double_eval\n") return 1 }
+
+    printf("test_batch3: OK\n\n\n")
+    return 0
+}

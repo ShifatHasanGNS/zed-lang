@@ -737,6 +737,20 @@ void AstPrinter::print(Expr* expr) {
             if (pl->body) { indent(); print(pl->body); dedent(); }
             break;
         }
+        case Expr::TERNARY: {
+            IfExpr* te = static_cast<IfExpr*>(expr);
+            emit_indent(out, current_indent);
+            out << "Ternary"; print_location(te); out << "\n";
+            indent();
+            emit_indent(out, current_indent); out << "Cond:\n";
+            indent(); print(te->cond); dedent();
+            emit_indent(out, current_indent); out << "Then:\n";
+            indent(); print(te->then_expr); dedent();
+            emit_indent(out, current_indent); out << "Else:\n";
+            indent(); print(te->else_expr); dedent();
+            dedent();
+            break;
+        }
     }
 }
 

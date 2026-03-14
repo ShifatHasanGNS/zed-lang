@@ -130,6 +130,7 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_SWAP:          return "'swap'";
         case TOK_KW_CLAMP:         return "'clamp'";
         case TOK_KW_OR_ELSE:       return "'or_else'";
+        case TOK_QUESTION:         return "'?'";
         default:                   return "<unknown token>";
     }
 }

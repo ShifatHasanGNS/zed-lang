@@ -1,0 +1,83 @@
+# =============================================================================
+# zed.toml — project build configuration
+# =============================================================================
+# Build modes:
+#   zed build debug   --project .   debug build  (-g -O0)
+#   zed build release --project .   release build (-O3 -DNDEBUG)
+#   zed run   debug   --project .   build + run
+# =============================================================================
+
+[project]
+
+# Project name — also the default output binary name.
+name = "pyramid"
+
+# Informational only; not used by the build system.
+version = "0.1.0"
+
+
+# =============================================================================
+[build]
+# =============================================================================
+
+# Source files or directories to compile (searched recursively for *.z).
+# Entries are relative to this file. Import order is resolved automatically.
+# Examples:
+#   sources = ["src"]            -- entire src/ directory
+#   sources = ["src/main.z"]     -- single file
+#   sources = ["src", "lib"]     -- multiple directories
+sources = ["src"]
+
+# Directory for generated .cpp files and runtime.hpp (default: build/).
+# Path is relative to this file.
+out_dir = "build"
+
+# Output binary name (default: project name).
+output = "pyramid"
+
+# C++ compiler to use for generated code (default: g++).
+# Use "clang++" on macOS or wherever preferred.
+compiler = "g++"
+
+# C++ standard passed as -std=<value> (default: c++17).
+std = "c++17"
+
+
+# =============================================================================
+[compile]
+# =============================================================================
+
+# Extra compiler flags appended verbatim to the compile command.
+# Note: -g is stripped automatically in "release" builds.
+# Examples: "-Wall", "-Wextra", "-march=native", "-ffast-math"
+flags = ["-g"]
+
+# Additional -I include directories (relative or absolute).
+# Useful when cimport-ing headers that live outside standard system paths.
+# Example: include_dirs = ["/usr/local/include", "vendor/include"]
+include_dirs = []
+
+# Preprocessor defines passed as -D<name> or -D<name>=<value>.
+# Example: defines = ["NDEBUG", "PLATFORM_DESKTOP", "VERSION=2"]
+defines = []
+
+
+# =============================================================================
+[link]
+# =============================================================================
+
+# Libraries to link against, passed as -l<name>.
+# Example: libs = ["m", "pthread", "raylib"]
+libs = ["raylib"]
+
+# -L library search directories (relative or absolute).
+# Example: lib_dirs = ["/usr/local/lib", "vendor/lib"]
+lib_dirs = []
+
+# macOS frameworks, passed as -framework <name>. Ignored on other platforms.
+# Example: frameworks = ["OpenGL", "Cocoa", "IOKit"]
+frameworks = []
+
+# Raw linker flags appended verbatim at the end of the link command.
+# Example: flags = ["-static", "-Wl,-rpath,/usr/local/lib"]
+flags = []

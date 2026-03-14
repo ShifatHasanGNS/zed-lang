@@ -400,6 +400,7 @@ TypeRef TypeChecker::check_expr(Expr* e) {
         case Expr::ARRAY_INIT:    t = check_array_init(static_cast<ArrayInitExpr*>(e));   break;
         case Expr::BUILTIN_CALL:  t = check_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
         case Expr::OR_RETURN_EXPR: t = check_or_return(static_cast<OrReturnExpr *>(e)); break;
+        case Expr::TERNARY:        t = check_ternary(static_cast<IfExpr*>(e));          break;
         case Expr::PROC_LIT: t = check_proc_lit(static_cast<ProcLitExpr *>(e)); break;
     }
     set_type(e, t);
@@ -1094,7 +1095,6 @@ void TypeChecker::check_multi_decl(MultiDeclStmt* s) {
         auto* tt = static_cast<sem::TupleType*>(rhs_ty);
         var_tys = tt->elems;
     } else {
-        // If single value, all names get that type — mostly used for (ok) := f()
         for (size_t i = 0; i < s->names.size(); ++i)
             var_tys.push_back(rhs_ty);
     }
@@ -1107,14 +1107,12 @@ void TypeChecker::check_multi_decl(MultiDeclStmt* s) {
             var_tys.push_back(sym_.arena().ty_error());
     }
 
-    // Declare each name (skip '_')
     for (size_t i = 0; i < s->names.size(); ++i) {
         if (s->names[i] == "_") continue;
         Symbol sym(Symbol::Kind::VAR, s->names[i], var_tys[i], s->range.begin);
         sym.initialized = true;
         sym_.declare(sym);
     }
-    // Store tuple type for codegen
     multi_decl_types_[s] = rhs_ty;
 }
 
@@ -1202,6 +1200,26 @@ TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
             err_.error(e->range.begin, "unknown builtin");
             return ar.ty_error();
     }
+}
+
+// ---------------------------------------------------------------------------
+// check_ternary — cond ? then_expr : else_expr
+// ---------------------------------------------------------------------------
+TypeRef TypeChecker::check_ternary(IfExpr* e) {
+    TypeRef cty = check_expr(e->cond);
+    if (!cty->is_bool() && !cty->is_error() && !cty->is_any_foreign())
+        err_.error(e->cond->range.begin,
+            "ternary condition must be bool, got '" + cty->to_string() + "'");
+    TypeRef tty = check_expr(e->then_expr);
+    TypeRef ety = check_expr(e->else_expr);
+    // Result is the wider of then/else; error if incompatible
+    if (!tty->is_error() && !ety->is_error() &&
+        !tty->is_any_foreign() && !ety->is_any_foreign() &&
+        !types_compatible(tty, ety) && !types_compatible(ety, tty))
+        err_.error(e->range.begin,
+            "ternary branches have incompatible types: '" +
+            tty->to_string() + "' vs '" + ety->to_string() + "'");
+    return tty->is_error() ? ety : tty;
 }
 
 // ---------------------------------------------------------------------------

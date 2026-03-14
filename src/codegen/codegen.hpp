@@ -100,6 +100,7 @@ private:
     void emit_typeid(TypeIdExpr* e);
     void emit_builtin_call(BuiltinCallExpr* e);
     void emit_or_return(OrReturnExpr* e);
+    void emit_ternary(IfExpr* e);
     void emit_proc_lit(ProcLitExpr* e);
 
     // ---- Type helpers ------------------------------------------------------

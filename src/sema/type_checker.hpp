@@ -99,6 +99,7 @@ private:
     TypeRef check_multi_decl_expr(Expr* rhs);
     TypeRef check_builtin_call(BuiltinCallExpr* e);
     TypeRef check_or_return(OrReturnExpr* e);
+    TypeRef check_ternary(IfExpr* e);
     TypeRef check_proc_lit(ProcLitExpr* e);
 
     // ---- Helpers -----------------------------------------------------------

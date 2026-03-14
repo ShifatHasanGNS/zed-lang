@@ -192,6 +192,7 @@ using namespace ZedLang;
 "["     { return TOK_LBRACKET; }
 "]"     { return TOK_RBRACKET; }
 "."     { return TOK_DOT; }
+"?"     { return TOK_QUESTION; }
 ","     { return TOK_COMMA; }
 ";"     { return TOK_SEMI; }
 "&"     { return TOK_AMP; }

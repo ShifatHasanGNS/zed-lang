@@ -111,6 +111,14 @@ speed: f32 = 0.5
 -- Multiple declaration from multi-return call
 ok, val := parse_int(s)
 
+-- Tuple literal declaration: declare and assign multiple variables at once
+a, b, c := 1, "hello", 3.14
+
+-- Tuple literal assignment: assign multiple existing variables at once
+-- All RHS values are evaluated before any assignment — safe for swaps
+x, y = y, x               -- swap
+p, q, r = r, p, q         -- rotation
+
 -- Discard with _
 _, val2 := fallible_call()
 ```
@@ -133,10 +141,17 @@ score  := 0             -- global, type inferred
 **Bitwise:** `&  |  ^  <<  >>`
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
-**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
+**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=  <<=  >>=`
+**Ternary:** `cond ? then_expr : else_expr`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
 
 > Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.
+
+The ternary operator is right-associative, allowing natural chaining:
+
+```zed
+grade := score >= 90 ? "A" : score >= 70 ? "B" : "C"
+```
 
 ---
 

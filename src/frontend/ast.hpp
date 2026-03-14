@@ -401,7 +401,7 @@ class Expr : public Node {
 public:
     enum Kind { BINARY, UNARY, CALL, INDEX, SLICE, FIELD, DEREF, ADDR, CAST,
                 LIT, IDENT, STRUCT_LIT, TUPLE, SIZEOF_EXPR, ARRAY_INIT,
-                BUILTIN_CALL, OR_RETURN_EXPR, PROC_LIT, TYPEID_EXPR };
+                BUILTIN_CALL, OR_RETURN_EXPR, PROC_LIT, TYPEID_EXPR, TERNARY };
     virtual Kind kind() const = 0;
 };
 
@@ -579,6 +579,17 @@ public:
     OrReturnExpr(SourceRange r, Expr* e, Expr* def = nullptr)
         : inner(e), else_expr(def) { range = r; }
     Kind kind() const override { return OR_RETURN_EXPR; }
+};
+
+// cond ? then_expr : else_expr  — ternary conditional expression
+class IfExpr : public Expr {
+public:
+    Expr* cond;
+    Expr* then_expr;
+    Expr* else_expr;
+    IfExpr(SourceRange r, Expr* c, Expr* t, Expr* e)
+        : cond(c), then_expr(t), else_expr(e) { range = r; }
+    Kind kind() const override { return TERNARY; }
 };
 
 // proc(x: i32) -> i32 { return x * 2 }  — anonymous proc literal

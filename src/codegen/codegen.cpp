@@ -959,6 +959,7 @@ void CodeGen::emit_expr(Expr* e) {
         case Expr::ARRAY_INIT:    emit_array_init(static_cast<ArrayInitExpr*>(e));    break;
         case Expr::BUILTIN_CALL:  emit_builtin_call(static_cast<BuiltinCallExpr*>(e)); break;
         case Expr::OR_RETURN_EXPR:emit_or_return(static_cast<OrReturnExpr*>(e));      break;
+        case Expr::TERNARY:       emit_ternary(static_cast<IfExpr*>(e));              break;
         case Expr::PROC_LIT:      emit_proc_lit(static_cast<ProcLitExpr*>(e));        break;
         case Expr::TYPEID_EXPR:   emit_typeid(static_cast<TypeIdExpr*>(e));           break;
     }
@@ -1458,21 +1459,34 @@ void CodeGen::emit_sizeof(SizeofExpr* e) {
 // ---------------------------------------------------------------------------
 void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
     TypeRef rhs_ty = tc_.type_of_multi_decl(s);
+
+    // TupleExpr RHS: a, b, c := 1, "x", 3.0
+    // Emit each variable as a separate declaration with its element expression.
+    if (s->rhs->kind() == Expr::TUPLE) {
+        auto* te = static_cast<TupleExpr*>(s->rhs);
+        if (rhs_ty && rhs_ty->is_tuple()) {
+            auto* tt = static_cast<sem::TupleType*>(rhs_ty);
+            for (size_t i = 0; i < s->names.size() && i < te->elems.size(); ++i) {
+                if (s->names[i] == "_") continue;
+                emit_.emit_indent();
+                if (i < tt->elems.size()) emit_var_decl(tt->elems[i], s->names[i]);
+                else emit_.emit("auto " + c_safe_name(s->names[i]));
+                emit_.emit(" = ");
+                emit_expr(te->elems[i]);
+                emit_.emit(";\n");
+            }
+            return;
+        }
+    }
+
     if (rhs_ty && rhs_ty->is_tuple()) {
         auto* tt = static_cast<sem::TupleType*>(rhs_ty);
-        // Determine the proc name from the RHS call for the struct type name
         std::string ret_struct;
         if (auto* call = dynamic_cast<CallExpr*>(s->rhs)) {
             if (auto* id = dynamic_cast<IdentExpr*>(call->callee))
                 ret_struct = "__ret_" + id->name;
         }
-        // Emit a uniquely-named temp so the call is evaluated once, then unpack
-        // each variable as a flat statement in the enclosing scope (NOT inside
-        // a braced block — that would hide the variables from subsequent stmts).
         if (!ret_struct.empty()) {
-            // e.g.: __ret_divide _zed_tmp_divide_0_ = divide(10, 3);
-            // The counter suffix prevents redefinition when the same proc
-            // is called more than once in the same scope.
             std::string tmp = "_zed_tmp_" + ret_struct.substr(7)
                               + "_" + std::to_string(tmp_counter_++) + "_";
             emit_.begin_line(ret_struct + " " + tmp + " = ");
@@ -1485,7 +1499,6 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
                 emit_.emit(" = " + tmp + "._" + std::to_string(i) + ";\n");
             }
         } else {
-            // No struct name (shouldn't happen after type-check); zero-init each var
             for (size_t i = 0; i < s->names.size() && i < tt->elems.size(); ++i) {
                 if (s->names[i] == "_") continue;
                 emit_.emit_indent();
@@ -1494,7 +1507,6 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
             }
         }
     } else {
-        // Single-value fallback — treat like normal decl
         emit_.emit_indent();
         if (rhs_ty) emit_var_decl(rhs_ty, s->names[0]);
         emit_.emit(" = ");
@@ -1508,6 +1520,29 @@ void CodeGen::emit_multi_decl(MultiDeclStmt* s) {
 // ---------------------------------------------------------------------------
 void CodeGen::emit_multi_assign(MultiAssignStmt* s) {
     TypeRef rhs_ty = tc_.type_of(s->rhs);
+
+    // TupleExpr RHS: a, b = x, y  or  a, b = b, a  (swap)
+    // Evaluate ALL RHS values into temporaries first, then assign.
+    // This guarantees correct swap semantics: a, b = b, a works properly.
+    if (s->rhs->kind() == Expr::TUPLE) {
+        auto* te = static_cast<TupleExpr*>(s->rhs);
+        emit_.emit_indent();
+        emit_.emit("{ ");
+        // Capture all RHS into auto temps
+        for (size_t i = 0; i < te->elems.size(); ++i) {
+            emit_.emit("auto _zed_t" + std::to_string(i) + "_ = (");
+            emit_expr(te->elems[i]);
+            emit_.emit("); ");
+        }
+        // Then assign from temps to lvalues
+        for (size_t i = 0; i < s->lvalues.size() && i < te->elems.size(); ++i) {
+            emit_expr(s->lvalues[i]);
+            emit_.emit(" = _zed_t" + std::to_string(i) + "_; ");
+        }
+        emit_.emit("}\n");
+        return;
+    }
+
     if (rhs_ty && rhs_ty->is_tuple()) {
         auto* tt = static_cast<sem::TupleType*>(rhs_ty);
         std::string ret_struct;
@@ -1669,40 +1704,26 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             break;
         }
         case TOK_KW_MIN: {
-            // min(a, b)  →  ((a) < (b) ? (a) : (b))
-            emit_.emit("((");
+            // min(a, b) — use statement expr to avoid double-evaluation
+            emit_.emit("({ auto _zed_a_ = (");
             emit_expr(e->args[0]);
-            emit_.emit(") < (");
+            emit_.emit("); auto _zed_b_ = (");
             emit_expr(e->args[1]);
-            emit_.emit(") ? (");
-            emit_expr(e->args[0]);
-            emit_.emit(") : (");
-            emit_expr(e->args[1]);
-            emit_.emit("))");
+            emit_.emit("); _zed_a_ < _zed_b_ ? _zed_a_ : _zed_b_; })");
             break;
         }
         case TOK_KW_MAX: {
-            // max(a, b)  →  ((a) > (b) ? (a) : (b))
-            emit_.emit("((");
+            emit_.emit("({ auto _zed_a_ = (");
             emit_expr(e->args[0]);
-            emit_.emit(") > (");
+            emit_.emit("); auto _zed_b_ = (");
             emit_expr(e->args[1]);
-            emit_.emit(") ? (");
-            emit_expr(e->args[0]);
-            emit_.emit(") : (");
-            emit_expr(e->args[1]);
-            emit_.emit("))");
+            emit_.emit("); _zed_a_ > _zed_b_ ? _zed_a_ : _zed_b_; })");
             break;
         }
         case TOK_KW_ABS: {
-            // abs(x)  →  ((x) < 0 ? -(x) : (x))
-            emit_.emit("((");
+            emit_.emit("({ auto _zed_v_ = (");
             emit_expr(e->args[0]);
-            emit_.emit(") < 0 ? -(");
-            emit_expr(e->args[0]);
-            emit_.emit(") : (");
-            emit_expr(e->args[0]);
-            emit_.emit("))");
+            emit_.emit("); _zed_v_ < 0 ? -_zed_v_ : _zed_v_; })");
             break;
         }
         case TOK_KW_SWAP: {
@@ -1719,28 +1740,33 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             break;
         }
         case TOK_KW_CLAMP: {
-            // clamp(v, lo, hi)  →  ((v)<(lo)?(lo):(v)>(hi)?(hi):(v))
-            emit_.emit("((");
+            // clamp(v, lo, hi) — use temps to avoid triple-evaluation of v
+            emit_.emit("({ auto _zed_v_ = (");
             emit_expr(e->args[0]);
-            emit_.emit(") < (");
+            emit_.emit("); auto _zed_lo_ = (");
             emit_expr(e->args[1]);
-            emit_.emit(") ? (");
-            emit_expr(e->args[1]);
-            emit_.emit(") : (");
-            emit_expr(e->args[0]);
-            emit_.emit(") > (");
+            emit_.emit("); auto _zed_hi_ = (");
             emit_expr(e->args[2]);
-            emit_.emit(") ? (");
-            emit_expr(e->args[2]);
-            emit_.emit(") : (");
-            emit_expr(e->args[0]);
-            emit_.emit("))");
+            emit_.emit("); _zed_v_ < _zed_lo_ ? _zed_lo_ : _zed_v_ > _zed_hi_ ? _zed_hi_ : _zed_v_; })");
             break;
         }
         default:
             emit_.emit("/*unknown_builtin*/");
             break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// emit_ternary — cond ? then_expr : else_expr
+// ---------------------------------------------------------------------------
+void CodeGen::emit_ternary(IfExpr* e) {
+    emit_.emit("(");
+    emit_expr(e->cond);
+    emit_.emit(" ? ");
+    emit_expr(e->then_expr);
+    emit_.emit(" : ");
+    emit_expr(e->else_expr);
+    emit_.emit(")");
 }
 
 // ---------------------------------------------------------------------------

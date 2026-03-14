@@ -140,10 +140,11 @@
      TOK_KW_SWAP = 355,
      TOK_KW_CLAMP = 356,
      TOK_KW_OR_ELSE = 357,
-     LOWER_THAN_ELSE = 358,
-     UNARY_MINUS = 359,
-     UNARY_ADDR = 360,
-     POSTFIX_DEREF = 361
+     TOK_QUESTION = 358,
+     LOWER_THAN_ELSE = 359,
+     UNARY_MINUS = 360,
+     UNARY_ADDR = 361,
+     POSTFIX_DEREF = 362
    };
 #endif
 /* Tokens.  */
@@ -248,10 +249,11 @@
 #define TOK_KW_SWAP 355
 #define TOK_KW_CLAMP 356
 #define TOK_KW_OR_ELSE 357
-#define LOWER_THAN_ELSE 358
-#define UNARY_MINUS 359
-#define UNARY_ADDR 360
-#define POSTFIX_DEREF 361
+#define TOK_QUESTION 358
+#define LOWER_THAN_ELSE 359
+#define UNARY_MINUS 360
+#define UNARY_ADDR 361
+#define POSTFIX_DEREF 362
 
 
 
@@ -293,7 +295,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 297 "src/flex_bison/parser.tab.hpp"
+#line 299 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

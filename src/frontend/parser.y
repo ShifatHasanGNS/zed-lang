@@ -220,6 +220,8 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_SWAP       "swap"
 %token TOK_KW_CLAMP      "clamp"
 %token TOK_KW_OR_ELSE    "or_else"
+// Ternary operator
+%token TOK_QUESTION      "'?'"
 
 // =============================================================================
 // Non-terminals
@@ -248,6 +250,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <stmt_list>     stmt_list
 %type <op>            cmp_op shift_op add_op mul_op
 %type <expr>          sizeof_expr array_init_expr builtin_call_expr proc_lit_expr
+%type <expr_list>     tuple_lit
 %type <str>           soft_ident kw_ident decl_name
 %type <stmt>          multi_decl_stmt multi_assign_stmt
 %type <else_if_list>  else_if_chain
@@ -268,6 +271,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %nonassoc LOWER_THAN_ELSE
 %nonassoc TOK_KW_ELSE
 
+%right TOK_QUESTION      // ternary  cond ? a : b  (right-assoc for chaining)
 %left TOK_OR
 %left TOK_AND
 %left TOK_EQ TOK_NEQ TOK_LT TOK_LEQ TOK_GT TOK_GEQ
@@ -1066,11 +1070,24 @@ return_stmt
         }
     ;
 
-// multi_decl_stmt: a, b := f()
-// Uses multi_ret_expr_list (same as multi_assign) for the LHS so that
-// TOK_IDENT in `a, b` goes through expr_primary → expr, avoiding the
-// reduce/reduce conflict between soft_ident and expr_primary.
-// The parser extracts the identifier names here; the type checker validates them.
+// tuple_lit: two or more comma-separated expressions used as a value tuple.
+// Distinct from multi_ret_expr_list (which is the LHS).
+// Used for: a, b := 1, 2  and  a, b = x, y
+tuple_lit
+    : expr TOK_COMMA expr
+        {
+            $$ = new std::vector<Expr*>();
+            $$->push_back($1);
+            $$->push_back($3);
+        }
+    | tuple_lit TOK_COMMA expr
+        {
+            $1->push_back($3);
+            $$ = $1;
+        }
+    ;
+
+// multi_decl_stmt: a, b := f()  OR  a, b, c := 1, "x", 3.0
 multi_decl_stmt
     : multi_ret_expr_list TOK_DECL expr
         {
@@ -1100,6 +1117,22 @@ multi_decl_stmt
             delete $1;
             $$ = new MultiDeclStmt(r, names, $3);
         }
+    | multi_ret_expr_list TOK_DECL tuple_lit
+        {
+            // a, b, c := 1, "x", 3.0  — tuple literal on RHS
+            SourceRange r = to_sourcerange(@$, filename);
+            std::vector<std::string> names;
+            for (Expr* e : *$1) {
+                if (auto* id = dynamic_cast<IdentExpr*>(e))
+                    names.push_back(id->name);
+                else
+                    names.push_back("_");
+                delete e;
+            }
+            delete $1;
+            $$ = new MultiDeclStmt(r, names, new TupleExpr(r, *$3));
+            delete $3;
+        }
     ;
 
 multi_assign_stmt
@@ -1108,6 +1141,13 @@ multi_assign_stmt
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new MultiAssignStmt(r, *$1, $3);
             delete $1;
+        }
+    | multi_ret_expr_list TOK_ASSIGN tuple_lit
+        {
+            // a, b = x, y  — tuple literal on RHS (also handles swap: a,b = b,a)
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MultiAssignStmt(r, *$1, new TupleExpr(r, *$3));
+            delete $1; delete $3;
         }
     ;
 
@@ -1214,6 +1254,11 @@ stmt_list
 expr
     : expr_or { $$ = $1; }
     | array_init_expr { $$ = $1; }
+    | expr_or TOK_QUESTION expr TOK_COLON expr
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new IfExpr(r, $1, $3, $5);
+        }
     ;
 
 // expr_no_struct is identical to expr but forbids bare struct literals.
@@ -1221,6 +1266,11 @@ expr
 // as a struct literal consuming the block's opening brace.
 expr_no_struct
     : expr_or { $$ = $1; }
+    | expr_or TOK_QUESTION expr TOK_COLON expr_no_struct
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new IfExpr(r, $1, $3, $5);
+        }
     ;
 
 expr_or

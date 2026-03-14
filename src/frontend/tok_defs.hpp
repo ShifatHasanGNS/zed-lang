@@ -131,4 +131,6 @@ enum {
     TOK_KW_SWAP           = 355,
     TOK_KW_CLAMP          = 356,
     TOK_KW_OR_ELSE        = 357,
+    // Ternary operator
+    TOK_QUESTION          = 358,
 };

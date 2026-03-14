@@ -8,15 +8,15 @@ cimport "math.h"
 WINDOW_WIDTH    :: 800
 GRID_WIDTH      :: 5
 CELL_WIDTH      :: 1
-CANVAS_WIDTH    :: GRID_WIDTH * CELL_WIDTH
-ZOOMING_FACTOR  :: 160
+CANVAS_WIDTH    :: GRID_WIDTH * CELL_WIDTH    -- = 5
+ZOOMING_FACTOR  :: 160                        -- WINDOW_WIDTH / CANVAS_WIDTH
 TICK_TIME       :: 0.2
 CAMERA_DIST     :: 5.0
-CANVAS_CENTER_X :: 2.5
+CANVAS_CENTER_X :: 2.5                        -- f32(CANVAS_WIDTH) / 2
 CANVAS_CENTER_Y :: 2.5
 
-NUM_VERTICES    :: 8
-NUM_EDGES       :: 12
+NUM_VERTICES    :: 5
+NUM_EDGES       :: 8
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Types
@@ -90,6 +90,7 @@ center_of_mass :: proc() -> Vec3 {
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- project_to_2d
+-- Simple perspective projection; returns screen-space (x, y).
 -- ═══════════════════════════════════════════════════════════════════════════
 
 project_to_2d :: proc(v: Vec3) -> Proj2D {
@@ -103,37 +104,26 @@ project_to_2d :: proc(v: Vec3) -> Proj2D {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- init_scene — cube: 8 vertices, 12 edges
+-- init_scene — fill vertex and edge tables
 -- ═══════════════════════════════════════════════════════════════════════════
 
 init_scene :: proc() {
-    -- 8 corners of a unit cube centred at (0.5, 0.5, 0.5)
-    --  bottom face (y = 0):  0,1,2,3
-    --  top    face (y = 1):  4,5,6,7
-    base_vertices[0] = Vec3{ x = 0.0, y = 0.0, z = 0.0 }
-    base_vertices[1] = Vec3{ x = 1.0, y = 0.0, z = 0.0 }
-    base_vertices[2] = Vec3{ x = 1.0, y = 0.0, z = 1.0 }
-    base_vertices[3] = Vec3{ x = 0.0, y = 0.0, z = 1.0 }
-    base_vertices[4] = Vec3{ x = 0.0, y = 1.0, z = 0.0 }
-    base_vertices[5] = Vec3{ x = 1.0, y = 1.0, z = 0.0 }
-    base_vertices[6] = Vec3{ x = 1.0, y = 1.0, z = 1.0 }
-    base_vertices[7] = Vec3{ x = 0.0, y = 1.0, z = 1.0 }
+    -- Pyramid: 5 vertices
+    base_vertices[0] = Vec3{ x = 0.5, y = -1.0, z = 0.5 }
+    base_vertices[1] = Vec3{ x = 0.0, y =  0.0, z = 0.0 }
+    base_vertices[2] = Vec3{ x = 1.0, y =  0.0, z = 0.0 }
+    base_vertices[3] = Vec3{ x = 1.0, y =  0.0, z = 1.0 }
+    base_vertices[4] = Vec3{ x = 0.0, y =  0.0, z = 1.0 }
 
-    -- 4 bottom edges
-    edges[0]  = Edge{ a = 0, b = 1 }
-    edges[1]  = Edge{ a = 1, b = 2 }
-    edges[2]  = Edge{ a = 2, b = 3 }
-    edges[3]  = Edge{ a = 3, b = 0 }
-    -- 4 top edges
-    edges[4]  = Edge{ a = 4, b = 5 }
-    edges[5]  = Edge{ a = 5, b = 6 }
-    edges[6]  = Edge{ a = 6, b = 7 }
-    edges[7]  = Edge{ a = 7, b = 4 }
-    -- 4 vertical edges
-    edges[8]  = Edge{ a = 0, b = 4 }
-    edges[9]  = Edge{ a = 1, b = 5 }
-    edges[10] = Edge{ a = 2, b = 6 }
-    edges[11] = Edge{ a = 3, b = 7 }
+    -- Pyramid: 8 edges
+    edges[0] = Edge{ a = 0, b = 1 }
+    edges[1] = Edge{ a = 0, b = 2 }
+    edges[2] = Edge{ a = 0, b = 3 }
+    edges[3] = Edge{ a = 0, b = 4 }
+    edges[4] = Edge{ a = 1, b = 2 }
+    edges[5] = Edge{ a = 2, b = 3 }
+    edges[6] = Edge{ a = 3, b = 4 }
+    edges[7] = Edge{ a = 4, b = 1 }
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -144,7 +134,7 @@ main :: proc() -> i32 {
     init_scene()
 
     SetConfigFlags(FLAG_VSYNC_HINT)
-    InitWindow(cast(i32)(WINDOW_WIDTH), cast(i32)(WINDOW_WIDTH), "Cube Simulation")
+    InitWindow(cast(i32)(WINDOW_WIDTH), cast(i32)(WINDOW_WIDTH), "Pyramid Simulation")
     defer CloseWindow()
 
     camera := Camera2D{}
