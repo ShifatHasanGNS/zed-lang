@@ -123,4 +123,12 @@ enum {
     TOK_KW_FREE           = 348,
     TOK_KW_COPY           = 349,
     TOK_KW_ENUM_NAME      = 350,
+    // Feature batch 2
+    TOK_KW_BIT_CAST       = 351,
+    TOK_KW_MIN            = 352,
+    TOK_KW_MAX            = 353,
+    TOK_KW_ABS            = 354,
+    TOK_KW_SWAP           = 355,
+    TOK_KW_CLAMP          = 356,
+    TOK_KW_OR_ELSE        = 357,
 };

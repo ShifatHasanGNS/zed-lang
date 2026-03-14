@@ -690,6 +690,17 @@ TypeRef TypeChecker::check_cast(CastExpr* e) {
     TypeRef src  = check_expr(e->expr);
     TypeRef dest = resolve_type(e->target_type);
 
+    if (e->is_bit_cast) {
+        // bit_cast: src and dest must have the same byte size
+        if (!src->is_error() && !dest->is_error() &&
+            !src->is_any_foreign() && !dest->is_any_foreign() &&
+            src->byte_size() != dest->byte_size())
+            err_.error(e->range.begin,
+                "bit_cast: source size (" + std::to_string(src->byte_size()) +
+                ") != destination size (" + std::to_string(dest->byte_size()) + ")");
+        return dest;
+    }
+
     // Allow: numeric↔numeric, numeric↔bool, ptr↔ptr, numeric→ptr (unsafe)
     bool ok = (src->is_numeric() && dest->is_numeric())
            || (src->is_numeric() && dest->is_bool())
@@ -1161,6 +1172,32 @@ TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
         case TOK_KW_ENUM_NAME:
             // enum_name(val) → cstr
             return ar.ty_cstr();
+        case TOK_KW_MIN:
+        case TOK_KW_MAX: {
+            // min(a,b)/max(a,b) → wider of the two types
+            if (e->args.size() < 2) return ar.ty_error();
+            TypeRef a = type_of(e->args[0]);
+            TypeRef b = type_of(e->args[1]);
+            if (!a->is_numeric() && !a->is_any_foreign() && !a->is_error())
+                err_.error(e->args[0]->range.begin, "'min'/'max' requires numeric type");
+            return (*a == *b || types_compatible(b, a)) ? a : b;
+        }
+        case TOK_KW_ABS: {
+            // abs(x) → same type as x
+            if (e->args.empty()) return ar.ty_error();
+            TypeRef a = type_of(e->args[0]);
+            if (!a->is_numeric() && !a->is_any_foreign() && !a->is_error())
+                err_.error(e->args[0]->range.begin, "'abs' requires numeric type");
+            return a;
+        }
+        case TOK_KW_SWAP:
+            // swap(&a, &b) → void
+            return ar.ty_void();
+        case TOK_KW_CLAMP: {
+            // clamp(v, lo, hi) → same type as v
+            if (e->args.empty()) return ar.ty_error();
+            return type_of(e->args[0]);
+        }
         default:
             err_.error(e->range.begin, "unknown builtin");
             return ar.ty_error();
@@ -1179,27 +1216,41 @@ TypeRef TypeChecker::check_or_return(OrReturnExpr* e) {
 
     if (!inner_ty->is_tuple()) {
         err_.error(e->range.begin,
-            "'or_return' requires a (T, bool) result, got '"
+            "'or_return'/'or_else' requires a (T, bool) result, got '"
             + inner_ty->to_string() + "'");
         return sym_.arena().ty_error();
     }
     auto* tt = static_cast<sem::TupleType*>(inner_ty);
     if (tt->elems.size() < 2 || !tt->elems.back()->is_bool()) {
         err_.error(e->range.begin,
-            "'or_return' requires the last return element to be bool");
+            "'or_return'/'or_else' requires the last return element to be bool");
         return sym_.arena().ty_error();
     }
-    // Must be inside a proc that can propagate the failure
+
+    // Result type T (first element of tuple, or sub-tuple for multi-return)
+    TypeRef result_ty = (tt->elems.size() == 2)
+        ? tt->elems[0]
+        : sym_.arena().make_tuple(
+              std::vector<TypeRef>(tt->elems.begin(), tt->elems.end() - 1));
+
+    if (e->else_expr) {
+        // or_else DEFAULT — no propagation needed; type-check the default
+        TypeRef def_ty = check_expr(e->else_expr);
+        if (!types_compatible(def_ty, result_ty) &&
+            !def_ty->is_error() && !def_ty->is_any_foreign())
+            err_.error(e->else_expr->range.begin,
+                "'or_else' default type '" + def_ty->to_string() +
+                "' is not compatible with result type '" + result_ty->to_string() + "'");
+        return result_ty;
+    }
+
+    // or_return — must be inside a compatible proc
     TypeRef ret = sym_.current_return_type();
     if (!ret || ret->is_void())
         err_.error(e->range.begin,
             "'or_return' used in a void proc — cannot propagate failure");
 
-    // Return T (first element); T, bool → T
-    if (tt->elems.size() == 2) return tt->elems[0];
-    // (T0, T1, ..., bool) → (T0, T1, ...)
-    std::vector<TypeRef> elems(tt->elems.begin(), tt->elems.end() - 1);
-    return sym_.arena().make_tuple(std::move(elems));
+    return result_ty;
 }
 
 

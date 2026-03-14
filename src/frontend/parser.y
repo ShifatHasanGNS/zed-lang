@@ -212,6 +212,14 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_FREE       "free"
 %token TOK_KW_COPY       "copy"
 %token TOK_KW_ENUM_NAME  "enum_name"
+// Feature batch 2 — always append, never insert above
+%token TOK_KW_BIT_CAST   "bit_cast"
+%token TOK_KW_MIN        "min"
+%token TOK_KW_MAX        "max"
+%token TOK_KW_ABS        "abs"
+%token TOK_KW_SWAP       "swap"
+%token TOK_KW_CLAMP      "clamp"
+%token TOK_KW_OR_ELSE    "or_else"
 
 // =============================================================================
 // Non-terminals
@@ -240,7 +248,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <stmt_list>     stmt_list
 %type <op>            cmp_op shift_op add_op mul_op
 %type <expr>          sizeof_expr array_init_expr builtin_call_expr proc_lit_expr
-%type <str>           soft_ident kw_ident
+%type <str>           soft_ident kw_ident decl_name
 %type <stmt>          multi_decl_stmt multi_assign_stmt
 %type <else_if_list>  else_if_chain
 %type <block>         else_block
@@ -330,13 +338,13 @@ import_decl
 
 // Union declaration: Name :: union { x: f32; y: f32 }
 union_decl
-    : TOK_IDENT TOK_DEF TOK_KW_UNION TOK_LBRACE field_group_list TOK_RBRACE
+    : decl_name TOK_DEF TOK_KW_UNION TOK_LBRACE field_group_list TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new UnionDecl(r, *$1, *$5);
             delete $1; delete $5;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_UNION TOK_LBRACE TOK_RBRACE
+    | decl_name TOK_DEF TOK_KW_UNION TOK_LBRACE TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new UnionDecl(r, *$1, {});
@@ -377,13 +385,13 @@ var_decl
     ;
 
 const_decl
-    : TOK_IDENT TOK_DEF expr
+    : decl_name TOK_DEF expr
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ConstDecl(r, *$1, $3);
             delete $1;
         }
-    | TOK_IDENT TOK_DEF struct_lit
+    | decl_name TOK_DEF struct_lit
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new ConstDecl(r, *$1, $3);
@@ -392,7 +400,7 @@ const_decl
     ;
 
 struct_decl
-    : TOK_IDENT TOK_DEF TOK_KW_STRUCT TOK_LBRACE field_group_list TOK_RBRACE
+    : decl_name TOK_DEF TOK_KW_STRUCT TOK_LBRACE field_group_list TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new StructDecl(r, *$1, *$5);
@@ -462,11 +470,24 @@ kw_ident
     | TOK_KW_FREE       { $$ = new std::string("free");       }
     | TOK_KW_COPY       { $$ = new std::string("copy");       }
     | TOK_KW_ENUM_NAME  { $$ = new std::string("enum_name");  }
+    | TOK_KW_BIT_CAST   { $$ = new std::string("bit_cast");   }
+    | TOK_KW_MIN        { $$ = new std::string("min");        }
+    | TOK_KW_MAX        { $$ = new std::string("max");        }
+    | TOK_KW_ABS        { $$ = new std::string("abs");        }
+    | TOK_KW_SWAP       { $$ = new std::string("swap");       }
+    | TOK_KW_CLAMP      { $$ = new std::string("clamp");      }
+    ;
+
+// decl_name: any identifier usable as a top-level declaration name.
+// Allows soft keywords (min, max, abs, clamp, etc.) to be used as proc/struct names.
+decl_name
+    : TOK_IDENT  { $$ = $1; }
+    | kw_ident   { $$ = $1; }
     ;
 
 // Procedure declarations – expanded to avoid pair in union
 proc_decl
-    : TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN block
+    : decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN block
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -474,7 +495,7 @@ proc_decl
             delete $1;
             delete $5;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_NOBODY
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_NOBODY
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -482,7 +503,7 @@ proc_decl
             delete $1;
             delete $5;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW type block
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW type block
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -490,7 +511,7 @@ proc_decl
             delete $1;
             delete $5;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW type TOK_NOBODY
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW type TOK_NOBODY
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -499,14 +520,14 @@ proc_decl
             delete $5;
         }
     // Multi-return: proc() -> (T1, T2)
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN block
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN block
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
             $$ = new ProcDecl(r, *$1, params, nullptr, *$9, $11);
             delete $1; delete $5; delete $9;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN TOK_NOBODY
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN type_list TOK_RPAREN TOK_NOBODY
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -516,7 +537,7 @@ proc_decl
     // Named multi-return: proc() -> (val: i32, ok: bool)
     // Uses named_ret_list (requires at least one `name: type` entry with a colon)
     // so it is unambiguous vs the unnamed type_list alternatives above.
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN block
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN block
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -533,7 +554,7 @@ proc_decl
             $$ = pd;
             delete $1; delete $5; delete $9;
         }
-    | TOK_IDENT TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN TOK_NOBODY
+    | decl_name TOK_DEF TOK_KW_PROC TOK_LPAREN opt_param_list TOK_RPAREN TOK_ARROW TOK_LPAREN named_ret_list TOK_RPAREN TOK_NOBODY
         {
             SourceRange r = to_sourcerange(@$, filename);
             auto params = $5 ? *$5 : std::vector<ParamGroup>();
@@ -866,6 +887,44 @@ for_stmt
             $$ = new ForEachStmt(r, *$2, *$4, $6, $7);
             delete $2; delete $4;
         }
+    // ── labeled for-range ─────────────────────────────────────────────────
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForRangeStmt(r, *$4, $6, $8, false, $9);
+            s->label = *$1; delete $1; delete $4; $$ = s;
+        }
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTLT expr TOK_KW_STEP expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForRangeStmt(r, *$4, $6, $8, false, $11);
+            s->step_expr = $10; s->label = *$1; delete $1; delete $4; $$ = s;
+        }
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTEQ expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForRangeStmt(r, *$4, $6, $8, true, $9);
+            s->label = *$1; delete $1; delete $4; $$ = s;
+        }
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_KW_IN expr TOK_DOTDOTEQ expr TOK_KW_STEP expr_no_struct block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForRangeStmt(r, *$4, $6, $8, true, $11);
+            s->step_expr = $10; s->label = *$1; delete $1; delete $4; $$ = s;
+        }
+    // ── labeled for-each ──────────────────────────────────────────────────
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_KW_IN expr block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForEachStmt(r, "", *$4, $6, $7);
+            s->label = *$1; delete $1; delete $4; $$ = s;
+        }
+    | TOK_IDENT TOK_COLON TOK_KW_FOR TOK_IDENT TOK_COMMA TOK_IDENT TOK_KW_IN expr block
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            auto* s = new ForEachStmt(r, *$4, *$6, $8, $9);
+            s->label = *$1; delete $1; delete $4; delete $6; $$ = s;
+        }
     ;
 
 defer_stmt
@@ -942,7 +1001,7 @@ when_else_block
     ;
 
 enum_decl
-    : TOK_IDENT TOK_DEF TOK_KW_ENUM TOK_LBRACE enum_variant_list TOK_RBRACE
+    : decl_name TOK_DEF TOK_KW_ENUM TOK_LBRACE enum_variant_list TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new EnumDecl(r,*$1,*$5); delete $1; delete $5;
@@ -1333,7 +1392,12 @@ expr_postfix
     | expr_postfix TOK_KW_OR_RETURN
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new OrReturnExpr(r, $1);
+            $$ = new OrReturnExpr(r, $1, nullptr);
+        }
+    | expr_postfix TOK_KW_OR_ELSE expr_unary
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new OrReturnExpr(r, $1, $3);
         }
     ;
 
@@ -1521,6 +1585,31 @@ builtin_call_expr
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new BuiltinCallExpr(r, TOK_KW_ENUM_NAME, {$3});
         }
+    | TOK_KW_MIN TOK_LPAREN expr TOK_COMMA expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_MIN, {$3, $5});
+        }
+    | TOK_KW_MAX TOK_LPAREN expr TOK_COMMA expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_MAX, {$3, $5});
+        }
+    | TOK_KW_ABS TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_ABS, {$3});
+        }
+    | TOK_KW_SWAP TOK_LPAREN expr TOK_COMMA expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_SWAP, {$3, $5});
+        }
+    | TOK_KW_CLAMP TOK_LPAREN expr TOK_COMMA expr TOK_COMMA expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_CLAMP, {$3, $5, $7});
+        }
     ;
 
 opt_arg_list
@@ -1627,7 +1716,12 @@ cast_expr
     : TOK_KW_CAST TOK_LPAREN type TOK_RPAREN expr_unary
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new CastExpr(r, $3, $5);
+            $$ = new CastExpr(r, $3, $5, false);
+        }
+    | TOK_KW_BIT_CAST TOK_LPAREN type TOK_RPAREN expr_unary
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new CastExpr(r, $3, $5, true);
         }
     ;
 

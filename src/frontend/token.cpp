@@ -123,6 +123,13 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_FREE:          return "'free'";
         case TOK_KW_COPY:          return "'copy'";
         case TOK_KW_ENUM_NAME:     return "'enum_name'";
+        case TOK_KW_BIT_CAST:      return "'bit_cast'";
+        case TOK_KW_MIN:           return "'min'";
+        case TOK_KW_MAX:           return "'max'";
+        case TOK_KW_ABS:           return "'abs'";
+        case TOK_KW_SWAP:          return "'swap'";
+        case TOK_KW_CLAMP:         return "'clamp'";
+        case TOK_KW_OR_ELSE:       return "'or_else'";
         default:                   return "<unknown token>";
     }
 }
@@ -178,6 +185,14 @@ int keyword_lookup(std::string_view s) {
         { "free",         TOK_KW_FREE      },
         { "copy",         TOK_KW_COPY      },
         { "enum_name",    TOK_KW_ENUM_NAME },
+        // Feature batch 2
+        { "bit_cast",     TOK_KW_BIT_CAST  },
+        { "min",          TOK_KW_MIN       },
+        { "max",          TOK_KW_MAX       },
+        { "abs",          TOK_KW_ABS       },
+        { "swap",         TOK_KW_SWAP      },
+        { "clamp",        TOK_KW_CLAMP     },
+        { "or_else",      TOK_KW_OR_ELSE   },
         // Import keywords
         { "cimport",      TOK_KW_CIMPORT   },
         { "import",       TOK_KW_IMPORT    },

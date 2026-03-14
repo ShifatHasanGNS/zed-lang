@@ -133,7 +133,7 @@ score  := 0             -- global, type inferred
 **Bitwise:** `&  |  ^  <<  >>`
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
-**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^= <<= >>=`
+**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
 
 > Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.
@@ -148,6 +148,14 @@ Explicit only — no implicit numeric coercions.
 cast(f32)(my_i32)
 cast(i32)(3.7)
 cast(*u8)(raw_ptr)
+```
+
+**`bit_cast`** reinterprets the raw bits of a value as another type. Source and destination must have the same byte size. No conversion is performed — the bit pattern is preserved exactly.
+
+```zed
+f: f32 = 1.0
+bits := bit_cast(u32)(f)    -- u32 with same bits as f32 1.0 = 0x3F800000
+back := bit_cast(f32)(bits) -- back to f32: 1.0
 ```
 
 ---
@@ -194,8 +202,8 @@ border: [(GRID + 2) * (GRID + 2)]i32  -- with padding
 
 ```zed
 s: []i32
-sub  := arr[1 ..< 4]   -- exclusive upper bound [1, 4)
-sub2 := arr[1 ..= 4]   -- inclusive upper bound [1, 4]
+sub  := arr[1 ..< 4]   -- exclusive upper bound  [1, 4)
+sub2 := arr[1 ..= 4]   -- inclusive upper bound   [1, 4]
 full := arr[:]          -- full slice
 ```
 
@@ -215,7 +223,7 @@ append(&nums, 20)
 
 -- Length and capacity
 n       := len(nums)   -- current element count  → u64
-cap_val := cap(nums)   -- current capacity       → u64
+cap_val := cap(nums)   -- current capacity        → u64
 
 -- Pre-allocate capacity
 -- Sets capacity to n; len stays 0. Reserved slots are zero-initialized.
@@ -352,6 +360,15 @@ parse :: proc(input: cstr) -> (i32, bool) {
 }
 ```
 
+### or_else
+
+Like `or_return` but instead of propagating failure, yields a default value. Can be used in any context — no enclosing `(T, bool)` proc required.
+
+```zed
+n := read_int(input) or_else 0    -- returns 0 if parsing failed
+s := find_key(map, key) or_else "missing"
+```
+
 ---
 
 ## Named Return Values
@@ -424,9 +441,16 @@ for item in nums { }
 for i, item in nums { }
 ```
 
-The index variable in `for i, item in coll` is typed `i64`. The element variable is the element type of the collection (`u8` for `string`).
+All six forms support labels for `break`/`continue` targeting:
 
-For-each variables are read-write — mutating `item` writes back into the collection for arrays, slices, and dynamic arrays.
+```zed
+outer: for i in 0 ..< rows {
+    for j in 0 ..< cols {
+        if grid[i] == 0 { continue outer }
+        if found       { break outer    }
+    }
+}
+```
 
 ### break / continue (with labels)
 
@@ -594,7 +618,7 @@ Assigning a runtime `cstr` variable directly to a `string` (or vice-versa) witho
 ```zed
 greeting: string = "Hello, "
 name:     string = "Zed"
-full  := greeting + name        -- "Hello, Zed"
+full := greeting + name          -- "Hello, Zed"
 full2 := greeting + "World"     -- string + cstr → string
 ```
 
@@ -625,12 +649,17 @@ These are soft keywords — usable as variable names outside a call position.
 | `append(&arr, val)` | Append element to dynamic array                           | `void`      |
 | `reserve(&arr, n)`  | Pre-allocate capacity; len stays 0; slots zeroed          | `void`      |
 | `clear(&arr)`       | Set len to 0; retain allocation                           | `void`      |
-| `copy(dst, src)`    | Copy `min(len(dst), len(src))` elements; returns count    | `i64`       |
+| `copy(dst, src)`    | Copy `min(cap(dst), len(src))` elements; returns count    | `i64`       |
 | `free(ptr)`         | Release heap memory obtained via C `malloc` / `mem_alloc` | `void`      |
 | `panic(msg)`        | Print message to stderr and abort — never returns         | `void`      |
 | `to_cstr(s)`        | `string` → `cstr` (points into string buffer)             | `cstr`      |
 | `from_cstr(cs)`     | `cstr` → `string` (copies)                                | `string`    |
 | `enum_name(val)`    | Enum variant → its source name as `cstr`                  | `cstr`      |
+| `min(a, b)`         | Smaller of two numeric values                             | same as `a` |
+| `max(a, b)`         | Larger of two numeric values                              | same as `a` |
+| `abs(x)`            | Absolute value of a numeric                               | same as `x` |
+| `swap(&a, &b)`      | Swap two values in-place                                  | `void`      |
+| `clamp(v, lo, hi)`  | Clamp `v` to `[lo, hi]`                                   | same as `v` |
 | `sizeof(T\|x)`      | Size in bytes of a type or variable                       | `u64`       |
 | `alignof(T)`        | Alignment in bytes                                        | `u64`       |
 | `typeid(T)`         | Compile-time `u64` hash unique to `T`                     | `u64`       |

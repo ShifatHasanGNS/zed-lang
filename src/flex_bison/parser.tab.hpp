@@ -133,10 +133,17 @@
      TOK_KW_FREE = 348,
      TOK_KW_COPY = 349,
      TOK_KW_ENUM_NAME = 350,
-     LOWER_THAN_ELSE = 351,
-     UNARY_MINUS = 352,
-     UNARY_ADDR = 353,
-     POSTFIX_DEREF = 354
+     TOK_KW_BIT_CAST = 351,
+     TOK_KW_MIN = 352,
+     TOK_KW_MAX = 353,
+     TOK_KW_ABS = 354,
+     TOK_KW_SWAP = 355,
+     TOK_KW_CLAMP = 356,
+     TOK_KW_OR_ELSE = 357,
+     LOWER_THAN_ELSE = 358,
+     UNARY_MINUS = 359,
+     UNARY_ADDR = 360,
+     POSTFIX_DEREF = 361
    };
 #endif
 /* Tokens.  */
@@ -234,10 +241,17 @@
 #define TOK_KW_FREE 348
 #define TOK_KW_COPY 349
 #define TOK_KW_ENUM_NAME 350
-#define LOWER_THAN_ELSE 351
-#define UNARY_MINUS 352
-#define UNARY_ADDR 353
-#define POSTFIX_DEREF 354
+#define TOK_KW_BIT_CAST 351
+#define TOK_KW_MIN 352
+#define TOK_KW_MAX 353
+#define TOK_KW_ABS 354
+#define TOK_KW_SWAP 355
+#define TOK_KW_CLAMP 356
+#define TOK_KW_OR_ELSE 357
+#define LOWER_THAN_ELSE 358
+#define UNARY_MINUS 359
+#define UNARY_ADDR 360
+#define POSTFIX_DEREF 361
 
 
 
@@ -279,7 +293,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 283 "src/flex_bison/parser.tab.hpp"
+#line 297 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

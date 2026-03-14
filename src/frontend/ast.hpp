@@ -482,7 +482,9 @@ class CastExpr : public Expr {
 public:
     Type* target_type;
     Expr* expr;
-    CastExpr(SourceRange r, Type* t, Expr* e) : target_type(t), expr(e) { range = r; }
+    bool  is_bit_cast = false;  // true → bit_cast(T)(x), false → cast(T)(x)
+    CastExpr(SourceRange r, Type* t, Expr* e, bool bit = false)
+        : target_type(t), expr(e), is_bit_cast(bit) { range = r; }
     Kind kind() const override { return CAST; }
 };
 
@@ -573,7 +575,9 @@ public:
 class OrReturnExpr : public Expr {
 public:
     Expr* inner;
-    OrReturnExpr(SourceRange r, Expr* e) : inner(e) { range = r; }
+    Expr* else_expr = nullptr;  // non-null → or_else DEFAULT, null → or_return
+    OrReturnExpr(SourceRange r, Expr* e, Expr* def = nullptr)
+        : inner(e), else_expr(def) { range = r; }
     Kind kind() const override { return OR_RETURN_EXPR; }
 };
 
@@ -602,6 +606,7 @@ public:
     bool        inclusive;  // true = ..=, false = ..<
     Expr*       step_expr = nullptr;  // null = step 1
     BlockStmt*  body;
+    std::string label;      // optional loop label
     ForRangeStmt(SourceRange r, std::string v, Expr* l, Expr* h, bool inc, BlockStmt* b)
         : var(std::move(v)), lo(l), hi(h), inclusive(inc), body(b) { range = r; }
     Kind kind() const override { return FOR_RANGE; }

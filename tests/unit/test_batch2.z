@@ -1,0 +1,289 @@
+-- test_batch2.z
+-- Covers the 8 feature-batch-2 additions:
+--   1. string[i] = byte  (mutation)
+--   2. labeled for-range and for-each
+--   3. bit_cast(T)(x)
+--   4. min(a, b) / max(a, b)
+--   5. abs(x)
+--   6. swap(&a, &b)
+--   7. clamp(v, lo, hi)
+--   8. or_else DEFAULT
+
+cimport "stdio.h"
+cimport "string.h"
+
+-- ── 1. string[i] = byte mutation ─────────────────────────────────────────────
+
+check_string_mutation :: proc() -> bool {
+    s: string = "abc"
+
+    -- Read bytes
+    if s[0] != 97 { return false }   -- 'a'
+    if s[1] != 98 { return false }   -- 'b'
+    if s[2] != 99 { return false }   -- 'c'
+
+    -- Mutate via index
+    s[0] = 90    -- 'Z'
+    s[1] = 101   -- 'e'
+    s[2] = 100   -- 'd'
+
+    if strcmp(to_cstr(s), "Zed") != 0 { return false }
+
+    -- Mutate in a loop
+    t: string = "aaa"
+    for i in 0 ..< 3 {
+        t[i] = cast(u8)(t[i] + cast(u8)(i))
+    }
+    -- a=97, b=98, c=99
+    if strcmp(to_cstr(t), "abc") != 0 { return false }
+
+    return true
+}
+
+-- ── 2. Labeled for-range / for-each ──────────────────────────────────────────
+
+check_labeled_range :: proc() -> bool {
+    -- break outer from inner range loop
+    found := false
+    outer: for i in 0 ..< 5 {
+        for j in 0 ..< 5 {
+            if i == 2 and j == 3 {
+                found = true
+                break outer
+            }
+        }
+    }
+    if not found { return false }
+
+    -- continue outer from inner range loop
+    count := 0
+    outer2: for i in 0 ..< 4 {
+        for j in 0 ..< 4 {
+            if j == 1 { continue outer2 }
+            count += 1
+        }
+    }
+    -- each outer iter: j=0 increments count, j=1 continues outer2 → 4 counts
+    if count != 4 { return false }
+
+    return true
+}
+
+check_labeled_foreach :: proc() -> bool {
+    arr: [3]i32 = { 10, 20, 30 }
+    matrix: [3]i32 = { 1, 2, 3 }
+
+    -- break outer from inner for-each
+    hit := 0
+    outer: for v in arr {
+        for w in matrix {
+            if v == 20 and w == 2 {
+                hit = v + w
+                break outer
+            }
+        }
+    }
+    if hit != 22 { return false }
+
+    -- continue outer from inner for-each
+    skipped := 0
+    outer2: for v in arr {
+        for w in matrix {
+            if w == 2 { skipped += 1  continue outer2 }
+        }
+    }
+    if skipped != 3 { return false }  -- one skip per outer element
+
+    return true
+}
+
+-- ── 3. bit_cast ───────────────────────────────────────────────────────────────
+
+check_bit_cast :: proc() -> bool {
+    -- f32 1.0 has IEEE 754 bit pattern 0x3F800000
+    f: f32 = 1.0
+    bits := bit_cast(u32)(f)
+    if bits != 0x3F800000 { return false }
+
+    -- Round-trip back to f32
+    back := bit_cast(f32)(bits)
+    if back != 1.0 { return false }
+
+    -- i32 and u32 same size — bit pattern preserved for negative
+    n: i32 = -1
+    u := bit_cast(u32)(n)
+    if u != 0xFFFFFFFF { return false }
+
+    -- f64 and i64 same size
+    g: f64 = 0.0
+    zero_bits := bit_cast(i64)(g)
+    if zero_bits != 0 { return false }   -- +0.0 is all-zero bits
+
+    return true
+}
+
+-- ── 4. min / max ──────────────────────────────────────────────────────────────
+
+check_min_max :: proc() -> bool {
+    if min(3, 7)    != 3   { return false }
+    if min(7, 3)    != 3   { return false }
+    if min(-5, 5)   != -5  { return false }
+    if min(4, 4)    != 4   { return false }
+
+    if max(3, 7)    != 7   { return false }
+    if max(7, 3)    != 7   { return false }
+    if max(-5, 5)   != 5   { return false }
+    if max(4, 4)    != 4   { return false }
+
+    -- With variables
+    a := 10
+    b := 20
+    if min(a, b) != 10 { return false }
+    if max(a, b) != 20 { return false }
+
+    -- Floats
+    x: f32 = 1.5
+    y: f32 = 2.5
+    if min(x, y) != 1.5 { return false }
+    if max(x, y) != 2.5 { return false }
+
+    -- Chained
+    if min(min(5, 3), 7) != 3 { return false }
+    if max(max(1, 9), 5) != 9 { return false }
+
+    return true
+}
+
+-- ── 5. abs ────────────────────────────────────────────────────────────────────
+
+check_abs :: proc() -> bool {
+    if abs(5)    != 5  { return false }
+    if abs(-5)   != 5  { return false }
+    if abs(0)    != 0  { return false }
+    if abs(-100) != 100 { return false }
+
+    n := -42
+    if abs(n) != 42 { return false }
+
+    f: f32 = -3.14
+    r := abs(f)
+    if r < 3.13 or r > 3.15 { return false }
+
+    return true
+}
+
+-- ── 6. swap ───────────────────────────────────────────────────────────────────
+
+check_swap :: proc() -> bool {
+    a := 10
+    b := 20
+    swap(&a, &b)
+    if a != 20 { return false }
+    if b != 10 { return false }
+
+    -- Swap equal values
+    c := 5
+    d := 5
+    swap(&c, &d)
+    if c != 5 { return false }
+    if d != 5 { return false }
+
+    -- Swap in array
+    arr: [3]i32 = { 1, 2, 3 }
+    swap(&arr[0], &arr[2])
+    if arr[0] != 3 { return false }
+    if arr[2] != 1 { return false }
+
+    -- Swap floats
+    x: f32 = 1.0
+    y: f32 = 2.0
+    swap(&x, &y)
+    if x != 2.0 { return false }
+    if y != 1.0 { return false }
+
+    return true
+}
+
+-- ── 7. clamp ──────────────────────────────────────────────────────────────────
+
+check_clamp :: proc() -> bool {
+    -- Below range
+    if clamp(0,  5, 10) != 5  { return false }
+    -- In range
+    if clamp(7,  5, 10) != 7  { return false }
+    -- Above range
+    if clamp(15, 5, 10) != 10 { return false }
+    -- At bounds
+    if clamp(5,  5, 10) != 5  { return false }
+    if clamp(10, 5, 10) != 10 { return false }
+
+    -- Negative range
+    if clamp(-10, -5, 5) != -5 { return false }
+    if clamp(0,   -5, 5) != 0  { return false }
+    if clamp(10,  -5, 5) != 5  { return false }
+
+    -- Float
+    f: f32 = 1.5
+    r := clamp(f, 0.0, 1.0)
+    if r != 1.0 { return false }
+
+    return true
+}
+
+-- ── 8. or_else ────────────────────────────────────────────────────────────────
+
+parse_positive :: proc(n: i32) -> (i32, bool) {
+    if n <= 0 { return 0, false }
+    return n, true
+}
+
+check_or_else :: proc() -> bool {
+    -- Success path: or_else default not used
+    v := parse_positive(42) or_else 0
+    if v != 42 { return false }
+
+    -- Failure path: or_else default used
+    v2 := parse_positive(-1) or_else 99
+    if v2 != 99 { return false }
+
+    -- or_else with expression
+    v3 := parse_positive(-5) or_else 10 * 2
+    if v3 != 20 { return false }
+
+    -- or_else in a non-(T,bool)-returning proc context (no propagation needed)
+    sum := 0
+    for i in 0 ..< 5 {
+        sum += parse_positive(i) or_else 0
+    }
+    -- i=0: 0 (fail→0), i=1:1, i=2:2, i=3:3, i=4:4  → 10
+    if sum != 10 { return false }
+
+    -- or_else with string default
+    find_name :: proc(found: bool) -> (cstr, bool) {
+        if not found { return "", false }
+        return "Alice", true
+    }
+    name := find_name(true)  or_else "Unknown"
+    if strcmp(name, "Alice")   != 0 { return false }
+    name2 := find_name(false) or_else "Unknown"
+    if strcmp(name2, "Unknown") != 0 { return false }
+
+    return true
+}
+
+-- ── main ─────────────────────────────────────────────────────────────────────
+
+main :: proc() -> i32 {
+    if not check_string_mutation() { printf("FAIL string_mutation\n") return 1 }
+    if not check_labeled_range()   { printf("FAIL labeled_range\n")   return 1 }
+    if not check_labeled_foreach() { printf("FAIL labeled_foreach\n") return 1 }
+    if not check_bit_cast()        { printf("FAIL bit_cast\n")        return 1 }
+    if not check_min_max()         { printf("FAIL min_max\n")         return 1 }
+    if not check_abs()             { printf("FAIL abs\n")             return 1 }
+    if not check_swap()            { printf("FAIL swap\n")            return 1 }
+    if not check_clamp()           { printf("FAIL clamp\n")           return 1 }
+    if not check_or_else()         { printf("FAIL or_else\n")         return 1 }
+
+    printf("test_batch2: OK\n\n\n")
+    return 0
+}

@@ -529,7 +529,20 @@ void CodeGen::emit_for_range(ForRangeStmt* s) {
     if (s->step_expr) emit_expr(s->step_expr);
     else emit_.emit("1");
     emit_.emit(")");
-    emit_block(s->body, true);
+
+    if (s->label.empty()) {
+        emit_block(s->body, true);
+        return;
+    }
+
+    // Labeled: manually emit block so we can inject goto labels
+    emit_.emit(" {\n");
+    emit_.indent();
+    for (Stmt* st : s->body->stmts) emit_stmt(st);
+    emit_.line("__continue_" + s->label + ":;");
+    emit_.dedent();
+    emit_.line("}");
+    emit_.line("__break_" + s->label + ":;");
 }
 
 // ---------------------------------------------------------------------------
@@ -590,8 +603,13 @@ void CodeGen::emit_for_each(ForEachStmt* s) {
     // Body statements
     for (Stmt* st : s->body->stmts) emit_stmt(st);
 
+    if (!s->label.empty())
+        emit_.line("__continue_" + s->label + ":;");
+
     emit_.dedent();
     emit_.line("}");
+    if (!s->label.empty())
+        emit_.line("__break_" + s->label + ":;");
     emit_.dedent();
     emit_.line("}");
 }
@@ -859,6 +877,22 @@ void CodeGen::emit_var_decl_local(VarDecl* vd) {
         return;
     }
     emit_var_decl(ty, vd->var_name);   // emit_var_decl sanitizes name internally
+    // Exception: proc types with tuple return must use 'auto' — std::function
+    // cannot store a lambda returning a locally-defined struct, and emit_c_type
+    // would produce void for the return type.
+    if (ty->is_proc()) {
+        auto* pt = static_cast<sem::ProcType*>(ty);
+        if (pt->return_type && pt->return_type->is_tuple()) {
+            emit_.emit_indent();
+            emit_.emit("auto " + c_safe_name(vd->var_name));
+            if (vd->init) {
+                emit_.emit(" = ");
+                emit_expr_hint(vd->init, ty);
+            }
+            emit_.emit(";\n");
+            return;
+        }
+    }
     if (vd->init) {
         emit_.emit(" = ");
         emit_expr_hint(vd->init, ty);
@@ -885,6 +919,18 @@ void CodeGen::emit_const_decl_local(ConstDecl* cd) {
         emit_.begin_line("static ");
     else
         emit_.begin_line("static const ");
+    // Proc types with tuple return must use 'auto' — std::function cannot
+    // store a lambda returning a locally-defined struct.
+    if (ty->is_proc()) {
+        auto* pt = static_cast<sem::ProcType*>(ty);
+        if (pt->return_type && pt->return_type->is_tuple()) {
+            // Re-emit without the std::function wrapper
+            emit_.emit("auto " + c_safe_name(cd->const_name) + " = ");
+            emit_expr(cd->value);
+            emit_.emit(";\n");
+            return;
+        }
+    }
     emit_var_decl(ty, cd->const_name);  // emit_var_decl sanitizes internally
     emit_.emit(" = ");
     emit_expr(cd->value);
@@ -997,12 +1043,13 @@ void CodeGen::emit_index(IndexExpr* e) {
         emit_expr(e->index);
         emit_.emit(")");
     } else if (bty->is_string()) {
-        // string[i] → (uint8_t)(s[i])
-        emit_.emit("((uint8_t)(");
+        // string[i] — std::string::operator[] returns char& (lvalue-compatible).
+        // No cast here; surrounding context handles the u8 type via the type system.
+        emit_.emit("(");
         emit_expr(e->base);
         emit_.emit(")[");
         emit_expr(e->index);
-        emit_.emit("])");
+        emit_.emit("]");
     } else {
         // Plain array indexing
         emit_expr(e->base);
@@ -1085,6 +1132,15 @@ void CodeGen::emit_addr(AddrExpr* e) {
 
 void CodeGen::emit_cast(CastExpr* e) {
     TypeRef dest = tc_.type_of(e);
+    if (e->is_bit_cast) {
+        // bit_cast(T)(x) → *reinterpret_cast<const T*>(&(x))
+        emit_.emit("(*reinterpret_cast<const ");
+        emit_c_type(dest);
+        emit_.emit("*>(&(");
+        emit_expr(e->expr);
+        emit_.emit(")))");
+        return;
+    }
     emit_.emit("((");
     emit_c_type(dest);
     emit_.emit(")(");
@@ -1612,6 +1668,75 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
             }
             break;
         }
+        case TOK_KW_MIN: {
+            // min(a, b)  →  ((a) < (b) ? (a) : (b))
+            emit_.emit("((");
+            emit_expr(e->args[0]);
+            emit_.emit(") < (");
+            emit_expr(e->args[1]);
+            emit_.emit(") ? (");
+            emit_expr(e->args[0]);
+            emit_.emit(") : (");
+            emit_expr(e->args[1]);
+            emit_.emit("))");
+            break;
+        }
+        case TOK_KW_MAX: {
+            // max(a, b)  →  ((a) > (b) ? (a) : (b))
+            emit_.emit("((");
+            emit_expr(e->args[0]);
+            emit_.emit(") > (");
+            emit_expr(e->args[1]);
+            emit_.emit(") ? (");
+            emit_expr(e->args[0]);
+            emit_.emit(") : (");
+            emit_expr(e->args[1]);
+            emit_.emit("))");
+            break;
+        }
+        case TOK_KW_ABS: {
+            // abs(x)  →  ((x) < 0 ? -(x) : (x))
+            emit_.emit("((");
+            emit_expr(e->args[0]);
+            emit_.emit(") < 0 ? -(");
+            emit_expr(e->args[0]);
+            emit_.emit(") : (");
+            emit_expr(e->args[0]);
+            emit_.emit("))");
+            break;
+        }
+        case TOK_KW_SWAP: {
+            // swap(&a, &b)  →  ({ auto _t = *(a); *(a) = *(b); *(b) = _t; })
+            emit_.emit("({ auto _zed_swap_t_ = *(");
+            emit_expr(e->args[0]);
+            emit_.emit("); *(");
+            emit_expr(e->args[0]);
+            emit_.emit(") = *(");
+            emit_expr(e->args[1]);
+            emit_.emit("); *(");
+            emit_expr(e->args[1]);
+            emit_.emit(") = _zed_swap_t_; })");
+            break;
+        }
+        case TOK_KW_CLAMP: {
+            // clamp(v, lo, hi)  →  ((v)<(lo)?(lo):(v)>(hi)?(hi):(v))
+            emit_.emit("((");
+            emit_expr(e->args[0]);
+            emit_.emit(") < (");
+            emit_expr(e->args[1]);
+            emit_.emit(") ? (");
+            emit_expr(e->args[1]);
+            emit_.emit(") : (");
+            emit_expr(e->args[0]);
+            emit_.emit(") > (");
+            emit_expr(e->args[2]);
+            emit_.emit(") ? (");
+            emit_expr(e->args[2]);
+            emit_.emit(") : (");
+            emit_expr(e->args[0]);
+            emit_.emit("))");
+            break;
+        }
         default:
             emit_.emit("/*unknown_builtin*/");
             break;
@@ -1631,7 +1756,18 @@ void CodeGen::emit_builtin_call(BuiltinCallExpr* e) {
 // For void return context: just { if (!_or_tmp._1) return; }
 // ---------------------------------------------------------------------------
 void CodeGen::emit_or_return(OrReturnExpr* e) {
-    // Determine proc return struct name
+    if (e->else_expr) {
+        // or_else DEFAULT:
+        // ({ auto _or_tmp_ = CALL; _or_tmp_._1 ? _or_tmp_._0 : DEFAULT; })
+        emit_.emit("({ auto _or_tmp_ = ");
+        emit_expr(e->inner);
+        emit_.emit("; _or_tmp_._1 ? _or_tmp_._0 : (");
+        emit_expr(e->else_expr);
+        emit_.emit("); })");
+        return;
+    }
+
+    // or_return: propagate failure
     const std::string& pname = current_proc_name_;
     bool multi_ret = !pname.empty() && emitted_ret_structs_.count("__ret_" + pname);
 
@@ -1639,7 +1775,6 @@ void CodeGen::emit_or_return(OrReturnExpr* e) {
     emit_expr(e->inner);
     emit_.emit("; if (!_or_tmp_._1) { ");
     if (multi_ret) {
-        // Return a zeroed-out return struct
         emit_.emit("return (__ret_" + pname + "){}; ");
     } else {
         emit_.emit("return; ");
@@ -1656,6 +1791,14 @@ void CodeGen::emit_proc_lit(ProcLitExpr* e) {
     // Build param list from semantic types stored in the type map
     TypeRef proc_ty = tc_.type_of(e);
     auto* pt = proc_ty ? static_cast<sem::ProcType*>(proc_ty) : nullptr;
+
+    // For multi-return lambdas: synthesize a unique struct name so emit_return
+    // can produce a properly-typed return value.
+    bool has_multi_ret = pt && pt->return_type && pt->return_type->is_tuple();
+    std::string lit_name = "";
+    if (has_multi_ret) {
+        lit_name = "_lit_" + std::to_string(tmp_counter_++) + "_";
+    }
 
     emit_.emit("[=](");
     bool first = true;
@@ -1676,22 +1819,47 @@ void CodeGen::emit_proc_lit(ProcLitExpr* e) {
         emit_.emit("...");
     }
     emit_.emit(") -> ");
-    // Return type
-    if (pt && pt->return_type && pt->return_type->is_tuple()) {
-        // Multi-return: anonymous proc with multi-return is rare; emit auto
+    if (has_multi_ret) {
         emit_.emit("auto");
     } else if (pt && pt->return_type) {
         emit_c_type(pt->return_type);
     } else {
         emit_.emit("void");
     }
-    emit_.emit(" ");
+    emit_.emit(" {\n");
+    emit_.indent();
 
-    // Save/restore current_proc_name_ (lambda has no named proc)
-    std::string saved = current_proc_name_;
-    current_proc_name_ = "";
-    emit_block(e->body, true);
-    current_proc_name_ = saved;
+    // For multi-return: emit a local struct typedef at the top of the lambda
+    // body so return statements can use it.
+    if (has_multi_ret) {
+        auto* tt = static_cast<sem::TupleType*>(pt->return_type);
+        const std::string sname = "__ret_" + lit_name;
+        emit_.emit_indent();
+        emit_.emit("struct " + sname + " { ");
+        for (size_t i = 0; i < tt->elems.size(); ++i) {
+            emit_var_decl(tt->elems[i], "_" + std::to_string(i));
+            emit_.emit("; ");
+        }
+        emit_.emit("};\n");
+        emitted_ret_structs_.insert(sname);
+    }
+
+    // Save/restore current_proc_name_ — use synthetic name for multi-return
+    std::string saved_name = current_proc_name_;
+    auto saved_ret_names = current_proc_return_names_;
+    current_proc_name_ = lit_name;
+    current_proc_return_names_ = {};
+
+    for (Stmt* st : e->body->stmts) emit_stmt(st);
+
+    current_proc_name_ = saved_name;
+    current_proc_return_names_ = saved_ret_names;
+    if (has_multi_ret)
+        emitted_ret_structs_.erase("__ret_" + lit_name);
+
+    emit_.dedent();
+    emit_.emit_indent();
+    emit_.emit("}");
 }
 
 // ---------------------------------------------------------------------------
