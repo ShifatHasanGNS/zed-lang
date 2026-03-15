@@ -240,7 +240,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %type <expr>          array_size_expr
 %type <type_list>     type_list opt_type_list
 %type <ident_list>    ident_list
-%type <field>         field_group
+%type <field>         field_group field_group_last
 %type <field_list>    field_group_list
 %type <param_group>   param_group
 %type <param_list>    param_list opt_param_list named_ret_list
@@ -416,8 +416,11 @@ struct_decl
 field_group_list
     : /* empty */ { $$ = new std::vector<Field>(); }
     | field_group_list field_group { $1->push_back(*$2); delete $2; $$ = $1; }
+    | field_group_list field_group_last { $1->push_back(*$2); delete $2; $$ = $1; }
     ;
 
+// field_group: field with mandatory trailing separator (comma or semicolon)
+// Used when more fields follow.
 field_group
     : ident_list TOK_COLON type TOK_COMMA
         {
@@ -427,6 +430,17 @@ field_group
             delete $1;
         }
     | ident_list TOK_COLON type TOK_SEMI
+        {
+            $$ = new Field();
+            $$->names = *$1;
+            $$->type = $3;
+            delete $1;
+        }
+    ;
+
+// field_group_last: final field with NO trailing separator
+field_group_last
+    : ident_list TOK_COLON type
         {
             $$ = new Field();
             $$->names = *$1;
@@ -603,6 +617,11 @@ param_list
             $1->push_back(sentinel);
             $$ = $1;
         }
+    | param_list TOK_COMMA
+        {
+            // trailing comma: proc(a: i32, b: i32,) — ignore the trailing comma
+            $$ = $1;
+        }
     ;
 
 param_group
@@ -637,6 +656,11 @@ named_ret_list
             $1->push_back(pg);
             $$ = $1;
             delete $3;
+        }
+    | named_ret_list TOK_COMMA
+        {
+            // trailing comma: (result: i32, ok: bool,) — ignore
+            $$ = $1;
         }
     ;
 
@@ -756,6 +780,11 @@ type_list
     | type_list TOK_COMMA type
         {
             $1->push_back($3);
+            $$ = $1;
+        }
+    | type_list TOK_COMMA
+        {
+            // trailing comma: (i32, bool,) — ignore
             $$ = $1;
         }
     ;
@@ -1403,6 +1432,13 @@ expr_postfix
         { $$ = $1; }
     | expr_postfix TOK_DOT TOK_IDENT
         {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new FieldExpr(r, $1, *$3);
+            delete $3;
+        }
+    | expr_postfix TOK_DOT kw_ident
+        {
+            // Allow soft keywords as field names: v.min, v.max, bbox.min etc.
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new FieldExpr(r, $1, *$3);
             delete $3;

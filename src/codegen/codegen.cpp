@@ -1160,8 +1160,12 @@ void CodeGen::emit_lit(LitExpr* e, TypeRef hint) {
         } break;
         case LitExpr::FLOAT: {
             emit_.emit(e->float_val);
-            // Default float literal is f32; omit suffix only if explicitly widened to f64
-            if (!hint || hint->kind == SemanticType::Kind::F32)
+            // Zed float literals are f32 by default.
+            // Only emit without the 'f' suffix (making it a double literal)
+            // when the hint is explicitly f64.
+            if (hint && hint->kind == SemanticType::Kind::F64)
+                ; // no suffix → double
+            else
                 emit_.emit("f");
         } break;
         case LitExpr::BOOL: {
