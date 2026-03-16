@@ -13,18 +13,14 @@
 namespace ZedLang {
 
 enum class Severity {
-    NOTE,
-    WARNING,
     ERROR,
     FATAL,
 };
 
 inline const char* severity_name(Severity s) {
     switch (s) {
-        case Severity::NOTE:    return "note";
-        case Severity::WARNING: return "warning";
-        case Severity::ERROR:   return "error";
-        case Severity::FATAL:   return "fatal error";
+        case Severity::ERROR: return "error";
+        case Severity::FATAL: return "fatal error";
     }
     return "error";
 }
@@ -63,26 +59,18 @@ public:
     Diagnostic& error(SourceLoc loc, const std::string& msg);
     [[noreturn]] void fatal(SourceLoc loc, const std::string& msg);
     [[noreturn]] void ice(const char* file, int line, const std::string& msg);
-    void note(SourceLoc loc, const std::string& msg);
 
     bool has_errors()   const { return error_count_ > 0;  }
-    bool has_warnings() const { return warn_count_  > 0;  }
     int  error_count()  const { return error_count_;       }
-    int  warn_count()   const { return warn_count_;        }
 
     bool flush();
-    void flush_and_exit_on_error();
     void reset();
 
 private:
     std::vector<Diagnostic> diags_;
     int error_count_ = 0;
-    int warn_count_  = 0;
 
     void print_diagnostic(const Diagnostic& d) const;
 };
-
-#define ICE(reporter, msg) \
-    (reporter).ice(__FILE__, __LINE__, (msg))
 
 } // namespace ZedLang

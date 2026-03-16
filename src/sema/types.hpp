@@ -58,8 +58,6 @@ struct SemanticType {
     virtual ~SemanticType() = default;
 
     bool is_integer()    const;
-    bool is_signed()     const;
-    bool is_unsigned()   const;
     bool is_float()      const;
     bool is_numeric()    const;
     bool is_void()       const { return kind == Kind::VOID;         }

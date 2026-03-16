@@ -27,6 +27,7 @@
 
 #include "flex_bison/parser.tab.hpp"
 #include "flex_bison/lexer.h"
+#include "frontend/token.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -35,6 +36,7 @@
 #include <unordered_map>
 #include <memory>
 #include <unistd.h>
+#include <sys/stat.h>
 
 int yyparse(yyscan_t scanner,
             ZedLang::ErrorReporter* err,
@@ -64,7 +66,9 @@ static void print_usage(const char* prog) {
         << "    --no-typecheck  skip type checking\n"
         << "    --no-codegen    skip code generation\n"
         << "    --outdir <dir>  output directory for .cpp files\n"
-        << "    --verbose       verbose output\n";
+        << "    --save-ir       dump tokens + AST to <outdir>/intermediates/\n"
+        << "    --verbose       verbose output\n"
+        << "\nhigh-level commands also accept --save-ir to dump tokens + AST to build/intermediates/.\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +97,7 @@ static int compile_direct(int argc, char** argv) {
     bool        opt_typecheck = true;
     bool        opt_codegen   = true;
     bool        opt_verbose   = false;
+    bool        opt_save_ir   = false;
     std::string opt_outdir    = "./build";
     std::vector<std::string> files;
 
@@ -102,6 +107,7 @@ static int compile_direct(int argc, char** argv) {
         else if (arg == "--no-typecheck") { opt_typecheck = false; opt_codegen = false; }
         else if (arg == "--no-codegen")   opt_codegen = false;
         else if (arg == "--verbose")      opt_verbose = true;
+        else if (arg == "--save-ir")       opt_save_ir = true;
         else if (arg == "--outdir" && i + 1 < argc) opt_outdir = argv[++i];
         else if (arg.rfind("--", 0) == 0) {
             std::cerr << "unknown option: " << arg << "\n";
@@ -145,6 +151,43 @@ static int compile_direct(int argc, char** argv) {
         }
         if (opt_verbose) std::cout << files[i] << ": [parse] OK\n";
         if (opt_ast) { AstPrinter printer(std::cout); printer.print(u.prog); }
+
+        // --save-ir: write token list and AST
+        if (opt_save_ir) {
+            std::string ir_dir = opt_outdir + "/intermediates";
+            // mkdir the intermediates dir
+            ::mkdir(ir_dir.c_str(), 0755);
+            // Token list
+            {
+                std::string tok_path = ir_dir + "/" + u.file_stem + ".tokens.txt";
+                std::ofstream tok_out(tok_path);
+                if (tok_out) {
+                    tok_out << "# tokens: " << files[i] << "\n";
+                    ErrorReporter dummy2;
+                    FILE* fp2 = fopen(files[i].c_str(), "r");
+                    if (fp2) {
+                        yyscan_t sc2; yylex_init(&sc2); yyset_in(fp2, sc2);
+                        LexerExtra ex2(files[i].c_str(), &dummy2);
+                        yyset_extra(&ex2, sc2);
+                        YYSTYPE lv{}; YYLTYPE ll{}; int tk;
+                        while ((tk = yylex(&lv, &ll, sc2)) != 0) {
+                            tok_out << ll.first_line << ":" << ll.first_column
+                                    << "\t" << ZedLang::token_kind_name(tk) << "\n";
+                        }
+                        fclose(fp2); yylex_destroy(sc2);
+                    }
+                }
+            }
+            // Raw AST
+            {
+                std::string ast_path = ir_dir + "/" + u.file_stem + ".ast.txt";
+                std::ofstream ast_out(ast_path);
+                if (ast_out) {
+                    ast_out << "# AST: " << files[i] << "\n";
+                    AstPrinter pr(ast_out); pr.print(u.prog);
+                }
+            }
+        }
 
         ErrorReporter dummy;
         auto sp = std::make_unique<SymbolTable>(shared_arena, dummy);
@@ -260,16 +303,19 @@ int main(int argc, char** argv) {
 
         std::string flag   = argv[next];
         std::string target = argv[next + 1];
-        bool verbose = false;
-        for (int i = next + 2; i < argc; ++i)
+        bool verbose  = false;
+        bool save_ir  = false;
+        for (int i = next + 2; i < argc; ++i) {
             if (std::string(argv[i]) == "--verbose") verbose = true;
+            if (std::string(argv[i]) == "--save-ir") save_ir = true;
+        }
 
         if (sub == "build") {
-            if (flag == "--project") return zed::cmd_build_project(target, verbose, mode);
-            if (flag == "--file")    return zed::cmd_build_file(target, verbose, mode);
+            if (flag == "--project") return zed::cmd_build_project(target, verbose, mode, save_ir);
+            if (flag == "--file")    return zed::cmd_build_file(target, verbose, mode, save_ir);
         } else { // run
-            if (flag == "--project") return zed::cmd_run_project(target, verbose, mode);
-            if (flag == "--file")    return zed::cmd_run_file(target, verbose, mode);
+            if (flag == "--project") return zed::cmd_run_project(target, verbose, mode, save_ir);
+            if (flag == "--file")    return zed::cmd_run_file(target, verbose, mode, save_ir);
         }
         std::cerr << "error: unknown flag '" << flag
                   << "'. expected --project or --file\n";

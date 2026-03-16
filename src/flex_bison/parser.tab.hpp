@@ -290,6 +290,7 @@ typedef union YYSTYPE
     double           float_val;
     bool             bool_val;
     std::string*     str;
+    std::string*     str_val;
     std::vector<std::pair<ZedLang::Expr*, ZedLang::BlockStmt*>>* else_if_list;
     ZedLang::MatchCase*                          match_case;
     std::vector<ZedLang::MatchCase>*             match_case_list;
@@ -297,7 +298,7 @@ typedef union YYSTYPE
     std::vector<ZedLang::EnumVariantAST>*        enum_variant_list;
 }
 /* Line 1529 of yacc.c.  */
-#line 301 "src/flex_bison/parser.tab.hpp"
+#line 302 "src/flex_bison/parser.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

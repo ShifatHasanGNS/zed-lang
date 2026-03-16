@@ -14,10 +14,8 @@ namespace ZedLang {
 namespace {
     const char* colour_for(Severity s) {
         switch (s) {
-            case Severity::NOTE:    return "\033[36m";
-            case Severity::WARNING: return "\033[33m";
-            case Severity::ERROR:   return "\033[31m";
-            case Severity::FATAL:   return "\033[35m";
+            case Severity::ERROR: return "\033[31m";
+            case Severity::FATAL: return "\033[35m";
         }
         return "";
     }
@@ -65,17 +63,6 @@ void ErrorReporter::ice(const char* src_file, int src_line, const std::string& m
     std::exit(2);
 }
 
-void ErrorReporter::note(SourceLoc loc, const std::string& msg) {
-    if (diags_.empty()) return;
-    for (int i = static_cast<int>(diags_.size()) - 1; i >= 0; --i) {
-        if (diags_[i].severity != Severity::NOTE) {
-            diags_[i].with_note(loc, msg);
-            return;
-        }
-    }
-    diags_.emplace_back(Severity::NOTE, loc, msg);
-}
-
 bool ErrorReporter::flush() {
     std::stable_sort(diags_.begin(), diags_.end(),
         [](const Diagnostic& a, const Diagnostic& b) {
@@ -90,21 +77,9 @@ bool ErrorReporter::flush() {
     return error_count_ > 0;
 }
 
-void ErrorReporter::flush_and_exit_on_error() {
-    bool had_errors = flush();
-    if (had_errors) {
-        std::cerr << BOLD
-                  << error_count_ << " error"
-                  << (error_count_ == 1 ? "" : "s")
-                  << " generated.\n" << RESET;
-        std::exit(1);
-    }
-}
-
 void ErrorReporter::reset() {
     diags_.clear();
     error_count_ = 0;
-    warn_count_  = 0;
 }
 
 void ErrorReporter::print_diagnostic(const Diagnostic& d) const {

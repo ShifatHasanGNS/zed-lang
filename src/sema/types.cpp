@@ -17,20 +17,7 @@ bool SemanticType::is_integer() const {
         default: return false;
     }
 }
-bool SemanticType::is_signed() const {
-    switch (kind) {
-        case Kind::I8: case Kind::I16: case Kind::I32: case Kind::I64:
-            return true;
-        default: return false;
-    }
-}
-bool SemanticType::is_unsigned() const {
-    switch (kind) {
-        case Kind::U8: case Kind::U16: case Kind::U32: case Kind::U64:
-            return true;
-        default: return false;
-    }
-}
+
 bool SemanticType::is_float()   const { return kind == Kind::F32 || kind == Kind::F64; }
 bool SemanticType::is_numeric() const { return is_integer() || is_float(); }
 

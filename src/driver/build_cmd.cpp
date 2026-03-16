@@ -21,11 +21,13 @@
 
 #include "../support/error.hpp"
 #include "../frontend/ast.hpp"
+#include "../frontend/ast_printer.hpp"
 #include "../frontend/lexer_extra.hpp"
 #include "../sema/types.hpp"
 #include "../sema/symtable.hpp"
 #include "../sema/type_checker.hpp"
 #include "../codegen/codegen.hpp"
+#include "../frontend/token.hpp"
 
 #include "../flex_bison/parser.tab.hpp"
 #include "../flex_bison/lexer.h"
@@ -209,9 +211,59 @@ static void copy_runtime(const std::string& out_dir) {
 // Returns false on error; fills out_cpp_files with generated .cpp paths.
 // =============================================================================
 
+// ---------------------------------------------------------------------------
+// save_tokens — lex a file a second time and write one token per line.
+// Format:  LINE:COL  TOKEN_KIND_NAME  [value]
+// ---------------------------------------------------------------------------
+static void save_tokens(const std::string& filepath,
+                        const std::string& ir_dir,
+                        const std::string& file_stem)
+{
+    using namespace ZedLang;
+
+    std::string out_path = join(ir_dir, file_stem + ".tokens.txt");
+    std::ofstream out(out_path);
+    if (!out) return;
+
+    out << "# tokens: " << filepath << "\n";
+
+    ErrorReporter dummy;
+    FILE* fp = fopen(filepath.c_str(), "r");
+    if (!fp) return;
+
+    yyscan_t sc;
+    yylex_init(&sc);
+    yyset_in(fp, sc);
+    LexerExtra extra(filepath.c_str(), &dummy);
+    yyset_extra(&extra, sc);
+
+    // Pull tokens from the lexer directly via yylex.
+    // Each call returns the token kind (int); YYSTYPE holds the value.
+    YYSTYPE yylval{};
+    YYLTYPE yylloc{};
+    int tok;
+    while ((tok = yylex(&yylval, &yylloc, sc)) != 0) {
+        out << yylloc.first_line << ":" << yylloc.first_column
+            << "\t" << token_kind_name(tok);
+        // Emit literal value where meaningful
+        if      (tok == TOK_INT_LIT)    out << "\t" << yylval.int_val;
+        else if (tok == TOK_FLOAT_LIT)  out << "\t" << yylval.float_val;
+        else if (tok == TOK_STRING_LIT) out << "\t\"" << *yylval.str_val << "\"";
+        else if (tok == TOK_IDENT)      out << "\t" << *yylval.str_val;
+        out << "\n";
+    }
+
+    fclose(fp);
+    yylex_destroy(sc);
+}
+
+// ---------------------------------------------------------------------------
+// run_pipeline — parse, typecheck, codegen for a list of .z files.
+// ---------------------------------------------------------------------------
 static bool run_pipeline(const std::vector<std::string>& ordered_files,
                          const std::string& out_dir,
                          bool verbose,
+                         bool save_ir,
                          std::vector<std::string>& out_cpp)
 {
     using namespace ZedLang;
@@ -228,6 +280,13 @@ static bool run_pipeline(const std::vector<std::string>& ordered_files,
     };
 
     std::vector<Unit> units(ordered_files.size());
+
+    // Set up intermediates directory (created lazily only when save_ir=true)
+    std::string ir_dir = join(out_dir, "intermediates");
+    if (save_ir) {
+        mkdir_p(ir_dir);
+        if (verbose) std::cout << "  [ir]      saving intermediates to " << ir_dir << "\n";
+    }
 
     // Phase 1: parse + collect globals
     for (size_t i = 0; i < ordered_files.size(); ++i) {
@@ -255,6 +314,20 @@ static bool run_pipeline(const std::vector<std::string>& ordered_files,
             u.ok = false; delete u.prog; u.prog = nullptr; continue;
         }
         if (verbose) std::cout << "  [parse]   " << u.filepath << "\n";
+
+        // --save-ir: write token list and raw AST
+        if (save_ir) {
+            save_tokens(u.filepath, ir_dir, u.file_stem);
+
+            std::string ast_path = join(ir_dir, u.file_stem + ".ast.txt");
+            std::ofstream ast_out(ast_path);
+            if (ast_out) {
+                ast_out << "# AST (after parse): " << u.filepath << "\n";
+                ZedLang::AstPrinter printer(ast_out);
+                printer.print(u.prog);
+            }
+            if (verbose) std::cout << "  [ir]      " << u.file_stem << ".tokens.txt  " << u.file_stem << ".ast.txt\n";
+        }
 
         ErrorReporter dummy;
         auto sp = std::make_unique<SymbolTable>(shared_arena, dummy);
@@ -294,6 +367,18 @@ static bool run_pipeline(const std::vector<std::string>& ordered_files,
         }
         if (verbose) std::cout << "  [types]   " << u.filepath << "\n";
 
+        // --save-ir: write post-typecheck AST (types are now annotated)
+        if (save_ir) {
+            std::string typed_path = join(ir_dir, u.file_stem + ".typed_ast.txt");
+            std::ofstream typed_out(typed_path);
+            if (typed_out) {
+                typed_out << "# Typed AST (after typecheck): " << u.filepath << "\n";
+                ZedLang::AstPrinter printer(typed_out);
+                printer.print(u.prog);
+            }
+            if (verbose) std::cout << "  [ir]      " << u.file_stem << ".typed_ast.txt\n";
+        }
+
         std::string out_path = join(out_dir, u.file_stem + ".cpp");
         std::ofstream out(out_path);
         if (!out) {
@@ -331,6 +416,7 @@ struct BuildConfig {
     std::vector<std::string> lib_dirs;
     std::vector<std::string> frameworks;
     std::vector<std::string> raw_link_flags;
+    bool save_ir = false;   // --save-ir: dump tokens + AST to build/intermediates/
 };
 
 // ---- Build a resolved config ------------------------------------------------
@@ -340,7 +426,7 @@ static int execute_build(const BuildConfig& cfg, bool verbose) {
 
     std::cout << "\n  Compiling...\n";
     std::vector<std::string> cpp_files;
-    if (!run_pipeline(cfg.src_files, cfg.build_dir, verbose, cpp_files)) {
+    if (!run_pipeline(cfg.src_files, cfg.build_dir, verbose, cfg.save_ir, cpp_files)) {
         std::cerr << "\n  Build Failed.\n";
         return 1;
     }
@@ -409,7 +495,7 @@ static std::vector<std::string> sort_sources(const std::vector<std::string>& fil
 // ---------------------------------------------------------------------------
 // zed build --project <root>
 // ---------------------------------------------------------------------------
-int cmd_build_project(const std::string& root, bool verbose, BuildMode mode) {
+int cmd_build_project(const std::string& root, bool verbose, BuildMode mode, bool save_ir) {
     std::string toml_path = join(root, "zed.toml");
     if (!path_exists(toml_path)) {
         std::cerr << "\n  Error: No 'zed.toml' Found in '" << root << "'\n";
@@ -463,7 +549,8 @@ int cmd_build_project(const std::string& root, bool verbose, BuildMode mode) {
         std::cerr << "error: " << e.what() << "\n"; return 1;
     }
 
-    bc.mode = mode;
+    bc.mode    = mode;
+    bc.save_ir = save_ir;
     if (verbose) {
         std::cout << "project: " << proj_name << "\n";
         std::cout << "sources: " << bc.src_files.size() << " file(s)\n";
@@ -474,7 +561,7 @@ int cmd_build_project(const std::string& root, bool verbose, BuildMode mode) {
 // ---------------------------------------------------------------------------
 // zed build --file <path>
 // ---------------------------------------------------------------------------
-int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode) {
+int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode, bool save_ir) {
     if (!path_exists(filepath)) {
         std::cerr << "error: file not found: '" << filepath << "'\n"; return 1;
     }
@@ -485,7 +572,8 @@ int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode) {
     bc.output       = join(bc.project_root, stem(filepath));
     bc.src_files    = { filepath };
 
-    bc.mode = mode;
+    bc.mode    = mode;
+    bc.save_ir = save_ir;
     if (verbose) std::cout << "file: " << filepath << "\n";
     return execute_build(bc, verbose);
 }
@@ -493,7 +581,7 @@ int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode) {
 // ---------------------------------------------------------------------------
 // zed run --project / --file  (build then execute)
 // ---------------------------------------------------------------------------
-int cmd_run_project(const std::string& root, bool verbose, BuildMode mode) {
+int cmd_run_project(const std::string& root, bool verbose, BuildMode mode, bool save_ir) {
     // Re-derive output path from toml so we can run it.
     std::string toml_path = join(root, "zed.toml");
     std::string output;
@@ -506,17 +594,17 @@ int cmd_run_project(const std::string& root, bool verbose, BuildMode mode) {
     }
     if (output.empty()) output = join(root, stem(root));
 
-    int ret = cmd_build_project(root, verbose, mode);
+    int ret = cmd_build_project(root, verbose, mode, save_ir);
     if (ret != 0) return ret;
 
     std::cout << "\nrunning " << output << " ...\n\n";
     return std::system(output.c_str());
 }
 
-int cmd_run_file(const std::string& filepath, bool verbose, BuildMode mode) {
+int cmd_run_file(const std::string& filepath, bool verbose, BuildMode mode, bool save_ir) {
     std::string output = join(dir_of(filepath), stem(filepath));
 
-    int ret = cmd_build_file(filepath, verbose, mode);
+    int ret = cmd_build_file(filepath, verbose, mode, save_ir);
     if (ret != 0) return ret;
 
     std::cout << "\nrunning " << output << " ...\n\n";

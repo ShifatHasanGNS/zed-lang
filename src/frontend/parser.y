@@ -67,6 +67,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
     double           float_val;
     bool             bool_val;
     std::string*     str;
+    std::string*     str_val;
     std::vector<std::pair<ZedLang::Expr*, ZedLang::BlockStmt*>>* else_if_list;
     ZedLang::MatchCase*                          match_case;
     std::vector<ZedLang::MatchCase>*             match_case_list;

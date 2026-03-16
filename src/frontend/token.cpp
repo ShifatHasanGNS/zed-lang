@@ -179,9 +179,7 @@ int keyword_lookup(std::string_view s) {
         { "reserve",      TOK_KW_RESERVE   },
         { "clear",        TOK_KW_CLEAR     },
         { "to_cstr",      TOK_KW_TO_CSTR   },
-        { "c_str",        TOK_KW_TO_CSTR   },  // alias for to_cstr
         { "from_cstr",    TOK_KW_FROM_CSTR },
-        { "to_string",    TOK_KW_FROM_CSTR },  // alias for from_cstr
         { "or_return",    TOK_KW_OR_RETURN },
         // New builtins
         { "panic",        TOK_KW_PANIC     },
@@ -211,68 +209,8 @@ int keyword_lookup(std::string_view s) {
 // ---------------------------------------------------------------------------
 // Token member functions
 // ---------------------------------------------------------------------------
-bool Token::is_keyword() const {
-    return kind >= TOK_KW_PROC && kind <= TOK_KW_FALSE;
-}
-
-bool Token::is_type_start() const {
-    return kind == TOK_IDENT || kind == TOK_STAR || kind == TOK_LBRACKET;
-}
-
-bool Token::is_expr_start() const {
-    switch (kind) {
-        case TOK_INT_LIT:
-        case TOK_FLOAT_LIT:
-        case TOK_BOOL_LIT:
-        case TOK_STRING_LIT:
-        case TOK_KW_TRUE:
-        case TOK_KW_FALSE:
-        case TOK_KW_NIL:
-        case TOK_IDENT:
-        case TOK_LPAREN:
-        case TOK_MINUS:
-        case TOK_NOT:
-        case TOK_AMP:
-            return true;
-        default:
-            return false;
-    }
-}
-
-bool Token::is_stmt_start() const {
-    switch (kind) {
-        case TOK_KW_IF:
-        case TOK_KW_FOR:
-        case TOK_KW_RETURN:
-        case TOK_KW_BREAK:
-        case TOK_KW_CONTINUE:
-        case TOK_LBRACE:
-            return true;
-        default:
-            return kind == TOK_IDENT || is_expr_start();
-    }
-}
-
 std::string_view Token::kind_name() const {
     return token_kind_name(kind);
-}
-
-std::string Token::display() const {
-    switch (kind) {
-        case TOK_IDENT:
-        case TOK_STRING_LIT:
-            return "'" + str_val + "'";
-        case TOK_INT_LIT:
-            return std::to_string(int_val);
-        case TOK_FLOAT_LIT:
-            return std::to_string(float_val);
-        case TOK_BOOL_LIT:
-        case TOK_KW_TRUE:
-        case TOK_KW_FALSE:
-            return bool_val ? "true" : "false";
-        default:
-            return std::string(kind_name());
-    }
 }
 
 } // namespace ZedLang

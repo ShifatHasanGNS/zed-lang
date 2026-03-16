@@ -18,16 +18,16 @@ enum class BuildMode {
 };
 
 // zed build --project <root>
-int cmd_build_project(const std::string& root, bool verbose, BuildMode mode = BuildMode::Debug);
+int cmd_build_project(const std::string& root, bool verbose, BuildMode mode = BuildMode::Debug, bool save_ir = false);
 
 // zed build --file <path>
-int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode = BuildMode::Debug);
+int cmd_build_file(const std::string& filepath, bool verbose, BuildMode mode = BuildMode::Debug, bool save_ir = false);
 
 // zed run --project <root>   (build + execute)
-int cmd_run_project(const std::string& root, bool verbose, BuildMode mode = BuildMode::Debug);
+int cmd_run_project(const std::string& root, bool verbose, BuildMode mode = BuildMode::Debug, bool save_ir = false);
 
 // zed run --file <path>      (build + execute)
-int cmd_run_file(const std::string& filepath, bool verbose, BuildMode mode = BuildMode::Debug);
+int cmd_run_file(const std::string& filepath, bool verbose, BuildMode mode = BuildMode::Debug, bool save_ir = false);
 
 // zed init <project_name>    (scaffold new project in cwd)
 int cmd_init(const std::string& name);

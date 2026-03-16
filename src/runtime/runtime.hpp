@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <iostream>
 #include <cstddef>
-#include <cstddef>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -17,11 +16,6 @@ struct Slice {
     void*  ptr = nullptr;
     size_t len = 0;
 };
-
-// Typed element access helpers (generated code casts through these)
-template<typename T> inline T& slice_get(Slice s, size_t i) {
-    return reinterpret_cast<T*>(s.ptr)[i];
-}
 
 // Bounds-checked index (debug builds only)
 #ifdef NDEBUG

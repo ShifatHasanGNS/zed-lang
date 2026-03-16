@@ -36,13 +36,8 @@ struct Token {
     bool is(int k)    const { return kind == k; }
     bool is_eof()     const { return kind == 0; }
 
-    // Implemented in token.cpp (require parser.tab.hpp for TOK_* constants).
-    bool             is_keyword()    const;
-    bool             is_type_start() const;
-    bool             is_expr_start() const;
-    bool             is_stmt_start() const;
+    // kind_name() implemented in token.cpp (requires parser.tab.hpp for TOK_* constants).
     std::string_view kind_name()     const;
-    std::string      display()       const;
 };
 
 // Free functions — also implemented in token.cpp.
