@@ -94,7 +94,12 @@ void CodeGen::emit_forward_decls(Program* prog) {
         } else if (d->kind() == Decl::UNION_DECL) {
             auto* ud = static_cast<UnionDecl*>(d);
             const std::string safe = c_safe_name(ud->union_name);
-            emit_.line("typedef union " + safe + " " + safe + ";");
+            if (ud->is_tagged) {
+                // Tagged union wrapper is a struct; also forward-declare the inner types
+                emit_.line("typedef struct " + safe + " " + safe + ";");
+            } else {
+                emit_.line("typedef union " + safe + " " + safe + ";");
+            }
         }
     }
     emit_.blank();
@@ -118,6 +123,53 @@ void CodeGen::emit_struct_defs(Program* prog) {
 }
 
 void CodeGen::emit_union_def(UnionDecl* ud) {
+    if (ud->is_tagged) {
+        // Tagged union emits three things:
+        //   1. enum class Shape_Tag { Circle, Rect, ... };
+        //   2. union Shape_Data { CircleData Circle; RectData Rect; ... };
+        //   3. struct Shape { Shape_Tag tag; Shape_Data data; };
+        const std::string n = c_safe_name(ud->union_name);
+        const std::string tag_name  = n + "_Tag";
+        const std::string data_name = n + "_Data";
+
+        // 1. Tag enum
+        emit_.line("enum class " + tag_name + " : int32_t {");
+        emit_.indent();
+        for (const auto& f : ud->fields)
+            for (const auto& fname : f.names)
+                emit_.line(fname + ",");
+        emit_.dedent();
+        emit_.line("};");
+        emit_.blank();
+
+        // 2. Inner data union — use the original variant fields from the AST,
+        //    not the semantic fields (which are tag+data on the wrapper struct).
+        emit_.line("union " + data_name + " {");
+        emit_.indent();
+        for (const auto& f : ud->fields) {
+            for (const auto& fname : f.names) {
+                emit_.emit_indent();
+                // Get the payload type name directly from the AST type node
+                TypeRef tr = tc_.resolve(f.type);
+                emit_c_type(tr);
+                emit_.emit(" " + c_safe_name(fname) + ";\n");
+            }
+        }
+        emit_.dedent();
+        emit_.line("};");
+        emit_.blank();
+
+        // 3. Wrapper struct
+        emit_.line("struct " + n + " {");
+        emit_.indent();
+        emit_.line(tag_name + " tag;");
+        emit_.line(data_name + " data;");
+        emit_.dedent();
+        emit_.line("};");
+        emit_.blank();
+        return;
+    }
+
     emit_.emit_indent();
     emit_.emit("union " + c_safe_name(ud->union_name));
     emit_.open_brace();
@@ -619,32 +671,70 @@ void CodeGen::emit_for_each(ForEachStmt* s) {
 // ---------------------------------------------------------------------------
 void CodeGen::emit_match(MatchStmt* s) {
     TypeRef vty = tc_.type_of(s->value);
+
+    // Detect tagged union: switch on .tag field instead of value directly
+    bool is_tagged = false;
+    std::string tag_enum_name;
+    if (vty && vty->is_struct()) {
+        auto* st = static_cast<sem::StructType*>(vty);
+        if (tc_.sym_ref().lookup_enum(st->name + "_Tag")) {
+            is_tagged = true;
+            tag_enum_name = c_safe_name(st->name) + "_Tag";
+        }
+    }
+
     emit_.begin_line("switch (");
-    emit_expr(s->value);
+    if (is_tagged) {
+        emit_expr(s->value);
+        emit_.emit(".tag");
+    } else {
+        emit_expr(s->value);
+    }
     emit_.emit(") {\n");
     emit_.indent();
+
     for (auto& mc : s->cases) {
         if (mc.value) {
             emit_.emit_indent();
             emit_.emit("case ");
-            // Dot-shorthand: bare IdentExpr annotated with enum type by type checker
-            if (mc.value->kind() == Expr::IDENT && vty && vty->is_enum()) {
+            if (mc.value->kind() == Expr::IDENT) {
                 auto* id = static_cast<IdentExpr*>(mc.value);
-                auto* et = static_cast<sem::EnumType*>(vty);
-                if (et->find_variant(id->name)) {
-                    // enum class requires qualified name: Direction::WEST not just WEST
-                    emit_.emit(c_safe_name(et->name) + "::" + id->name);
+                if (is_tagged) {
+                    // Tagged union: case Shape_Tag::Circle:
+                    emit_.emit(tag_enum_name + "::" + id->name + ":");
+                } else if (vty && vty->is_enum()) {
+                    auto* et = static_cast<sem::EnumType*>(vty);
+                    if (et->find_variant(id->name))
+                        emit_.emit(c_safe_name(et->name) + "::" + id->name + ":");
+                    else
+                        { emit_expr(mc.value); emit_.emit(":"); }
                 } else {
-                    emit_expr(mc.value);
+                    emit_expr(mc.value); emit_.emit(":");
                 }
             } else {
-                emit_expr(mc.value);
+                emit_expr(mc.value); emit_.emit(":");
             }
-            emit_.emit(":");
         } else {
             emit_.begin_line("default:");
         }
-        emit_block(mc.body, true);
+
+        // Tagged union binding: inject `auto binding = value.data.Variant;`
+        if (is_tagged && !mc.binding.empty() && mc.value &&
+            mc.value->kind() == Expr::IDENT) {
+            auto* id = static_cast<IdentExpr*>(mc.value);
+            emit_.emit(" {\n");
+            emit_.indent();
+            emit_.emit_indent();
+            emit_.emit("auto& " + c_safe_name(mc.binding) + " = ");
+            emit_expr(s->value);
+            emit_.emit(".data." + id->name + ";\n");
+            for (Stmt* st : mc.body->stmts) emit_stmt(st);
+            emit_.dedent();
+            emit_.emit_indent();
+            emit_.emit("}\n");
+        } else {
+            emit_block(mc.body, true);
+        }
         emit_.line("break;");
     }
     emit_.dedent();

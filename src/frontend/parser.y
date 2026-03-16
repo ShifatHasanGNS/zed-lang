@@ -222,6 +222,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_OR_ELSE    "or_else"
 // Ternary operator
 %token TOK_QUESTION      "'?'"
+%token TOK_KW_VARIANT    "variant"
 
 // =============================================================================
 // Non-terminals
@@ -345,13 +346,26 @@ union_decl
     : decl_name TOK_DEF TOK_KW_UNION TOK_LBRACE field_group_list TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new UnionDecl(r, *$1, *$5);
+            $$ = new UnionDecl(r, *$1, *$5, false);
             delete $1; delete $5;
         }
     | decl_name TOK_DEF TOK_KW_UNION TOK_LBRACE TOK_RBRACE
         {
             SourceRange r = to_sourcerange(@$, filename);
-            $$ = new UnionDecl(r, *$1, {});
+            $$ = new UnionDecl(r, *$1, {}, false);
+            delete $1;
+        }
+    // Tagged union: Shape :: variant { Circle: CircleData, Rect: RectData }
+    | decl_name TOK_DEF TOK_KW_VARIANT TOK_LBRACE field_group_list TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new UnionDecl(r, *$1, *$5, true);
+            delete $1; delete $5;
+        }
+    | decl_name TOK_DEF TOK_KW_VARIANT TOK_LBRACE TOK_RBRACE
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new UnionDecl(r, *$1, {}, true);
             delete $1;
         }
     ;
@@ -991,13 +1005,23 @@ match_case
     | TOK_KW_CASE TOK_DOT TOK_IDENT block
         {
             // .VARIANT shorthand — the enum type is inferred from the match value.
-            // Emitted as a bare IdentExpr; codegen/type-checker resolves the enum variant.
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new MatchCase();
             $$->value = new IdentExpr(r, *$3);
             $$->body = $4;
             $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
             delete $3;
+        }
+    | TOK_KW_CASE TOK_DOT TOK_IDENT TOK_LPAREN TOK_IDENT TOK_RPAREN block
+        {
+            // .VARIANT(binding) — tagged union: case .Circle(c) { use c }
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new MatchCase();
+            $$->value = new IdentExpr(r, *$3);
+            $$->binding = *$5;
+            $$->body = $7;
+            $$->loc = SourceLoc(filename,@1.first_line,@1.first_column);
+            delete $3; delete $5;
         }
     | TOK_KW_CASE block
         {

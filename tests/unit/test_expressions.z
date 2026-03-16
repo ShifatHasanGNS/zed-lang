@@ -1,9 +1,9 @@
--- test_batch3.z
--- Covers:
+-- test_expressions.z
+-- Covers expression forms:
 --   ternary operator (cond ? a : b)
 --   tuple literal declaration (a, b, c := 1, "x", 3.0)
 --   tuple literal assignment (a, b = b, a  — swap)
---   multi-value assignment from proc (existing, regression check)
+--   multi-value assignment from proc (regression check)
 --   min/max/abs/clamp no double-evaluation (side-effect correctness)
 
 cimport "stdio.h"
@@ -185,6 +185,6 @@ main :: proc() -> i32 {
     if not check_multi_return()   { printf("FAIL multi_return\n")   return 1 }
     if not check_no_double_eval() { printf("FAIL no_double_eval\n") return 1 }
 
-    printf("test_batch3: OK\n\n\n")
+    printf("test_expressions: OK\n\n\n")
     return 0
 }

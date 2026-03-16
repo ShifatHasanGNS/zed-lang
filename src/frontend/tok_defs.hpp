@@ -133,4 +133,6 @@ enum {
     TOK_KW_OR_ELSE        = 357,
     // Ternary operator
     TOK_QUESTION          = 358,
+    // Tagged union keyword
+    TOK_KW_VARIANT        = 359,
 };

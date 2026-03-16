@@ -1,5 +1,5 @@
--- test_features.z
--- Covers all newly implemented features:
+-- test_builtins.z
+-- Covers builtin procs and for-each:
 --   for-each (array, slice, dyn array, string, with/without index)
 --   string concatenation (+), string indexing (→ u8)
 --   panic (runtime abort), free (raw pointer release)
@@ -211,7 +211,7 @@ check_free :: proc() -> bool {
 -- ── main ─────────────────────────────────────────────────────────────────────
 
 main :: proc() -> i32 {
-    -- if not check_foreach_array()        { printf("FAIL foreach_array\n")        return 1 }
+    if not check_foreach_array()        { printf("FAIL foreach_array\n")        return 1 }
     if not check_foreach_slice()        { printf("FAIL foreach_slice\n")        return 1 }
     if not check_foreach_dynamic()      { printf("FAIL foreach_dynamic\n")      return 1 }
     if not check_foreach_string()       { printf("FAIL foreach_string\n")       return 1 }
@@ -222,6 +222,6 @@ main :: proc() -> i32 {
     if not check_panic_not_triggered()  { printf("FAIL panic_not_triggered\n")  return 1 }
     if not check_free()                 { printf("FAIL free\n")                 return 1 }
 
-    printf("test_features: OK\n\n\n")
+    printf("test_builtins: OK\n\n\n")
     return 0
 }

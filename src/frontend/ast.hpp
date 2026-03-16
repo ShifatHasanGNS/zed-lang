@@ -214,8 +214,9 @@ class UnionDecl : public Decl {
 public:
     std::string union_name;
     std::vector<Field> fields;
-    UnionDecl(SourceRange r, std::string n, std::vector<Field> f)
-        : union_name(std::move(n)), fields(std::move(f)) { range = r; }
+    bool is_tagged = false;   // true → tagged union (Shape :: union { Circle: CircleData })
+    UnionDecl(SourceRange r, std::string n, std::vector<Field> f, bool tagged = false)
+        : union_name(std::move(n)), fields(std::move(f)), is_tagged(tagged) { range = r; }
     Kind kind() const override { return UNION_DECL; }
     const std::string& name() const override { return union_name; }
 };
@@ -658,6 +659,7 @@ struct MatchCase {
     Expr*       value = nullptr;  // null = default case
     BlockStmt*  body;
     SourceLoc   loc;
+    std::string binding;          // non-empty → case .Variant(binding) { }
 };
 
 class MatchStmt : public Stmt {

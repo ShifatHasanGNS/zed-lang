@@ -131,6 +131,7 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_CLAMP:         return "'clamp'";
         case TOK_KW_OR_ELSE:       return "'or_else'";
         case TOK_QUESTION:         return "'?'";
+        case TOK_KW_VARIANT:       return "'variant'";
         default:                   return "<unknown token>";
     }
 }
@@ -166,6 +167,7 @@ int keyword_lookup(std::string_view s) {
         // Type / expression keywords
         { "string",       TOK_KW_STRING    },
         { "dynamic",      TOK_KW_DYNAMIC   },
+        { "variant",      TOK_KW_VARIANT   },
         { "cast",         TOK_KW_CAST      },
         { "sizeof",       TOK_KW_SIZEOF    },
         { "alignof",      TOK_KW_ALIGNOF   },

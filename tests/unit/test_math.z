@@ -1,13 +1,13 @@
--- test_batch2.z
--- Covers the 8 feature-batch-2 additions:
---   1. string[i] = byte  (mutation)
---   2. labeled for-range and for-each
---   3. bit_cast(T)(x)
---   4. min(a, b) / max(a, b)
---   5. abs(x)
---   6. swap(&a, &b)
---   7. clamp(v, lo, hi)
---   8. or_else DEFAULT
+-- test_math.z
+-- Covers math builtins and related features:
+--   string[i] = byte  (mutation)
+--   labeled for-range and for-each
+--   bit_cast(T)(x)
+--   min(a, b) / max(a, b)
+--   abs(x)
+--   swap(&a, &b)
+--   clamp(v, lo, hi)
+--   or_else DEFAULT
 
 cimport "stdio.h"
 cimport "string.h"
@@ -284,6 +284,6 @@ main :: proc() -> i32 {
     if not check_clamp()           { printf("FAIL clamp\n")           return 1 }
     if not check_or_else()         { printf("FAIL or_else\n")         return 1 }
 
-    printf("test_batch2: OK\n\n\n")
+    printf("test_math: OK\n\n\n")
     return 0
 }

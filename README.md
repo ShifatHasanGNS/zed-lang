@@ -13,28 +13,29 @@ Pointer dereference operator: `.*` (Zig-style).
 3. [Literals](#literals)
 4. [Constants](#constants)
 5. [Variables](#variables)
-6. [Operators](#operators)
-7. [Type Casts](#type-casts)
+6. [Operators](#operators) — arithmetic, bitwise, logical, ternary `?:`
+7. [Type Casts](#type-casts) — `cast`, `bit_cast`
 8. [Pointers](#pointers)
 9. [Arrays & Slices](#arrays--slices)
 10. [Dynamic Arrays](#dynamic-arrays)
 11. [Structs](#structs)
 12. [Unions](#unions)
-13. [Enums](#enums)
-14. [Procedures](#procedures)
-15. [Named Return Values](#named-return-values)
-16. [Proc Literals](#proc-literals)
-17. [Control Flow](#control-flow)
-18. [Defer](#defer)
-19. [Match](#match)
-20. [When](#when)
-21. [typeid](#typeid)
-22. [Compile-time Assert](#compile-time-assert)
-23. [String Types & Conversion](#string-types--conversion)
-24. [Built-in Operations](#built-in-operations)
-25. [C Interop](#c-interop)
-26. [Multi-file Projects](#multi-file-projects)
-27. [sizeof / alignof](#sizeof--alignof)
+13. [Variants (Tagged Unions)](#variants-tagged-unions)
+14. [Enums](#enums)
+15. [Procedures](#procedures) — basic, multi-return, named-return, `or_return`, `or_else`
+16. [Named Return Values](#named-return-values)
+17. [Proc Literals](#proc-literals)
+18. [Control Flow](#control-flow) — if, for (6 forms), labeled break/continue
+19. [Defer](#defer)
+20. [Match](#match)
+21. [When](#when)
+22. [typeid](#typeid)
+23. [Compile-time Assert](#compile-time-assert)
+24. [String Types & Conversion](#string-types--conversion)
+25. [Built-in Operations](#built-in-operations)
+26. [C Interop](#c-interop)
+27. [Multi-file Projects](#multi-file-projects)
+28. [sizeof / alignof](#sizeof--alignof)
 
 ---
 
@@ -111,6 +112,14 @@ speed: f32 = 0.5
 -- Multiple declaration from multi-return call
 ok, val := parse_int(s)
 
+-- Tuple literal declaration: declare and assign multiple variables at once
+a, b, c := 1, "hello", 3.14
+
+-- Tuple literal assignment: assign multiple existing variables at once
+-- All RHS values are evaluated before any assignment — safe for swaps
+x, y = y, x               -- swap
+p, q, r = r, p, q         -- rotation
+
 -- Discard with _
 _, val2 := fallible_call()
 ```
@@ -133,10 +142,17 @@ score  := 0             -- global, type inferred
 **Bitwise:** `&  |  ^  <<  >>`
 **Comparison:** `==  !=  <  <=  >  >=`
 **Logical:** `&&  ||  !` — aliases: `and  or  not`
-**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=`
+**Compound assign:** `+=  -=  *=  /=  %=  &=  |=  ^=  <<=  >>=`
+**Ternary:** `cond ? then_expr : else_expr`
 **Pointer arithmetic:** `ptr + n`, `ptr - n`, `ptr - ptr` (→ `i64`)
 
 > Zed has no `++`/`--` operators. Use `x += 1` / `x -= 1`.
+
+The ternary operator is right-associative, allowing natural chaining:
+
+```zed
+grade := score >= 90 ? "A" : score >= 70 ? "B" : "C"
+```
 
 ---
 
@@ -286,6 +302,58 @@ x := v.as_float   -- reinterprets the same bytes
 ```
 
 ---
+
+## Variants (Tagged Unions)
+
+A `variant` is a tagged union — it pairs a data union with an automatic discriminant enum so you always know which field is active. Use it when a value can be one of several distinct types.
+
+```zed
+CircleData :: struct { radius: f32 }
+RectData   :: struct { width: f32, height: f32 }
+
+Shape :: variant {
+    Circle: CircleData,
+    Rect:   RectData,
+}
+```
+
+The compiler generates three C++ types automatically:
+
+- `Shape_Tag` — an enum class with one variant per field
+- `Shape_Data` — a raw union holding the payloads
+- `Shape` — a wrapper struct with `.tag` and `.data` fields
+
+**Construction** — set `.tag` and `.data` explicitly:
+
+```zed
+circle := Shape{
+    tag  = Shape_Tag.Circle,
+    data = Shape_Data{ Circle = CircleData{ radius = 2.0 } },
+}
+```
+
+**Pattern matching** — use `match` with `.Variant(binding)` to extract the payload:
+
+```zed
+area :: proc(s: Shape) -> f32 {
+    match s {
+        case .Circle(c) { return 3.14159 * c.radius * c.radius }
+        case .Rect(r)   { return r.width * r.height }
+        else            { return 0.0 }
+    }
+}
+```
+
+The binding variable (`c`, `r`) is a reference to the active payload field — mutating it writes back into the variant.
+
+**Without binding** — use `.Variant` alone when you don't need the payload:
+
+```zed
+match s {
+    case .Circle { printf("it's a circle\n") }
+    case .Rect   { printf("it's a rect\n")   }
+}
+```
 
 ## Enums
 
@@ -454,7 +522,7 @@ outer: for i in 0 ..< rows {
 
 ### break / continue (with labels)
 
-Labels apply to infinite and while-style loops. Place the label before the `for` keyword; `break` and `continue` can target any enclosing labelled loop.
+Labels work on all six `for` forms. Place the label before the `for` keyword; `break` and `continue` can target any enclosing labelled loop.
 
 ```zed
 i := 0
@@ -622,11 +690,12 @@ full := greeting + name          -- "Hello, Zed"
 full2 := greeting + "World"     -- string + cstr → string
 ```
 
-**String indexing** returns the byte at position `i` as `u8`.
+**String indexing** returns the byte at position `i` as `u8`. Writing to `string[i]` is also valid — it mutates the byte in-place.
 
 ```zed
 s: string = "abc"
 b := s[0]     -- u8 = 97 ('a')
+s[0] = 90     -- mutate: s is now "Zbc"
 ```
 
 **String for-each** iterates over bytes.
