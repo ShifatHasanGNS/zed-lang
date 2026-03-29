@@ -1,5 +1,5 @@
 // =============================================================================
-// codegen/c_emitter.hpp — Low-level C99 text emitter
+// Low-level C99 text emitter
 // =============================================================================
 // CEmitter is a thin wrapper around std::ostream that tracks indentation and
 // provides helpers for emitting C tokens, punctuation, and lines.

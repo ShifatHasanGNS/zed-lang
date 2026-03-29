@@ -1,11 +1,6 @@
 %{
-// =============================================================================
-// lexer.l
-// =============================================================================
-
-
 #include "../frontend/token.hpp"
-#include "../frontend/ast.hpp"          // must precede parser.tab.hpp (see token.cpp comment)
+#include "../frontend/ast.hpp"
 #include "../frontend/lexer_extra.hpp"
 
 #include "../support/source_loc.hpp"
@@ -39,7 +34,6 @@ using namespace ZedLang;
 %option extra-type="LexerExtra*"
 %option yylineno
 
-
 %x SC_COMMENT
 %x SC_STRING
 
@@ -58,9 +52,6 @@ using namespace ZedLang;
     .|\n                { /* skip */ }
 }
 
-    /* ------------------------------------------------------------------ */
-    /* Identifiers and keywords                                             */
-    /* ------------------------------------------------------------------ */
 [a-zA-Z_][a-zA-Z0-9_]* {
     int kw = keyword_lookup(std::string_view(yytext, yyleng));
     if (kw == TOK_KW_TRUE) {
@@ -80,7 +71,7 @@ using namespace ZedLang;
 }
 
     /* ------------------------------------------------------------------ */
-    /* Integer literals                                                     */
+    /* Integer literals                                                   */
     /* ------------------------------------------------------------------ */
 0[xX][0-9a-fA-F]+ |
 0[bB][01]+         |
@@ -112,9 +103,6 @@ using namespace ZedLang;
     return TOK_FLOAT_LIT;
 }
 
-    /* ------------------------------------------------------------------ */
-    /* String literals                                                      */
-    /* ------------------------------------------------------------------ */
 \"  {
     BEGIN(SC_STRING);
     yylval->str = new std::string();   /* accumulate into yylval->str */

@@ -1,11 +1,7 @@
-// =============================================================================
-// codegen/codegen.cpp
-// =============================================================================
-
 #include "../codegen/codegen.hpp"
 
-#include "../frontend/ast.hpp"       // must precede tok_defs.hpp
-#include "../frontend/tok_defs.hpp"  // stable TOK_* constants
+#include "../frontend/ast.hpp"
+#include "../frontend/tok_defs.hpp"
 
 #include <cassert>
 #include <unordered_set>

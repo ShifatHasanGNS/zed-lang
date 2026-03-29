@@ -1,5 +1,5 @@
 // =============================================================================
-// toml_reader.hpp — Minimal TOML subset reader
+// Minimal TOML subset reader
 // =============================================================================
 // Supports the full subset used by zed.toml:
 //

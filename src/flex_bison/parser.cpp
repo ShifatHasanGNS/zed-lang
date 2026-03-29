@@ -869,7 +869,7 @@ static const yytype_uint16 yyrline[] =
     1614,  1619,  1627,  1633,  1642,  1648,  1653,  1658,  1664,  1669,
     1674,  1679,  1684,  1689,  1694,  1699,  1704,  1709,  1714,  1719,
     1727,  1728,  1732,  1737,  1742,  1747,  1756,  1764,  1770,  1780,
-    1781,  1788,  1794,  1800,  1807,  1815,  1827,  1832
+    1781,  1788,  1794,  1800,  1807,  1815,  1826,  1831
 };
 #endif
 
@@ -4632,7 +4632,7 @@ yyreduce:
     break;
 
   case 306:
-#line 1828 "src/frontend/parser.y"
+#line 1827 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new CastExpr(r, (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr), false);
@@ -4640,7 +4640,7 @@ yyreduce:
     break;
 
   case 307:
-#line 1833 "src/frontend/parser.y"
+#line 1832 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new CastExpr(r, (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr), true);
@@ -4869,7 +4869,7 @@ yyreturn:
 }
 
 
-#line 1839 "src/frontend/parser.y"
+#line 1838 "src/frontend/parser.y"
 
 
 void yyerror(YYLTYPE* loc, yyscan_t scanner, ErrorReporter* err,

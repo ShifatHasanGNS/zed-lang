@@ -1,6 +1,4 @@
 // =============================================================================
-// main.cpp — zed compiler driver
-// =============================================================================
 // Subcommands:
 //   zed build --project <root>   build a project (reads zed.toml)
 //   zed build --file    <path>   compile a single .z file

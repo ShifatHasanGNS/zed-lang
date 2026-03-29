@@ -1,6 +1,4 @@
 // =============================================================================
-// token.hpp
-// =============================================================================
 // NOTE: This header intentionally does NOT include parser.tab.hpp.
 // parser.tab.hpp is Bison-generated and does not exist before the build runs.
 // All functions that reference TOK_* constants are defined in token.cpp,

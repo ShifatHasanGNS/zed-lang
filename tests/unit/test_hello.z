@@ -1,0 +1,12 @@
+cimport "stdio.h"
+
+main :: proc() -> i32 {
+    printf("Hello, World!\n")
+
+    x := cast(i32)(100.0)
+    y := 25
+
+    z := x + y
+
+    printf("%d + %d = %d\n", x, y, z)  -- prints...
+}

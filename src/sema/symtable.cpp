@@ -1,14 +1,9 @@
-// =============================================================================
-// symtable.cpp
-// =============================================================================
-
 #include "../sema/symtable.hpp"
 #include "../frontend/tok_defs.hpp"
 
 #include <cassert>
 
 namespace ZedLang {
-
 // ---------------------------------------------------------------------------
 // eval_const_int_simple — minimal constant folder used by collect_globals
 // sub-pass B0 to resolve integer constants before struct fields are typed.

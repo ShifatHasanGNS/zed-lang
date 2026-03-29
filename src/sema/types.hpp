@@ -1,6 +1,4 @@
 // =============================================================================
-// types.hpp — Semantic type system
-// =============================================================================
 // Derived composite types live in namespace ZedLang::sem to avoid name collisions
 // with the AST syntax nodes in ast.hpp (which also has PtrType, ArrayType,
 // SliceType — all in namespace ZedLang).

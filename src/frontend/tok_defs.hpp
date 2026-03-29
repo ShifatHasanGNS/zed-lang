@@ -1,6 +1,4 @@
 // =============================================================================
-// tok_defs.hpp — Token constant definitions
-// =============================================================================
 // Values assigned by bison in %token declaration order (starting at 258).
 // The declaration order in parser.y is authoritative; this file must mirror it.
 // To add a new token: append a %token to parser.y, then add the next value here.

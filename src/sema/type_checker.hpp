@@ -1,6 +1,4 @@
 // =============================================================================
-// type_checker.hpp
-// =============================================================================
 // The TypeChecker walks the AST after parsing, using SymbolTable to resolve
 // names and SemanticTypes to verify correctness.  It annotates each Expr
 // node with a resolved type by storing results in a side table (expr_types_),

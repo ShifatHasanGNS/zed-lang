@@ -1822,7 +1822,6 @@ field_init
         }
     ;
 
-// Cast expression
 cast_expr
     : TOK_KW_CAST TOK_LPAREN type TOK_RPAREN expr_unary
         {

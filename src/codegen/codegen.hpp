@@ -1,16 +1,9 @@
 // =============================================================================
-// codegen/codegen.hpp — C99 code generator
+// C99 code generator
 // =============================================================================
 // CodeGen walks the type-annotated AST and emits a single self-contained C99
 // translation unit.  It relies on the TypeChecker's expr_types_ side table
 // (queried via TypeChecker::type_of()) for resolved types.
-//
-// Output structure:
-//   1. Fixed preamble  (#include "types.h", #include "memory.h")
-//   2. Forward declarations for all structs and procedures
-//   3. Struct type definitions
-//   4. Global variable definitions
-//   5. Procedure definitions (bodies)
 // =============================================================================
 
 #pragma once

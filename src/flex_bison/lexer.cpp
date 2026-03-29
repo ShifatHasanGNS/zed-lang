@@ -560,13 +560,8 @@ static const flex_int32_t yy_rule_can_match_eol[75] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "src/frontend/lexer.l"
 #line 2 "src/frontend/lexer.l"
-// =============================================================================
-// lexer.l
-// =============================================================================
-
-
 #include "../frontend/token.hpp"
-#include "../frontend/ast.hpp"          // must precede parser.tab.hpp (see token.cpp comment)
+#include "../frontend/ast.hpp"
 #include "../frontend/lexer_extra.hpp"
 
 #include "../support/source_loc.hpp"
@@ -591,9 +586,9 @@ using namespace ZedLang;
     yylloc->last_column  = yyextra->column + yyleng - 1; \
     yyextra->column     += yyleng;
 
-#line 594 "src/flex_bison/lexer.cpp"
+#line 589 "src/flex_bison/lexer.cpp"
 
-#line 596 "src/flex_bison/lexer.cpp"
+#line 591 "src/flex_bison/lexer.cpp"
 
 #define INITIAL 0
 #define SC_COMMENT 1
@@ -877,10 +872,10 @@ YY_DECL
 		}
 
 	{
-#line 46 "src/frontend/lexer.l"
+#line 40 "src/frontend/lexer.l"
 
 
-#line 883 "src/flex_bison/lexer.cpp"
+#line 878 "src/flex_bison/lexer.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -951,51 +946,48 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 48 "src/frontend/lexer.l"
+#line 42 "src/frontend/lexer.l"
 { /* ignore whitespace */ }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 49 "src/frontend/lexer.l"
+#line 43 "src/frontend/lexer.l"
 { yyextra->column = 1; }
 	YY_BREAK
 /* "---" must come before "--"[^\n]* — same length, first rule wins */
 case 3:
 YY_RULE_SETUP
-#line 52 "src/frontend/lexer.l"
+#line 46 "src/frontend/lexer.l"
 { return TOK_NOBODY; }
 	YY_BREAK
 /* "--[" must come before "--"[^\n]* for the same reason */
 case 4:
 YY_RULE_SETUP
-#line 54 "src/frontend/lexer.l"
+#line 48 "src/frontend/lexer.l"
 { BEGIN(SC_COMMENT); }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 55 "src/frontend/lexer.l"
+#line 49 "src/frontend/lexer.l"
 { /* single-line comment — .* matches any bytes incl. UTF-8 */ }
 	YY_BREAK
 
 case 6:
 YY_RULE_SETUP
-#line 57 "src/frontend/lexer.l"
+#line 51 "src/frontend/lexer.l"
 { BEGIN(INITIAL); }
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 58 "src/frontend/lexer.l"
+#line 52 "src/frontend/lexer.l"
 { /* skip */ }
 	YY_BREAK
 
-/* ------------------------------------------------------------------ */
-/* Identifiers and keywords                                             */
-/* ------------------------------------------------------------------ */
 case 8:
 YY_RULE_SETUP
-#line 64 "src/frontend/lexer.l"
+#line 55 "src/frontend/lexer.l"
 {
     int kw = keyword_lookup(std::string_view(yytext, yyleng));
     if (kw == TOK_KW_TRUE) {
@@ -1015,17 +1007,17 @@ YY_RULE_SETUP
 }
 	YY_BREAK
 /* ------------------------------------------------------------------ */
-/* Integer literals                                                     */
+/* Integer literals                                                   */
 /* ------------------------------------------------------------------ */
 case 9:
-#line 86 "src/frontend/lexer.l"
+#line 77 "src/frontend/lexer.l"
 case 10:
-#line 87 "src/frontend/lexer.l"
+#line 78 "src/frontend/lexer.l"
 case 11:
-#line 88 "src/frontend/lexer.l"
+#line 79 "src/frontend/lexer.l"
 case 12:
 YY_RULE_SETUP
-#line 88 "src/frontend/lexer.l"
+#line 79 "src/frontend/lexer.l"
 {
     uint64_t val;
     if (yytext[0]=='0' && (yytext[1]=='x'||yytext[1]=='X'))
@@ -1047,22 +1039,19 @@ YY_RULE_SETUP
 /* Form 1: digit(s).digit(s) optional-exponent  e.g. 3.14  1.5e-3   */
 /* Form 2: digit(s) exponent, no decimal point  e.g. 1e-9  2E10     */
 case 13:
-#line 109 "src/frontend/lexer.l"
+#line 100 "src/frontend/lexer.l"
 case 14:
 YY_RULE_SETUP
-#line 109 "src/frontend/lexer.l"
+#line 100 "src/frontend/lexer.l"
 {
     /* Parser reads $N as yylval->float_val for TOK_FLOAT_LIT */
     yylval->float_val = strtod(yytext, nullptr);
     return TOK_FLOAT_LIT;
 }
 	YY_BREAK
-/* ------------------------------------------------------------------ */
-/* String literals                                                      */
-/* ------------------------------------------------------------------ */
 case 15:
 YY_RULE_SETUP
-#line 118 "src/frontend/lexer.l"
+#line 106 "src/frontend/lexer.l"
 {
     BEGIN(SC_STRING);
     yylval->str = new std::string();   /* accumulate into yylval->str */
@@ -1071,32 +1060,32 @@ YY_RULE_SETUP
 
 case 16:
 YY_RULE_SETUP
-#line 124 "src/frontend/lexer.l"
+#line 112 "src/frontend/lexer.l"
 { yylval->str->push_back('\n'); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 125 "src/frontend/lexer.l"
+#line 113 "src/frontend/lexer.l"
 { yylval->str->push_back('\t'); }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 126 "src/frontend/lexer.l"
+#line 114 "src/frontend/lexer.l"
 { yylval->str->push_back('\\'); }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 127 "src/frontend/lexer.l"
+#line 115 "src/frontend/lexer.l"
 { yylval->str->push_back('"'); }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 128 "src/frontend/lexer.l"
+#line 116 "src/frontend/lexer.l"
 { *yylval->str += yytext; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 129 "src/frontend/lexer.l"
+#line 117 "src/frontend/lexer.l"
 {
         /* yylval->str already holds the full string content.
            The parser reads $N as yylval->str for TOK_STRING_LIT
@@ -1108,7 +1097,7 @@ YY_RULE_SETUP
 case 22:
 /* rule 22 can match eol */
 YY_RULE_SETUP
-#line 136 "src/frontend/lexer.l"
+#line 124 "src/frontend/lexer.l"
 {
         yyextra->err->error(
             SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
@@ -1120,7 +1109,7 @@ YY_RULE_SETUP
     }
 	YY_BREAK
 case YY_STATE_EOF(SC_STRING):
-#line 145 "src/frontend/lexer.l"
+#line 133 "src/frontend/lexer.l"
 {
         yyextra->err->error(
             SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
@@ -1136,127 +1125,127 @@ case YY_STATE_EOF(SC_STRING):
 /* ------------------------------------------------------------------ */
 case 23:
 YY_RULE_SETUP
-#line 158 "src/frontend/lexer.l"
+#line 146 "src/frontend/lexer.l"
 { return TOK_DECL; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 159 "src/frontend/lexer.l"
+#line 147 "src/frontend/lexer.l"
 { return TOK_DEF; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 160 "src/frontend/lexer.l"
+#line 148 "src/frontend/lexer.l"
 { return TOK_ARROW; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 161 "src/frontend/lexer.l"
+#line 149 "src/frontend/lexer.l"
 { return TOK_DOTDOTLT; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 162 "src/frontend/lexer.l"
+#line 150 "src/frontend/lexer.l"
 { return TOK_DOTDOTEQ; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 163 "src/frontend/lexer.l"
+#line 151 "src/frontend/lexer.l"
 { return TOK_DOTDOT; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 164 "src/frontend/lexer.l"
+#line 152 "src/frontend/lexer.l"
 { return TOK_DEREF; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 165 "src/frontend/lexer.l"
+#line 153 "src/frontend/lexer.l"
 { return TOK_PLUS_ASSIGN; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 166 "src/frontend/lexer.l"
+#line 154 "src/frontend/lexer.l"
 { return TOK_MINUS_ASSIGN; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 167 "src/frontend/lexer.l"
+#line 155 "src/frontend/lexer.l"
 { return TOK_STAR_ASSIGN; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 168 "src/frontend/lexer.l"
+#line 156 "src/frontend/lexer.l"
 { return TOK_SLASH_ASSIGN; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 169 "src/frontend/lexer.l"
+#line 157 "src/frontend/lexer.l"
 { return TOK_PERCENT_ASSIGN; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 170 "src/frontend/lexer.l"
+#line 158 "src/frontend/lexer.l"
 { return TOK_AMP_ASSIGN; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 171 "src/frontend/lexer.l"
+#line 159 "src/frontend/lexer.l"
 { return TOK_PIPE_ASSIGN; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 172 "src/frontend/lexer.l"
+#line 160 "src/frontend/lexer.l"
 { return TOK_XOR_ASSIGN; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 173 "src/frontend/lexer.l"
+#line 161 "src/frontend/lexer.l"
 { return TOK_SHL_ASSIGN; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 174 "src/frontend/lexer.l"
+#line 162 "src/frontend/lexer.l"
 { return TOK_SHR_ASSIGN; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 175 "src/frontend/lexer.l"
+#line 163 "src/frontend/lexer.l"
 { return TOK_SHL; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 176 "src/frontend/lexer.l"
+#line 164 "src/frontend/lexer.l"
 { return TOK_SHR; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 177 "src/frontend/lexer.l"
+#line 165 "src/frontend/lexer.l"
 { return TOK_EQ; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 178 "src/frontend/lexer.l"
+#line 166 "src/frontend/lexer.l"
 { return TOK_NEQ; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 179 "src/frontend/lexer.l"
+#line 167 "src/frontend/lexer.l"
 { return TOK_LEQ; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 180 "src/frontend/lexer.l"
+#line 168 "src/frontend/lexer.l"
 { return TOK_GEQ; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 181 "src/frontend/lexer.l"
+#line 169 "src/frontend/lexer.l"
 { return TOK_AND; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 182 "src/frontend/lexer.l"
+#line 170 "src/frontend/lexer.l"
 { return TOK_OR; }
 	YY_BREAK
 /* ------------------------------------------------------------------ */
@@ -1264,117 +1253,117 @@ YY_RULE_SETUP
 /* ------------------------------------------------------------------ */
 case 48:
 YY_RULE_SETUP
-#line 187 "src/frontend/lexer.l"
+#line 175 "src/frontend/lexer.l"
 { return TOK_COLON; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 188 "src/frontend/lexer.l"
+#line 176 "src/frontend/lexer.l"
 { return TOK_LPAREN; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 189 "src/frontend/lexer.l"
+#line 177 "src/frontend/lexer.l"
 { return TOK_RPAREN; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 190 "src/frontend/lexer.l"
+#line 178 "src/frontend/lexer.l"
 { return TOK_LBRACE; }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 191 "src/frontend/lexer.l"
+#line 179 "src/frontend/lexer.l"
 { return TOK_RBRACE; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 192 "src/frontend/lexer.l"
+#line 180 "src/frontend/lexer.l"
 { return TOK_LBRACKET; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 193 "src/frontend/lexer.l"
+#line 181 "src/frontend/lexer.l"
 { return TOK_RBRACKET; }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 194 "src/frontend/lexer.l"
+#line 182 "src/frontend/lexer.l"
 { return TOK_DOT; }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 195 "src/frontend/lexer.l"
+#line 183 "src/frontend/lexer.l"
 { return TOK_QUESTION; }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 196 "src/frontend/lexer.l"
+#line 184 "src/frontend/lexer.l"
 { return TOK_COMMA; }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 197 "src/frontend/lexer.l"
+#line 185 "src/frontend/lexer.l"
 { return TOK_SEMI; }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 198 "src/frontend/lexer.l"
+#line 186 "src/frontend/lexer.l"
 { return TOK_AMP; }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 199 "src/frontend/lexer.l"
+#line 187 "src/frontend/lexer.l"
 { return TOK_XOR; }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 200 "src/frontend/lexer.l"
+#line 188 "src/frontend/lexer.l"
 { return TOK_NOT; }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 201 "src/frontend/lexer.l"
+#line 189 "src/frontend/lexer.l"
 { return TOK_PLUS; }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 202 "src/frontend/lexer.l"
+#line 190 "src/frontend/lexer.l"
 { return TOK_MINUS; }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 203 "src/frontend/lexer.l"
+#line 191 "src/frontend/lexer.l"
 { return TOK_STAR; }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 204 "src/frontend/lexer.l"
+#line 192 "src/frontend/lexer.l"
 { return TOK_SLASH; }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 205 "src/frontend/lexer.l"
+#line 193 "src/frontend/lexer.l"
 { return TOK_PERCENT; }
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 206 "src/frontend/lexer.l"
+#line 194 "src/frontend/lexer.l"
 { return TOK_PIPE; }
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 207 "src/frontend/lexer.l"
+#line 195 "src/frontend/lexer.l"
 { return TOK_LT; }
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 208 "src/frontend/lexer.l"
+#line 196 "src/frontend/lexer.l"
 { return TOK_GT; }
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 209 "src/frontend/lexer.l"
+#line 197 "src/frontend/lexer.l"
 { return TOK_ASSIGN; }
 	YY_BREAK
 /* ------------------------------------------------------------------ */
@@ -1382,12 +1371,12 @@ YY_RULE_SETUP
 /* ------------------------------------------------------------------ */
 case 71:
 YY_RULE_SETUP
-#line 214 "src/frontend/lexer.l"
+#line 202 "src/frontend/lexer.l"
 { return TOK_HASH_ASSERT; }
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 215 "src/frontend/lexer.l"
+#line 203 "src/frontend/lexer.l"
 {
     yyextra->err->error(
         SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
@@ -1399,7 +1388,7 @@ YY_RULE_SETUP
 /* ------------------------------------------------------------------ */
 case 73:
 YY_RULE_SETUP
-#line 224 "src/frontend/lexer.l"
+#line 212 "src/frontend/lexer.l"
 {
     yyextra->err->error(
         SourceLoc(yyextra->filename, yylloc->first_line, yylloc->first_column),
@@ -1408,10 +1397,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 230 "src/frontend/lexer.l"
+#line 218 "src/frontend/lexer.l"
 ECHO;
 	YY_BREAK
-#line 1414 "src/flex_bison/lexer.cpp"
+#line 1403 "src/flex_bison/lexer.cpp"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(SC_COMMENT):
 	yyterminate();
@@ -2616,6 +2605,6 @@ void yyfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 230 "src/frontend/lexer.l"
+#line 218 "src/frontend/lexer.l"
 
 

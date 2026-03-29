@@ -54,7 +54,8 @@ main :: proc() -> i32 {
 
     -- GLB is self-contained: meshes + materials + textures in one file.
     -- No material workarounds needed.
-    model := LoadModel("tests/model_viewer/Assets/bunny.glb")
+    -- model := LoadModel("tests/model_viewer/Assets/bunny.glb")
+    model := LoadModel("tests/model_viewer/Assets/kminds-opti-base.glb")
     defer UnloadModel(model)
 
     -- Auto-fit

@@ -1,7 +1,3 @@
-// =============================================================================
-// token.cpp
-// =============================================================================
-
 #include "../frontend/tok_defs.hpp"
 #include "../frontend/token.hpp"
 
@@ -9,9 +5,6 @@
 
 namespace ZedLang {
 
-// ---------------------------------------------------------------------------
-// token_kind_name
-// ---------------------------------------------------------------------------
 std::string_view token_kind_name(int k) {
     switch (k) {
         case 0:                    return "end of file";
@@ -136,9 +129,12 @@ std::string_view token_kind_name(int k) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// keyword_lookup
-// ---------------------------------------------------------------------------
+
+std::string_view Token::kind_name() const {
+    return token_kind_name(kind);
+}
+
+
 int keyword_lookup(std::string_view s) {
     static const std::unordered_map<std::string_view, int> table = {
         // Declaration keywords
@@ -204,13 +200,6 @@ int keyword_lookup(std::string_view s) {
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;
-}
-
-// ---------------------------------------------------------------------------
-// Token member functions
-// ---------------------------------------------------------------------------
-std::string_view Token::kind_name() const {
-    return token_kind_name(kind);
 }
 
 } // namespace ZedLang
