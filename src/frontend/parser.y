@@ -1,7 +1,3 @@
-// =============================================================================
-// parser.y – Simplified, conflict‑free version (with fixed proc_decl)
-// =============================================================================
-
 %{
 #include "../frontend/ast.hpp"
 #include "../frontend/token.hpp"
