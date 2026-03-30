@@ -288,7 +288,7 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 5 "src/frontend/parser.y"
+#line 1 "src/frontend/parser.y"
 
 #include "../frontend/ast.hpp"
 #include "../frontend/token.hpp"
@@ -337,7 +337,7 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 43 "src/frontend/parser.y"
+#line 39 "src/frontend/parser.y"
 {
     /* ZedLang::Token omitted — contains std::string, illegal in C union */
     ZedLang::Decl*   decl;
@@ -839,37 +839,37 @@ static const yytype_int16 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   296,   296,   307,   308,   312,   313,   314,   315,   316,
-     317,   318,   319,   320,   328,   337,   347,   353,   360,   366,
-     383,   385,   387,   389,   391,   394,   396,   398,   400,   402,
-     407,   413,   422,   432,   433,   434,   440,   447,   458,   470,
-     476,   488,   489,   495,   496,   497,   498,   499,   500,   501,
-     502,   503,   504,   505,   506,   507,   508,   509,   510,   511,
-     517,   518,   523,   531,   539,   547,   556,   563,   573,   590,
-     610,   611,   615,   621,   627,   635,   643,   657,   666,   675,
-     684,   685,   686,   687,   688,   689,   690,   694,   702,   710,
-     719,   727,   732,   738,   748,   749,   750,   751,   752,   753,
-     754,   758,   768,   775,   785,   786,   790,   795,   800,   807,
-     812,   817,   818,   819,   820,   821,   822,   823,   824,   825,
-     826,   827,   828,   829,   834,   846,   847,   855,   856,   872,
-     877,   886,   892,   899,   905,   912,   918,   925,   932,   939,
-     945,   951,   957,   964,   970,   979,   987,   995,   996,  1000,
-    1006,  1016,  1027,  1033,  1042,  1051,  1052,  1057,  1058,  1062,
-    1070,  1071,  1075,  1080,  1085,  1096,  1104,  1109,  1115,  1120,
-    1131,  1137,  1146,  1160,  1174,  1193,  1199,  1209,  1215,  1223,
-    1228,  1237,  1242,  1251,  1256,  1261,  1266,  1271,  1273,  1275,
-    1277,  1279,  1281,  1283,  1285,  1287,  1289,  1294,  1303,  1304,
-    1309,  1310,  1311,  1322,  1323,  1331,  1332,  1340,  1341,  1349,
-    1350,  1358,  1359,  1360,  1361,  1362,  1363,  1367,  1368,  1376,
-    1377,  1385,  1386,  1394,  1395,  1403,  1404,  1408,  1409,  1417,
-    1418,  1422,  1423,  1431,  1432,  1433,  1437,  1442,  1447,  1452,
-    1456,  1458,  1464,  1471,  1476,  1481,  1486,  1491,  1498,  1503,
-    1508,  1516,  1521,  1526,  1531,  1536,  1541,  1546,  1552,  1558,
-    1560,  1564,  1565,  1566,  1567,  1580,  1587,  1594,  1604,  1609,
-    1614,  1619,  1627,  1633,  1642,  1648,  1653,  1658,  1664,  1669,
-    1674,  1679,  1684,  1689,  1694,  1699,  1704,  1709,  1714,  1719,
-    1727,  1728,  1732,  1737,  1742,  1747,  1756,  1764,  1770,  1780,
-    1781,  1788,  1794,  1800,  1807,  1815,  1826,  1831
+       0,   292,   292,   303,   304,   308,   309,   310,   311,   312,
+     313,   314,   315,   316,   324,   333,   343,   349,   356,   362,
+     379,   381,   383,   385,   387,   390,   392,   394,   396,   398,
+     403,   409,   418,   428,   429,   430,   436,   443,   454,   466,
+     472,   484,   485,   491,   492,   493,   494,   495,   496,   497,
+     498,   499,   500,   501,   502,   503,   504,   505,   506,   507,
+     513,   514,   519,   527,   535,   543,   552,   559,   569,   586,
+     606,   607,   611,   617,   623,   631,   639,   653,   662,   671,
+     680,   681,   682,   683,   684,   685,   686,   690,   698,   706,
+     715,   723,   728,   734,   744,   745,   746,   747,   748,   749,
+     750,   754,   764,   771,   781,   782,   786,   791,   796,   803,
+     808,   813,   814,   815,   816,   817,   818,   819,   820,   821,
+     822,   823,   824,   825,   830,   842,   843,   851,   852,   868,
+     873,   882,   888,   895,   901,   908,   914,   921,   928,   935,
+     941,   947,   953,   960,   966,   975,   983,   991,   992,   996,
+    1002,  1012,  1023,  1029,  1038,  1047,  1048,  1053,  1054,  1058,
+    1066,  1067,  1071,  1076,  1081,  1092,  1100,  1105,  1111,  1116,
+    1127,  1133,  1142,  1156,  1170,  1189,  1195,  1205,  1211,  1219,
+    1224,  1233,  1238,  1247,  1252,  1257,  1262,  1267,  1269,  1271,
+    1273,  1275,  1277,  1279,  1281,  1283,  1285,  1290,  1299,  1300,
+    1305,  1306,  1307,  1318,  1319,  1327,  1328,  1336,  1337,  1345,
+    1346,  1354,  1355,  1356,  1357,  1358,  1359,  1363,  1364,  1372,
+    1373,  1381,  1382,  1390,  1391,  1399,  1400,  1404,  1405,  1413,
+    1414,  1418,  1419,  1427,  1428,  1429,  1433,  1438,  1443,  1448,
+    1452,  1454,  1460,  1467,  1472,  1477,  1482,  1487,  1494,  1499,
+    1504,  1512,  1517,  1522,  1527,  1532,  1537,  1542,  1548,  1554,
+    1556,  1560,  1561,  1562,  1563,  1576,  1583,  1590,  1600,  1605,
+    1610,  1615,  1623,  1629,  1638,  1644,  1649,  1654,  1660,  1665,
+    1670,  1675,  1680,  1685,  1690,  1695,  1700,  1705,  1710,  1715,
+    1723,  1724,  1728,  1733,  1738,  1743,  1752,  1760,  1766,  1776,
+    1777,  1784,  1790,  1796,  1803,  1811,  1822,  1827
 };
 #endif
 
@@ -2462,7 +2462,7 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 297 "src/frontend/parser.y"
+#line 293 "src/frontend/parser.y"
     {
             Program* prog = new Program();
             prog->decls = *(yyvsp[(1) - (2)].decl_list);
@@ -2473,57 +2473,57 @@ yyreduce:
     break;
 
   case 3:
-#line 307 "src/frontend/parser.y"
+#line 303 "src/frontend/parser.y"
     { (yyval.decl_list) = new std::vector<Decl*>(); ;}
     break;
 
   case 4:
-#line 308 "src/frontend/parser.y"
+#line 304 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].decl_list)->push_back((yyvsp[(2) - (2)].decl)); (yyval.decl_list) = (yyvsp[(1) - (2)].decl_list); ;}
     break;
 
   case 5:
-#line 312 "src/frontend/parser.y"
+#line 308 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 6:
-#line 313 "src/frontend/parser.y"
+#line 309 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 7:
-#line 314 "src/frontend/parser.y"
+#line 310 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 8:
-#line 315 "src/frontend/parser.y"
+#line 311 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 9:
-#line 316 "src/frontend/parser.y"
+#line 312 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 10:
-#line 317 "src/frontend/parser.y"
+#line 313 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 11:
-#line 318 "src/frontend/parser.y"
+#line 314 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 12:
-#line 319 "src/frontend/parser.y"
+#line 315 "src/frontend/parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); ;}
     break;
 
   case 13:
-#line 321 "src/frontend/parser.y"
+#line 317 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new HashAssertTopDecl(r, (yyvsp[(2) - (2)].expr));
@@ -2531,7 +2531,7 @@ yyreduce:
     break;
 
   case 14:
-#line 329 "src/frontend/parser.y"
+#line 325 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new CImportDecl(r, *(yyvsp[(2) - (2)].str));
@@ -2540,7 +2540,7 @@ yyreduce:
     break;
 
   case 15:
-#line 338 "src/frontend/parser.y"
+#line 334 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new ImportDecl(r, *(yyvsp[(2) - (2)].str));
@@ -2549,7 +2549,7 @@ yyreduce:
     break;
 
   case 16:
-#line 348 "src/frontend/parser.y"
+#line 344 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new UnionDecl(r, *(yyvsp[(1) - (6)].str), *(yyvsp[(5) - (6)].field_list), false);
@@ -2558,7 +2558,7 @@ yyreduce:
     break;
 
   case 17:
-#line 354 "src/frontend/parser.y"
+#line 350 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new UnionDecl(r, *(yyvsp[(1) - (5)].str), {}, false);
@@ -2567,7 +2567,7 @@ yyreduce:
     break;
 
   case 18:
-#line 361 "src/frontend/parser.y"
+#line 357 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new UnionDecl(r, *(yyvsp[(1) - (6)].str), *(yyvsp[(5) - (6)].field_list), true);
@@ -2576,7 +2576,7 @@ yyreduce:
     break;
 
   case 19:
-#line 367 "src/frontend/parser.y"
+#line 363 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new UnionDecl(r, *(yyvsp[(1) - (5)].str), {}, true);
@@ -2585,57 +2585,57 @@ yyreduce:
     break;
 
   case 20:
-#line 384 "src/frontend/parser.y"
+#line 380 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), nullptr, (yyvsp[(3) - (3)].expr)); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 21:
-#line 386 "src/frontend/parser.y"
+#line 382 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), nullptr, (yyvsp[(3) - (3)].expr)); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 22:
-#line 388 "src/frontend/parser.y"
+#line 384 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), (yyvsp[(3) - (3)].type), nullptr); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 23:
-#line 390 "src/frontend/parser.y"
+#line 386 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (5)].str), (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr)); delete (yyvsp[(1) - (5)].str); ;}
     break;
 
   case 24:
-#line 392 "src/frontend/parser.y"
+#line 388 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (5)].str), (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr)); delete (yyvsp[(1) - (5)].str); ;}
     break;
 
   case 25:
-#line 395 "src/frontend/parser.y"
+#line 391 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), nullptr, (yyvsp[(3) - (3)].expr)); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 26:
-#line 397 "src/frontend/parser.y"
+#line 393 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), nullptr, (yyvsp[(3) - (3)].expr)); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 27:
-#line 399 "src/frontend/parser.y"
+#line 395 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (3)].str), (yyvsp[(3) - (3)].type), nullptr); delete (yyvsp[(1) - (3)].str); ;}
     break;
 
   case 28:
-#line 401 "src/frontend/parser.y"
+#line 397 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (5)].str), (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr)); delete (yyvsp[(1) - (5)].str); ;}
     break;
 
   case 29:
-#line 403 "src/frontend/parser.y"
+#line 399 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.decl) = new VarDecl(r, *(yyvsp[(1) - (5)].str), (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr)); delete (yyvsp[(1) - (5)].str); ;}
     break;
 
   case 30:
-#line 408 "src/frontend/parser.y"
+#line 404 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new ConstDecl(r, *(yyvsp[(1) - (3)].str), (yyvsp[(3) - (3)].expr));
@@ -2644,7 +2644,7 @@ yyreduce:
     break;
 
   case 31:
-#line 414 "src/frontend/parser.y"
+#line 410 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new ConstDecl(r, *(yyvsp[(1) - (3)].str), (yyvsp[(3) - (3)].expr));
@@ -2653,7 +2653,7 @@ yyreduce:
     break;
 
   case 32:
-#line 423 "src/frontend/parser.y"
+#line 419 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new StructDecl(r, *(yyvsp[(1) - (6)].str), *(yyvsp[(5) - (6)].field_list));
@@ -2663,22 +2663,22 @@ yyreduce:
     break;
 
   case 33:
-#line 432 "src/frontend/parser.y"
+#line 428 "src/frontend/parser.y"
     { (yyval.field_list) = new std::vector<Field>(); ;}
     break;
 
   case 34:
-#line 433 "src/frontend/parser.y"
+#line 429 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].field_list)->push_back(*(yyvsp[(2) - (2)].field)); delete (yyvsp[(2) - (2)].field); (yyval.field_list) = (yyvsp[(1) - (2)].field_list); ;}
     break;
 
   case 35:
-#line 434 "src/frontend/parser.y"
+#line 430 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].field_list)->push_back(*(yyvsp[(2) - (2)].field)); delete (yyvsp[(2) - (2)].field); (yyval.field_list) = (yyvsp[(1) - (2)].field_list); ;}
     break;
 
   case 36:
-#line 441 "src/frontend/parser.y"
+#line 437 "src/frontend/parser.y"
     {
             (yyval.field) = new Field();
             (yyval.field)->names = *(yyvsp[(1) - (4)].ident_list);
@@ -2688,7 +2688,7 @@ yyreduce:
     break;
 
   case 37:
-#line 448 "src/frontend/parser.y"
+#line 444 "src/frontend/parser.y"
     {
             (yyval.field) = new Field();
             (yyval.field)->names = *(yyvsp[(1) - (4)].ident_list);
@@ -2698,7 +2698,7 @@ yyreduce:
     break;
 
   case 38:
-#line 459 "src/frontend/parser.y"
+#line 455 "src/frontend/parser.y"
     {
             (yyval.field) = new Field();
             (yyval.field)->names = *(yyvsp[(1) - (3)].ident_list);
@@ -2708,7 +2708,7 @@ yyreduce:
     break;
 
   case 39:
-#line 471 "src/frontend/parser.y"
+#line 467 "src/frontend/parser.y"
     {
             (yyval.ident_list) = new std::vector<std::string>();
             (yyval.ident_list)->push_back(*(yyvsp[(1) - (1)].str));
@@ -2717,7 +2717,7 @@ yyreduce:
     break;
 
   case 40:
-#line 477 "src/frontend/parser.y"
+#line 473 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].ident_list)->push_back(*(yyvsp[(3) - (3)].str));
             delete (yyvsp[(3) - (3)].str);
@@ -2726,112 +2726,112 @@ yyreduce:
     break;
 
   case 41:
-#line 488 "src/frontend/parser.y"
+#line 484 "src/frontend/parser.y"
     { (yyval.str) = (yyvsp[(1) - (1)].str); ;}
     break;
 
   case 42:
-#line 489 "src/frontend/parser.y"
+#line 485 "src/frontend/parser.y"
     { (yyval.str) = (yyvsp[(1) - (1)].str); ;}
     break;
 
   case 43:
-#line 495 "src/frontend/parser.y"
+#line 491 "src/frontend/parser.y"
     { (yyval.str) = new std::string("len");        ;}
     break;
 
   case 44:
-#line 496 "src/frontend/parser.y"
+#line 492 "src/frontend/parser.y"
     { (yyval.str) = new std::string("cap");        ;}
     break;
 
   case 45:
-#line 497 "src/frontend/parser.y"
+#line 493 "src/frontend/parser.y"
     { (yyval.str) = new std::string("append");     ;}
     break;
 
   case 46:
-#line 498 "src/frontend/parser.y"
+#line 494 "src/frontend/parser.y"
     { (yyval.str) = new std::string("reserve");    ;}
     break;
 
   case 47:
-#line 499 "src/frontend/parser.y"
+#line 495 "src/frontend/parser.y"
     { (yyval.str) = new std::string("clear");      ;}
     break;
 
   case 48:
-#line 500 "src/frontend/parser.y"
+#line 496 "src/frontend/parser.y"
     { (yyval.str) = new std::string("to_cstr");    ;}
     break;
 
   case 49:
-#line 501 "src/frontend/parser.y"
+#line 497 "src/frontend/parser.y"
     { (yyval.str) = new std::string("from_cstr");  ;}
     break;
 
   case 50:
-#line 502 "src/frontend/parser.y"
+#line 498 "src/frontend/parser.y"
     { (yyval.str) = new std::string("panic");      ;}
     break;
 
   case 51:
-#line 503 "src/frontend/parser.y"
+#line 499 "src/frontend/parser.y"
     { (yyval.str) = new std::string("free");       ;}
     break;
 
   case 52:
-#line 504 "src/frontend/parser.y"
+#line 500 "src/frontend/parser.y"
     { (yyval.str) = new std::string("copy");       ;}
     break;
 
   case 53:
-#line 505 "src/frontend/parser.y"
+#line 501 "src/frontend/parser.y"
     { (yyval.str) = new std::string("enum_name");  ;}
     break;
 
   case 54:
-#line 506 "src/frontend/parser.y"
+#line 502 "src/frontend/parser.y"
     { (yyval.str) = new std::string("bit_cast");   ;}
     break;
 
   case 55:
-#line 507 "src/frontend/parser.y"
+#line 503 "src/frontend/parser.y"
     { (yyval.str) = new std::string("min");        ;}
     break;
 
   case 56:
-#line 508 "src/frontend/parser.y"
+#line 504 "src/frontend/parser.y"
     { (yyval.str) = new std::string("max");        ;}
     break;
 
   case 57:
-#line 509 "src/frontend/parser.y"
+#line 505 "src/frontend/parser.y"
     { (yyval.str) = new std::string("abs");        ;}
     break;
 
   case 58:
-#line 510 "src/frontend/parser.y"
+#line 506 "src/frontend/parser.y"
     { (yyval.str) = new std::string("swap");       ;}
     break;
 
   case 59:
-#line 511 "src/frontend/parser.y"
+#line 507 "src/frontend/parser.y"
     { (yyval.str) = new std::string("clamp");      ;}
     break;
 
   case 60:
-#line 517 "src/frontend/parser.y"
+#line 513 "src/frontend/parser.y"
     { (yyval.str) = (yyvsp[(1) - (1)].str); ;}
     break;
 
   case 61:
-#line 518 "src/frontend/parser.y"
+#line 514 "src/frontend/parser.y"
     { (yyval.str) = (yyvsp[(1) - (1)].str); ;}
     break;
 
   case 62:
-#line 524 "src/frontend/parser.y"
+#line 520 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (7)].param_list) ? *(yyvsp[(5) - (7)].param_list) : std::vector<ParamGroup>();
@@ -2842,7 +2842,7 @@ yyreduce:
     break;
 
   case 63:
-#line 532 "src/frontend/parser.y"
+#line 528 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (7)].param_list) ? *(yyvsp[(5) - (7)].param_list) : std::vector<ParamGroup>();
@@ -2853,7 +2853,7 @@ yyreduce:
     break;
 
   case 64:
-#line 540 "src/frontend/parser.y"
+#line 536 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (9)].param_list) ? *(yyvsp[(5) - (9)].param_list) : std::vector<ParamGroup>();
@@ -2864,7 +2864,7 @@ yyreduce:
     break;
 
   case 65:
-#line 548 "src/frontend/parser.y"
+#line 544 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (9)].param_list) ? *(yyvsp[(5) - (9)].param_list) : std::vector<ParamGroup>();
@@ -2875,7 +2875,7 @@ yyreduce:
     break;
 
   case 66:
-#line 557 "src/frontend/parser.y"
+#line 553 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (11)].param_list) ? *(yyvsp[(5) - (11)].param_list) : std::vector<ParamGroup>();
@@ -2885,7 +2885,7 @@ yyreduce:
     break;
 
   case 67:
-#line 564 "src/frontend/parser.y"
+#line 560 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (11)].param_list) ? *(yyvsp[(5) - (11)].param_list) : std::vector<ParamGroup>();
@@ -2895,7 +2895,7 @@ yyreduce:
     break;
 
   case 68:
-#line 574 "src/frontend/parser.y"
+#line 570 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (11)].param_list) ? *(yyvsp[(5) - (11)].param_list) : std::vector<ParamGroup>();
@@ -2915,7 +2915,7 @@ yyreduce:
     break;
 
   case 69:
-#line 591 "src/frontend/parser.y"
+#line 587 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(5) - (11)].param_list) ? *(yyvsp[(5) - (11)].param_list) : std::vector<ParamGroup>();
@@ -2935,17 +2935,17 @@ yyreduce:
     break;
 
   case 70:
-#line 610 "src/frontend/parser.y"
+#line 606 "src/frontend/parser.y"
     { (yyval.param_list) = nullptr; ;}
     break;
 
   case 71:
-#line 611 "src/frontend/parser.y"
+#line 607 "src/frontend/parser.y"
     { (yyval.param_list) = (yyvsp[(1) - (1)].param_list); ;}
     break;
 
   case 72:
-#line 616 "src/frontend/parser.y"
+#line 612 "src/frontend/parser.y"
     {
             (yyval.param_list) = new std::vector<ParamGroup>();
             (yyval.param_list)->push_back(*(yyvsp[(1) - (1)].param_group));
@@ -2954,7 +2954,7 @@ yyreduce:
     break;
 
   case 73:
-#line 622 "src/frontend/parser.y"
+#line 618 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].param_list)->push_back(*(yyvsp[(3) - (3)].param_group));
             delete (yyvsp[(3) - (3)].param_group);
@@ -2963,7 +2963,7 @@ yyreduce:
     break;
 
   case 74:
-#line 628 "src/frontend/parser.y"
+#line 624 "src/frontend/parser.y"
     {
             // variadic sentinel: proc(fmt: cstr, ..)
             ParamGroup sentinel;
@@ -2974,7 +2974,7 @@ yyreduce:
     break;
 
   case 75:
-#line 636 "src/frontend/parser.y"
+#line 632 "src/frontend/parser.y"
     {
             // trailing comma: proc(a: i32, b: i32,) — ignore the trailing comma
             (yyval.param_list) = (yyvsp[(1) - (2)].param_list);
@@ -2982,7 +2982,7 @@ yyreduce:
     break;
 
   case 76:
-#line 644 "src/frontend/parser.y"
+#line 640 "src/frontend/parser.y"
     {
             (yyval.param_group) = new ParamGroup();
             (yyval.param_group)->names = *(yyvsp[(1) - (3)].ident_list);
@@ -2992,7 +2992,7 @@ yyreduce:
     break;
 
   case 77:
-#line 658 "src/frontend/parser.y"
+#line 654 "src/frontend/parser.y"
     {
             (yyval.param_list) = new std::vector<ParamGroup>();
             ParamGroup pg;
@@ -3004,7 +3004,7 @@ yyreduce:
     break;
 
   case 78:
-#line 667 "src/frontend/parser.y"
+#line 663 "src/frontend/parser.y"
     {
             ParamGroup pg;
             pg.names.push_back(*(yyvsp[(3) - (5)].str));
@@ -3016,7 +3016,7 @@ yyreduce:
     break;
 
   case 79:
-#line 676 "src/frontend/parser.y"
+#line 672 "src/frontend/parser.y"
     {
             // trailing comma: (result: i32, ok: bool,) — ignore
             (yyval.param_list) = (yyvsp[(1) - (2)].param_list);
@@ -3024,42 +3024,42 @@ yyreduce:
     break;
 
   case 80:
-#line 684 "src/frontend/parser.y"
+#line 680 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 81:
-#line 685 "src/frontend/parser.y"
+#line 681 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 82:
-#line 686 "src/frontend/parser.y"
+#line 682 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 83:
-#line 687 "src/frontend/parser.y"
+#line 683 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 84:
-#line 688 "src/frontend/parser.y"
+#line 684 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 85:
-#line 689 "src/frontend/parser.y"
+#line 685 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 86:
-#line 690 "src/frontend/parser.y"
+#line 686 "src/frontend/parser.y"
     { (yyval.type) = (yyvsp[(1) - (1)].type); ;}
     break;
 
   case 87:
-#line 695 "src/frontend/parser.y"
+#line 691 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new DynArrayTypeAST(r, (yyvsp[(4) - (4)].type));
@@ -3067,7 +3067,7 @@ yyreduce:
     break;
 
   case 88:
-#line 703 "src/frontend/parser.y"
+#line 699 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new StringTypeAST(r);
@@ -3075,7 +3075,7 @@ yyreduce:
     break;
 
   case 89:
-#line 711 "src/frontend/parser.y"
+#line 707 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new NamedType(r, *(yyvsp[(1) - (1)].str));
@@ -3084,7 +3084,7 @@ yyreduce:
     break;
 
   case 90:
-#line 720 "src/frontend/parser.y"
+#line 716 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new PtrType(r, (yyvsp[(2) - (2)].type));
@@ -3092,7 +3092,7 @@ yyreduce:
     break;
 
   case 91:
-#line 728 "src/frontend/parser.y"
+#line 724 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new ArrayType(r, (yyvsp[(2) - (4)].int_val), (yyvsp[(4) - (4)].type));
@@ -3100,7 +3100,7 @@ yyreduce:
     break;
 
   case 92:
-#line 733 "src/frontend/parser.y"
+#line 729 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new ArrayType(r, std::string(*(yyvsp[(2) - (4)].str)), (yyvsp[(4) - (4)].type));
@@ -3109,7 +3109,7 @@ yyreduce:
     break;
 
   case 93:
-#line 739 "src/frontend/parser.y"
+#line 735 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new ArrayType(r, (yyvsp[(2) - (4)].expr), (yyvsp[(4) - (4)].type));
@@ -3117,42 +3117,42 @@ yyreduce:
     break;
 
   case 94:
-#line 748 "src/frontend/parser.y"
+#line 744 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new BinaryExpr(r,(yyvsp[(1) - (3)].expr),TOK_STAR,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 95:
-#line 749 "src/frontend/parser.y"
+#line 745 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new BinaryExpr(r,(yyvsp[(1) - (3)].expr),TOK_PLUS,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 96:
-#line 750 "src/frontend/parser.y"
+#line 746 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new BinaryExpr(r,(yyvsp[(1) - (3)].expr),TOK_MINUS,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 97:
-#line 751 "src/frontend/parser.y"
+#line 747 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new BinaryExpr(r,(yyvsp[(1) - (3)].expr),TOK_SLASH,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 98:
-#line 752 "src/frontend/parser.y"
+#line 748 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new BinaryExpr(r,(yyvsp[(1) - (3)].expr),TOK_PERCENT,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 99:
-#line 753 "src/frontend/parser.y"
+#line 749 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new LitExpr(r, (yyvsp[(1) - (1)].int_val)); ;}
     break;
 
   case 100:
-#line 754 "src/frontend/parser.y"
+#line 750 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.expr) = new IdentExpr(r, *(yyvsp[(1) - (1)].str)); delete (yyvsp[(1) - (1)].str); ;}
     break;
 
   case 101:
-#line 759 "src/frontend/parser.y"
+#line 755 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.type) = new SliceType(r, (yyvsp[(3) - (3)].type));
@@ -3160,7 +3160,7 @@ yyreduce:
     break;
 
   case 102:
-#line 769 "src/frontend/parser.y"
+#line 765 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             std::vector<Type*> pts = (yyvsp[(3) - (4)].type_list) ? *(yyvsp[(3) - (4)].type_list) : std::vector<Type*>();
@@ -3170,7 +3170,7 @@ yyreduce:
     break;
 
   case 103:
-#line 776 "src/frontend/parser.y"
+#line 772 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             std::vector<Type*> pts = (yyvsp[(3) - (6)].type_list) ? *(yyvsp[(3) - (6)].type_list) : std::vector<Type*>();
@@ -3180,17 +3180,17 @@ yyreduce:
     break;
 
   case 104:
-#line 785 "src/frontend/parser.y"
+#line 781 "src/frontend/parser.y"
     { (yyval.type_list) = nullptr; ;}
     break;
 
   case 105:
-#line 786 "src/frontend/parser.y"
+#line 782 "src/frontend/parser.y"
     { (yyval.type_list) = (yyvsp[(1) - (1)].type_list); ;}
     break;
 
   case 106:
-#line 791 "src/frontend/parser.y"
+#line 787 "src/frontend/parser.y"
     {
             (yyval.type_list) = new std::vector<Type*>();
             (yyval.type_list)->push_back((yyvsp[(1) - (1)].type));
@@ -3198,7 +3198,7 @@ yyreduce:
     break;
 
   case 107:
-#line 796 "src/frontend/parser.y"
+#line 792 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].type_list)->push_back((yyvsp[(3) - (3)].type));
             (yyval.type_list) = (yyvsp[(1) - (3)].type_list);
@@ -3206,7 +3206,7 @@ yyreduce:
     break;
 
   case 108:
-#line 801 "src/frontend/parser.y"
+#line 797 "src/frontend/parser.y"
     {
             // trailing comma: (i32, bool,) — ignore
             (yyval.type_list) = (yyvsp[(1) - (2)].type_list);
@@ -3214,7 +3214,7 @@ yyreduce:
     break;
 
   case 109:
-#line 808 "src/frontend/parser.y"
+#line 804 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new DeclStmt(r, (yyvsp[(1) - (1)].decl));
@@ -3222,7 +3222,7 @@ yyreduce:
     break;
 
   case 110:
-#line 813 "src/frontend/parser.y"
+#line 809 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new DeclStmt(r, (yyvsp[(1) - (1)].decl));
@@ -3230,72 +3230,72 @@ yyreduce:
     break;
 
   case 111:
-#line 817 "src/frontend/parser.y"
+#line 813 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 112:
-#line 818 "src/frontend/parser.y"
+#line 814 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 113:
-#line 819 "src/frontend/parser.y"
+#line 815 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 114:
-#line 820 "src/frontend/parser.y"
+#line 816 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 115:
-#line 821 "src/frontend/parser.y"
+#line 817 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 116:
-#line 822 "src/frontend/parser.y"
+#line 818 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 117:
-#line 823 "src/frontend/parser.y"
+#line 819 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 118:
-#line 824 "src/frontend/parser.y"
+#line 820 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 119:
-#line 825 "src/frontend/parser.y"
+#line 821 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 120:
-#line 826 "src/frontend/parser.y"
+#line 822 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 121:
-#line 827 "src/frontend/parser.y"
+#line 823 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 122:
-#line 828 "src/frontend/parser.y"
+#line 824 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].stmt); ;}
     break;
 
   case 123:
-#line 829 "src/frontend/parser.y"
+#line 825 "src/frontend/parser.y"
     { (yyval.stmt) = (yyvsp[(1) - (1)].block); ;}
     break;
 
   case 124:
-#line 835 "src/frontend/parser.y"
+#line 831 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             IfStmt* ifs = new IfStmt(r, (yyvsp[(2) - (5)].expr), (yyvsp[(3) - (5)].block));
@@ -3307,12 +3307,12 @@ yyreduce:
     break;
 
   case 125:
-#line 846 "src/frontend/parser.y"
+#line 842 "src/frontend/parser.y"
     { (yyval.else_if_list) = new std::vector<std::pair<Expr*, BlockStmt*>>(); ;}
     break;
 
   case 126:
-#line 848 "src/frontend/parser.y"
+#line 844 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (5)].else_if_list)->push_back(std::make_pair((yyvsp[(4) - (5)].expr), (yyvsp[(5) - (5)].block)));
             (yyval.else_if_list) = (yyvsp[(1) - (5)].else_if_list);
@@ -3320,17 +3320,17 @@ yyreduce:
     break;
 
   case 127:
-#line 855 "src/frontend/parser.y"
+#line 851 "src/frontend/parser.y"
     { (yyval.block) = nullptr; ;}
     break;
 
   case 128:
-#line 856 "src/frontend/parser.y"
+#line 852 "src/frontend/parser.y"
     { (yyval.block) = (yyvsp[(2) - (2)].block); ;}
     break;
 
   case 129:
-#line 873 "src/frontend/parser.y"
+#line 869 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new LoopStmt(r, (yyvsp[(2) - (2)].block));
@@ -3338,7 +3338,7 @@ yyreduce:
     break;
 
   case 130:
-#line 878 "src/frontend/parser.y"
+#line 874 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new LoopStmt(r, (yyvsp[(2) - (3)].expr), (yyvsp[(3) - (3)].block));
@@ -3346,7 +3346,7 @@ yyreduce:
     break;
 
   case 131:
-#line 887 "src/frontend/parser.y"
+#line 883 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new LoopStmt(r, (yyvsp[(4) - (4)].block));
@@ -3355,7 +3355,7 @@ yyreduce:
     break;
 
   case 132:
-#line 893 "src/frontend/parser.y"
+#line 889 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new LoopStmt(r, (yyvsp[(4) - (5)].expr), (yyvsp[(5) - (5)].block));
@@ -3364,7 +3364,7 @@ yyreduce:
     break;
 
   case 133:
-#line 900 "src/frontend/parser.y"
+#line 896 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(2) - (7)].str), (yyvsp[(4) - (7)].expr), (yyvsp[(6) - (7)].expr), false, (yyvsp[(7) - (7)].block));
@@ -3373,7 +3373,7 @@ yyreduce:
     break;
 
   case 134:
-#line 906 "src/frontend/parser.y"
+#line 902 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(2) - (9)].str), (yyvsp[(4) - (9)].expr), (yyvsp[(6) - (9)].expr), false, (yyvsp[(9) - (9)].block));
@@ -3382,7 +3382,7 @@ yyreduce:
     break;
 
   case 135:
-#line 913 "src/frontend/parser.y"
+#line 909 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(2) - (7)].str), (yyvsp[(4) - (7)].expr), (yyvsp[(6) - (7)].expr), true, (yyvsp[(7) - (7)].block));
@@ -3391,7 +3391,7 @@ yyreduce:
     break;
 
   case 136:
-#line 919 "src/frontend/parser.y"
+#line 915 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(2) - (9)].str), (yyvsp[(4) - (9)].expr), (yyvsp[(6) - (9)].expr), true, (yyvsp[(9) - (9)].block));
@@ -3400,7 +3400,7 @@ yyreduce:
     break;
 
   case 137:
-#line 926 "src/frontend/parser.y"
+#line 922 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ForEachStmt(r, "", *(yyvsp[(2) - (5)].str), (yyvsp[(4) - (5)].expr), (yyvsp[(5) - (5)].block));
@@ -3409,7 +3409,7 @@ yyreduce:
     break;
 
   case 138:
-#line 933 "src/frontend/parser.y"
+#line 929 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ForEachStmt(r, *(yyvsp[(2) - (7)].str), *(yyvsp[(4) - (7)].str), (yyvsp[(6) - (7)].expr), (yyvsp[(7) - (7)].block));
@@ -3418,7 +3418,7 @@ yyreduce:
     break;
 
   case 139:
-#line 940 "src/frontend/parser.y"
+#line 936 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(4) - (9)].str), (yyvsp[(6) - (9)].expr), (yyvsp[(8) - (9)].expr), false, (yyvsp[(9) - (9)].block));
@@ -3427,7 +3427,7 @@ yyreduce:
     break;
 
   case 140:
-#line 946 "src/frontend/parser.y"
+#line 942 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(4) - (11)].str), (yyvsp[(6) - (11)].expr), (yyvsp[(8) - (11)].expr), false, (yyvsp[(11) - (11)].block));
@@ -3436,7 +3436,7 @@ yyreduce:
     break;
 
   case 141:
-#line 952 "src/frontend/parser.y"
+#line 948 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(4) - (9)].str), (yyvsp[(6) - (9)].expr), (yyvsp[(8) - (9)].expr), true, (yyvsp[(9) - (9)].block));
@@ -3445,7 +3445,7 @@ yyreduce:
     break;
 
   case 142:
-#line 958 "src/frontend/parser.y"
+#line 954 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForRangeStmt(r, *(yyvsp[(4) - (11)].str), (yyvsp[(6) - (11)].expr), (yyvsp[(8) - (11)].expr), true, (yyvsp[(11) - (11)].block));
@@ -3454,7 +3454,7 @@ yyreduce:
     break;
 
   case 143:
-#line 965 "src/frontend/parser.y"
+#line 961 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForEachStmt(r, "", *(yyvsp[(4) - (7)].str), (yyvsp[(6) - (7)].expr), (yyvsp[(7) - (7)].block));
@@ -3463,7 +3463,7 @@ yyreduce:
     break;
 
   case 144:
-#line 971 "src/frontend/parser.y"
+#line 967 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto* s = new ForEachStmt(r, *(yyvsp[(4) - (9)].str), *(yyvsp[(6) - (9)].str), (yyvsp[(8) - (9)].expr), (yyvsp[(9) - (9)].block));
@@ -3472,7 +3472,7 @@ yyreduce:
     break;
 
   case 145:
-#line 980 "src/frontend/parser.y"
+#line 976 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new DeferStmt(r, new ExprStmt(r,(yyvsp[(2) - (2)].expr)));
@@ -3480,7 +3480,7 @@ yyreduce:
     break;
 
   case 146:
-#line 988 "src/frontend/parser.y"
+#line 984 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new MatchStmt(r,(yyvsp[(2) - (5)].expr),*(yyvsp[(4) - (5)].match_case_list)); delete (yyvsp[(4) - (5)].match_case_list);
@@ -3488,17 +3488,17 @@ yyreduce:
     break;
 
   case 147:
-#line 995 "src/frontend/parser.y"
+#line 991 "src/frontend/parser.y"
     { (yyval.match_case_list) = new std::vector<MatchCase>(); ;}
     break;
 
   case 148:
-#line 996 "src/frontend/parser.y"
+#line 992 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].match_case_list)->push_back(*(yyvsp[(2) - (2)].match_case)); delete (yyvsp[(2) - (2)].match_case); (yyval.match_case_list) = (yyvsp[(1) - (2)].match_case_list); ;}
     break;
 
   case 149:
-#line 1001 "src/frontend/parser.y"
+#line 997 "src/frontend/parser.y"
     {
             (yyval.match_case) = new MatchCase();
             (yyval.match_case)->value = (yyvsp[(2) - (3)].expr); (yyval.match_case)->body = (yyvsp[(3) - (3)].block);
@@ -3507,7 +3507,7 @@ yyreduce:
     break;
 
   case 150:
-#line 1007 "src/frontend/parser.y"
+#line 1003 "src/frontend/parser.y"
     {
             // .VARIANT shorthand — the enum type is inferred from the match value.
             SourceRange r = to_sourcerange((yyloc), filename);
@@ -3520,7 +3520,7 @@ yyreduce:
     break;
 
   case 151:
-#line 1017 "src/frontend/parser.y"
+#line 1013 "src/frontend/parser.y"
     {
             // .VARIANT(binding) — tagged union: case .Circle(c) { use c }
             SourceRange r = to_sourcerange((yyloc), filename);
@@ -3534,7 +3534,7 @@ yyreduce:
     break;
 
   case 152:
-#line 1028 "src/frontend/parser.y"
+#line 1024 "src/frontend/parser.y"
     {
             (yyval.match_case) = new MatchCase();
             (yyval.match_case)->value = nullptr; (yyval.match_case)->body = (yyvsp[(2) - (2)].block);
@@ -3543,7 +3543,7 @@ yyreduce:
     break;
 
   case 153:
-#line 1034 "src/frontend/parser.y"
+#line 1030 "src/frontend/parser.y"
     {
             (yyval.match_case) = new MatchCase();
             (yyval.match_case)->value = nullptr; (yyval.match_case)->body = (yyvsp[(2) - (2)].block);
@@ -3552,7 +3552,7 @@ yyreduce:
     break;
 
   case 154:
-#line 1043 "src/frontend/parser.y"
+#line 1039 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             WhenStmt* ws = new WhenStmt(r,(yyvsp[(2) - (5)].expr),(yyvsp[(3) - (5)].block));
@@ -3561,27 +3561,27 @@ yyreduce:
     break;
 
   case 155:
-#line 1051 "src/frontend/parser.y"
+#line 1047 "src/frontend/parser.y"
     { (yyval.else_if_list) = new std::vector<std::pair<Expr*,BlockStmt*>>(); ;}
     break;
 
   case 156:
-#line 1053 "src/frontend/parser.y"
+#line 1049 "src/frontend/parser.y"
     { (yyvsp[(1) - (5)].else_if_list)->push_back(std::make_pair((yyvsp[(4) - (5)].expr),(yyvsp[(5) - (5)].block))); (yyval.else_if_list) = (yyvsp[(1) - (5)].else_if_list); ;}
     break;
 
   case 157:
-#line 1057 "src/frontend/parser.y"
+#line 1053 "src/frontend/parser.y"
     { (yyval.block) = nullptr; ;}
     break;
 
   case 158:
-#line 1058 "src/frontend/parser.y"
+#line 1054 "src/frontend/parser.y"
     { (yyval.block) = (yyvsp[(2) - (2)].block); ;}
     break;
 
   case 159:
-#line 1063 "src/frontend/parser.y"
+#line 1059 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.decl) = new EnumDecl(r,*(yyvsp[(1) - (6)].str),*(yyvsp[(5) - (6)].enum_variant_list)); delete (yyvsp[(1) - (6)].str); delete (yyvsp[(5) - (6)].enum_variant_list);
@@ -3589,17 +3589,17 @@ yyreduce:
     break;
 
   case 160:
-#line 1070 "src/frontend/parser.y"
+#line 1066 "src/frontend/parser.y"
     { (yyval.enum_variant_list) = new std::vector<EnumVariantAST>(); ;}
     break;
 
   case 161:
-#line 1071 "src/frontend/parser.y"
+#line 1067 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].enum_variant_list)->push_back(*(yyvsp[(2) - (2)].enum_variant)); delete (yyvsp[(2) - (2)].enum_variant); (yyval.enum_variant_list) = (yyvsp[(1) - (2)].enum_variant_list); ;}
     break;
 
   case 162:
-#line 1076 "src/frontend/parser.y"
+#line 1072 "src/frontend/parser.y"
     {
             (yyval.enum_variant) = new EnumVariantAST(); (yyval.enum_variant)->name=*(yyvsp[(1) - (2)].str); (yyval.enum_variant)->value=nullptr;
             (yyval.enum_variant)->loc=SourceLoc(filename,(yylsp[(1) - (2)]).first_line,(yylsp[(1) - (2)]).first_column); delete (yyvsp[(1) - (2)].str);
@@ -3607,7 +3607,7 @@ yyreduce:
     break;
 
   case 163:
-#line 1081 "src/frontend/parser.y"
+#line 1077 "src/frontend/parser.y"
     {
             (yyval.enum_variant) = new EnumVariantAST(); (yyval.enum_variant)->name=*(yyvsp[(1) - (4)].str); (yyval.enum_variant)->value=(yyvsp[(3) - (4)].expr);
             (yyval.enum_variant)->loc=SourceLoc(filename,(yylsp[(1) - (4)]).first_line,(yylsp[(1) - (4)]).first_column); delete (yyvsp[(1) - (4)].str);
@@ -3615,7 +3615,7 @@ yyreduce:
     break;
 
   case 164:
-#line 1086 "src/frontend/parser.y"
+#line 1082 "src/frontend/parser.y"
     {
             (yyval.enum_variant) = new EnumVariantAST(); (yyval.enum_variant)->name=*(yyvsp[(1) - (1)].str); (yyval.enum_variant)->value=nullptr;
             (yyval.enum_variant)->loc=SourceLoc(filename,(yylsp[(1) - (1)]).first_line,(yylsp[(1) - (1)]).first_column); delete (yyvsp[(1) - (1)].str);
@@ -3623,7 +3623,7 @@ yyreduce:
     break;
 
   case 165:
-#line 1097 "src/frontend/parser.y"
+#line 1093 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new HashAssertStmt(r, (yyvsp[(2) - (2)].expr));
@@ -3631,7 +3631,7 @@ yyreduce:
     break;
 
   case 166:
-#line 1105 "src/frontend/parser.y"
+#line 1101 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ReturnStmt(r, nullptr);
@@ -3639,7 +3639,7 @@ yyreduce:
     break;
 
   case 167:
-#line 1110 "src/frontend/parser.y"
+#line 1106 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ReturnStmt(r, new TupleExpr(r, *(yyvsp[(2) - (2)].expr_list)));
@@ -3648,7 +3648,7 @@ yyreduce:
     break;
 
   case 168:
-#line 1116 "src/frontend/parser.y"
+#line 1112 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ReturnStmt(r, (yyvsp[(2) - (2)].expr));
@@ -3656,7 +3656,7 @@ yyreduce:
     break;
 
   case 169:
-#line 1121 "src/frontend/parser.y"
+#line 1117 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ReturnStmt(r, (yyvsp[(2) - (2)].expr));
@@ -3664,7 +3664,7 @@ yyreduce:
     break;
 
   case 170:
-#line 1132 "src/frontend/parser.y"
+#line 1128 "src/frontend/parser.y"
     {
             (yyval.expr_list) = new std::vector<Expr*>();
             (yyval.expr_list)->push_back((yyvsp[(1) - (3)].expr));
@@ -3673,7 +3673,7 @@ yyreduce:
     break;
 
   case 171:
-#line 1138 "src/frontend/parser.y"
+#line 1134 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].expr_list)->push_back((yyvsp[(3) - (3)].expr));
             (yyval.expr_list) = (yyvsp[(1) - (3)].expr_list);
@@ -3681,7 +3681,7 @@ yyreduce:
     break;
 
   case 172:
-#line 1147 "src/frontend/parser.y"
+#line 1143 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             std::vector<std::string> names;
@@ -3698,7 +3698,7 @@ yyreduce:
     break;
 
   case 173:
-#line 1161 "src/frontend/parser.y"
+#line 1157 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             std::vector<std::string> names;
@@ -3715,7 +3715,7 @@ yyreduce:
     break;
 
   case 174:
-#line 1175 "src/frontend/parser.y"
+#line 1171 "src/frontend/parser.y"
     {
             // a, b, c := 1, "x", 3.0  — tuple literal on RHS
             SourceRange r = to_sourcerange((yyloc), filename);
@@ -3734,7 +3734,7 @@ yyreduce:
     break;
 
   case 175:
-#line 1194 "src/frontend/parser.y"
+#line 1190 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new MultiAssignStmt(r, *(yyvsp[(1) - (3)].expr_list), (yyvsp[(3) - (3)].expr));
@@ -3743,7 +3743,7 @@ yyreduce:
     break;
 
   case 176:
-#line 1200 "src/frontend/parser.y"
+#line 1196 "src/frontend/parser.y"
     {
             // a, b = x, y  — tuple literal on RHS (also handles swap: a,b = b,a)
             SourceRange r = to_sourcerange((yyloc), filename);
@@ -3753,7 +3753,7 @@ yyreduce:
     break;
 
   case 177:
-#line 1210 "src/frontend/parser.y"
+#line 1206 "src/frontend/parser.y"
     {
             (yyval.expr_list) = new std::vector<Expr*>();
             (yyval.expr_list)->push_back((yyvsp[(1) - (3)].expr));
@@ -3762,7 +3762,7 @@ yyreduce:
     break;
 
   case 178:
-#line 1216 "src/frontend/parser.y"
+#line 1212 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].expr_list)->push_back((yyvsp[(3) - (3)].expr));
             (yyval.expr_list) = (yyvsp[(1) - (3)].expr_list);
@@ -3770,7 +3770,7 @@ yyreduce:
     break;
 
   case 179:
-#line 1224 "src/frontend/parser.y"
+#line 1220 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new BreakStmt(r);
@@ -3778,7 +3778,7 @@ yyreduce:
     break;
 
   case 180:
-#line 1229 "src/frontend/parser.y"
+#line 1225 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new LabeledBreakStmt(r, *(yyvsp[(2) - (2)].str));
@@ -3787,7 +3787,7 @@ yyreduce:
     break;
 
   case 181:
-#line 1238 "src/frontend/parser.y"
+#line 1234 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ContinueStmt(r);
@@ -3795,7 +3795,7 @@ yyreduce:
     break;
 
   case 182:
-#line 1243 "src/frontend/parser.y"
+#line 1239 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new LabeledContinueStmt(r, *(yyvsp[(2) - (2)].str));
@@ -3804,7 +3804,7 @@ yyreduce:
     break;
 
   case 183:
-#line 1252 "src/frontend/parser.y"
+#line 1248 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ExprStmt(r, (yyvsp[(1) - (1)].expr));
@@ -3812,7 +3812,7 @@ yyreduce:
     break;
 
   case 184:
-#line 1257 "src/frontend/parser.y"
+#line 1253 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new ExprStmt(r, (yyvsp[(1) - (1)].expr));
@@ -3820,7 +3820,7 @@ yyreduce:
     break;
 
   case 185:
-#line 1262 "src/frontend/parser.y"
+#line 1258 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new AssignStmt(r, (yyvsp[(1) - (3)].expr), (yyvsp[(3) - (3)].expr));
@@ -3828,7 +3828,7 @@ yyreduce:
     break;
 
   case 186:
-#line 1267 "src/frontend/parser.y"
+#line 1263 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.stmt) = new AssignStmt(r, (yyvsp[(1) - (3)].expr), (yyvsp[(3) - (3)].expr));
@@ -3836,57 +3836,57 @@ yyreduce:
     break;
 
   case 187:
-#line 1272 "src/frontend/parser.y"
+#line 1268 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_PLUS,   (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 188:
-#line 1274 "src/frontend/parser.y"
+#line 1270 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_MINUS,  (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 189:
-#line 1276 "src/frontend/parser.y"
+#line 1272 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_STAR,   (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 190:
-#line 1278 "src/frontend/parser.y"
+#line 1274 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_SLASH,  (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 191:
-#line 1280 "src/frontend/parser.y"
+#line 1276 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_PERCENT,(yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 192:
-#line 1282 "src/frontend/parser.y"
+#line 1278 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_AMP,    (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 193:
-#line 1284 "src/frontend/parser.y"
+#line 1280 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_PIPE,   (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 194:
-#line 1286 "src/frontend/parser.y"
+#line 1282 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_XOR,    (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 195:
-#line 1288 "src/frontend/parser.y"
+#line 1284 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_SHL,    (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 196:
-#line 1290 "src/frontend/parser.y"
+#line 1286 "src/frontend/parser.y"
     { SourceRange r = to_sourcerange((yyloc), filename); (yyval.stmt) = new CompoundAssignStmt(r,(yyvsp[(1) - (3)].expr),TOK_SHR,    (yyvsp[(3) - (3)].expr)); ;}
     break;
 
   case 197:
-#line 1295 "src/frontend/parser.y"
+#line 1291 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.block) = new BlockStmt(r, *(yyvsp[(2) - (3)].stmt_list));
@@ -3895,27 +3895,27 @@ yyreduce:
     break;
 
   case 198:
-#line 1303 "src/frontend/parser.y"
+#line 1299 "src/frontend/parser.y"
     { (yyval.stmt_list) = new std::vector<Stmt*>(); ;}
     break;
 
   case 199:
-#line 1304 "src/frontend/parser.y"
+#line 1300 "src/frontend/parser.y"
     { (yyvsp[(1) - (2)].stmt_list)->push_back((yyvsp[(2) - (2)].stmt)); (yyval.stmt_list) = (yyvsp[(1) - (2)].stmt_list); ;}
     break;
 
   case 200:
-#line 1309 "src/frontend/parser.y"
+#line 1305 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 201:
-#line 1310 "src/frontend/parser.y"
+#line 1306 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 202:
-#line 1312 "src/frontend/parser.y"
+#line 1308 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new IfExpr(r, (yyvsp[(1) - (5)].expr), (yyvsp[(3) - (5)].expr), (yyvsp[(5) - (5)].expr));
@@ -3923,12 +3923,12 @@ yyreduce:
     break;
 
   case 203:
-#line 1322 "src/frontend/parser.y"
+#line 1318 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 204:
-#line 1324 "src/frontend/parser.y"
+#line 1320 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new IfExpr(r, (yyvsp[(1) - (5)].expr), (yyvsp[(3) - (5)].expr), (yyvsp[(5) - (5)].expr));
@@ -3936,7 +3936,7 @@ yyreduce:
     break;
 
   case 206:
-#line 1333 "src/frontend/parser.y"
+#line 1329 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), TOK_OR, (yyvsp[(3) - (3)].expr));
@@ -3944,7 +3944,7 @@ yyreduce:
     break;
 
   case 208:
-#line 1342 "src/frontend/parser.y"
+#line 1338 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), TOK_AND, (yyvsp[(3) - (3)].expr));
@@ -3952,7 +3952,7 @@ yyreduce:
     break;
 
   case 210:
-#line 1351 "src/frontend/parser.y"
+#line 1347 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].expr));
@@ -3960,37 +3960,37 @@ yyreduce:
     break;
 
   case 211:
-#line 1358 "src/frontend/parser.y"
+#line 1354 "src/frontend/parser.y"
     { (yyval.op) = TOK_EQ; ;}
     break;
 
   case 212:
-#line 1359 "src/frontend/parser.y"
+#line 1355 "src/frontend/parser.y"
     { (yyval.op) = TOK_NEQ; ;}
     break;
 
   case 213:
-#line 1360 "src/frontend/parser.y"
+#line 1356 "src/frontend/parser.y"
     { (yyval.op) = TOK_LT; ;}
     break;
 
   case 214:
-#line 1361 "src/frontend/parser.y"
+#line 1357 "src/frontend/parser.y"
     { (yyval.op) = TOK_LEQ; ;}
     break;
 
   case 215:
-#line 1362 "src/frontend/parser.y"
+#line 1358 "src/frontend/parser.y"
     { (yyval.op) = TOK_GT; ;}
     break;
 
   case 216:
-#line 1363 "src/frontend/parser.y"
+#line 1359 "src/frontend/parser.y"
     { (yyval.op) = TOK_GEQ; ;}
     break;
 
   case 218:
-#line 1369 "src/frontend/parser.y"
+#line 1365 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), TOK_PIPE, (yyvsp[(3) - (3)].expr));
@@ -3998,7 +3998,7 @@ yyreduce:
     break;
 
   case 220:
-#line 1378 "src/frontend/parser.y"
+#line 1374 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), TOK_XOR, (yyvsp[(3) - (3)].expr));
@@ -4006,7 +4006,7 @@ yyreduce:
     break;
 
   case 222:
-#line 1387 "src/frontend/parser.y"
+#line 1383 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), TOK_AMP, (yyvsp[(3) - (3)].expr));
@@ -4014,7 +4014,7 @@ yyreduce:
     break;
 
   case 224:
-#line 1396 "src/frontend/parser.y"
+#line 1392 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].expr));
@@ -4022,17 +4022,17 @@ yyreduce:
     break;
 
   case 225:
-#line 1403 "src/frontend/parser.y"
+#line 1399 "src/frontend/parser.y"
     { (yyval.op) = TOK_SHL; ;}
     break;
 
   case 226:
-#line 1404 "src/frontend/parser.y"
+#line 1400 "src/frontend/parser.y"
     { (yyval.op) = TOK_SHR; ;}
     break;
 
   case 228:
-#line 1410 "src/frontend/parser.y"
+#line 1406 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].expr));
@@ -4040,17 +4040,17 @@ yyreduce:
     break;
 
   case 229:
-#line 1417 "src/frontend/parser.y"
+#line 1413 "src/frontend/parser.y"
     { (yyval.op) = TOK_PLUS; ;}
     break;
 
   case 230:
-#line 1418 "src/frontend/parser.y"
+#line 1414 "src/frontend/parser.y"
     { (yyval.op) = TOK_MINUS; ;}
     break;
 
   case 232:
-#line 1424 "src/frontend/parser.y"
+#line 1420 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BinaryExpr(r, (yyvsp[(1) - (3)].expr), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].expr));
@@ -4058,22 +4058,22 @@ yyreduce:
     break;
 
   case 233:
-#line 1431 "src/frontend/parser.y"
+#line 1427 "src/frontend/parser.y"
     { (yyval.op) = TOK_STAR; ;}
     break;
 
   case 234:
-#line 1432 "src/frontend/parser.y"
+#line 1428 "src/frontend/parser.y"
     { (yyval.op) = TOK_SLASH; ;}
     break;
 
   case 235:
-#line 1433 "src/frontend/parser.y"
+#line 1429 "src/frontend/parser.y"
     { (yyval.op) = TOK_PERCENT; ;}
     break;
 
   case 236:
-#line 1438 "src/frontend/parser.y"
+#line 1434 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new UnaryExpr(r, TOK_MINUS, (yyvsp[(2) - (2)].expr));
@@ -4081,7 +4081,7 @@ yyreduce:
     break;
 
   case 237:
-#line 1443 "src/frontend/parser.y"
+#line 1439 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new UnaryExpr(r, TOK_NOT, (yyvsp[(2) - (2)].expr));
@@ -4089,7 +4089,7 @@ yyreduce:
     break;
 
   case 238:
-#line 1448 "src/frontend/parser.y"
+#line 1444 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new AddrExpr(r, (yyvsp[(2) - (2)].expr));
@@ -4097,12 +4097,12 @@ yyreduce:
     break;
 
   case 240:
-#line 1457 "src/frontend/parser.y"
+#line 1453 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 241:
-#line 1459 "src/frontend/parser.y"
+#line 1455 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new FieldExpr(r, (yyvsp[(1) - (3)].expr), *(yyvsp[(3) - (3)].str));
@@ -4111,7 +4111,7 @@ yyreduce:
     break;
 
   case 242:
-#line 1465 "src/frontend/parser.y"
+#line 1461 "src/frontend/parser.y"
     {
             // Allow soft keywords as field names: v.min, v.max, bbox.min etc.
             SourceRange r = to_sourcerange((yyloc), filename);
@@ -4121,7 +4121,7 @@ yyreduce:
     break;
 
   case 243:
-#line 1472 "src/frontend/parser.y"
+#line 1468 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new IndexExpr(r, (yyvsp[(1) - (4)].expr), (yyvsp[(3) - (4)].expr));
@@ -4129,7 +4129,7 @@ yyreduce:
     break;
 
   case 244:
-#line 1477 "src/frontend/parser.y"
+#line 1473 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SliceExpr(r, (yyvsp[(1) - (6)].expr), (yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr), false);
@@ -4137,7 +4137,7 @@ yyreduce:
     break;
 
   case 245:
-#line 1482 "src/frontend/parser.y"
+#line 1478 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SliceExpr(r, (yyvsp[(1) - (6)].expr), (yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr), true);
@@ -4145,7 +4145,7 @@ yyreduce:
     break;
 
   case 246:
-#line 1487 "src/frontend/parser.y"
+#line 1483 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SliceExpr(r, (yyvsp[(1) - (4)].expr));  // full slice
@@ -4153,7 +4153,7 @@ yyreduce:
     break;
 
   case 247:
-#line 1492 "src/frontend/parser.y"
+#line 1488 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             std::vector<Expr*> args = (yyvsp[(3) - (4)].expr_list) ? *(yyvsp[(3) - (4)].expr_list) : std::vector<Expr*>();
@@ -4163,7 +4163,7 @@ yyreduce:
     break;
 
   case 248:
-#line 1499 "src/frontend/parser.y"
+#line 1495 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new DerefExpr(r, (yyvsp[(1) - (2)].expr));
@@ -4171,7 +4171,7 @@ yyreduce:
     break;
 
   case 249:
-#line 1504 "src/frontend/parser.y"
+#line 1500 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new OrReturnExpr(r, (yyvsp[(1) - (2)].expr), nullptr);
@@ -4179,7 +4179,7 @@ yyreduce:
     break;
 
   case 250:
-#line 1509 "src/frontend/parser.y"
+#line 1505 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new OrReturnExpr(r, (yyvsp[(1) - (3)].expr), (yyvsp[(3) - (3)].expr));
@@ -4187,7 +4187,7 @@ yyreduce:
     break;
 
   case 251:
-#line 1517 "src/frontend/parser.y"
+#line 1513 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, (yyvsp[(1) - (1)].int_val));
@@ -4195,7 +4195,7 @@ yyreduce:
     break;
 
   case 252:
-#line 1522 "src/frontend/parser.y"
+#line 1518 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, (yyvsp[(1) - (1)].float_val));
@@ -4203,7 +4203,7 @@ yyreduce:
     break;
 
   case 253:
-#line 1527 "src/frontend/parser.y"
+#line 1523 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, (yyvsp[(1) - (1)].bool_val));
@@ -4211,7 +4211,7 @@ yyreduce:
     break;
 
   case 254:
-#line 1532 "src/frontend/parser.y"
+#line 1528 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, true);
@@ -4219,7 +4219,7 @@ yyreduce:
     break;
 
   case 255:
-#line 1537 "src/frontend/parser.y"
+#line 1533 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, false);
@@ -4227,7 +4227,7 @@ yyreduce:
     break;
 
   case 256:
-#line 1542 "src/frontend/parser.y"
+#line 1538 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, nullptr);
@@ -4235,7 +4235,7 @@ yyreduce:
     break;
 
   case 257:
-#line 1547 "src/frontend/parser.y"
+#line 1543 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new LitExpr(r, *(yyvsp[(1) - (1)].str));
@@ -4244,7 +4244,7 @@ yyreduce:
     break;
 
   case 258:
-#line 1553 "src/frontend/parser.y"
+#line 1549 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new IdentExpr(r, *(yyvsp[(1) - (1)].str));
@@ -4253,34 +4253,34 @@ yyreduce:
     break;
 
   case 259:
-#line 1559 "src/frontend/parser.y"
+#line 1555 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 260:
-#line 1561 "src/frontend/parser.y"
+#line 1557 "src/frontend/parser.y"
     {
             (yyval.expr) = (yyvsp[(2) - (3)].expr);
         ;}
     break;
 
   case 261:
-#line 1564 "src/frontend/parser.y"
+#line 1560 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 262:
-#line 1565 "src/frontend/parser.y"
+#line 1561 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 263:
-#line 1566 "src/frontend/parser.y"
+#line 1562 "src/frontend/parser.y"
     { (yyval.expr) = (yyvsp[(1) - (1)].expr); ;}
     break;
 
   case 264:
-#line 1568 "src/frontend/parser.y"
+#line 1564 "src/frontend/parser.y"
     {
             // Soft keyword used as a plain identifier (e.g. `len` after `len :=`).
             // When followed by '(' the builtin_call_expr alternative takes priority
@@ -4292,7 +4292,7 @@ yyreduce:
     break;
 
   case 265:
-#line 1581 "src/frontend/parser.y"
+#line 1577 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(3) - (5)].param_list) ? *(yyvsp[(3) - (5)].param_list) : std::vector<ParamGroup>();
@@ -4302,7 +4302,7 @@ yyreduce:
     break;
 
   case 266:
-#line 1588 "src/frontend/parser.y"
+#line 1584 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(3) - (7)].param_list) ? *(yyvsp[(3) - (7)].param_list) : std::vector<ParamGroup>();
@@ -4312,7 +4312,7 @@ yyreduce:
     break;
 
   case 267:
-#line 1595 "src/frontend/parser.y"
+#line 1591 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             auto params = (yyvsp[(3) - (9)].param_list) ? *(yyvsp[(3) - (9)].param_list) : std::vector<ParamGroup>();
@@ -4322,7 +4322,7 @@ yyreduce:
     break;
 
   case 268:
-#line 1605 "src/frontend/parser.y"
+#line 1601 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SizeofExpr(r, false, (yyvsp[(3) - (4)].type), nullptr);
@@ -4330,7 +4330,7 @@ yyreduce:
     break;
 
   case 269:
-#line 1610 "src/frontend/parser.y"
+#line 1606 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SizeofExpr(r, false, nullptr, (yyvsp[(3) - (4)].expr));
@@ -4338,7 +4338,7 @@ yyreduce:
     break;
 
   case 270:
-#line 1615 "src/frontend/parser.y"
+#line 1611 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new SizeofExpr(r, true, (yyvsp[(3) - (4)].type), nullptr);
@@ -4346,7 +4346,7 @@ yyreduce:
     break;
 
   case 271:
-#line 1620 "src/frontend/parser.y"
+#line 1616 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new TypeIdExpr(r, (yyvsp[(3) - (4)].type));
@@ -4354,7 +4354,7 @@ yyreduce:
     break;
 
   case 272:
-#line 1628 "src/frontend/parser.y"
+#line 1624 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new ArrayInitExpr(r, *(yyvsp[(2) - (3)].expr_list));
@@ -4363,7 +4363,7 @@ yyreduce:
     break;
 
   case 273:
-#line 1634 "src/frontend/parser.y"
+#line 1630 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new ArrayInitExpr(r, *(yyvsp[(2) - (4)].expr_list));
@@ -4372,7 +4372,7 @@ yyreduce:
     break;
 
   case 274:
-#line 1643 "src/frontend/parser.y"
+#line 1639 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_APPEND, *(yyvsp[(3) - (4)].expr_list));
@@ -4381,7 +4381,7 @@ yyreduce:
     break;
 
   case 275:
-#line 1649 "src/frontend/parser.y"
+#line 1645 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_LEN, {(yyvsp[(3) - (4)].expr)});
@@ -4389,7 +4389,7 @@ yyreduce:
     break;
 
   case 276:
-#line 1654 "src/frontend/parser.y"
+#line 1650 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_CAP, {(yyvsp[(3) - (4)].expr)});
@@ -4397,7 +4397,7 @@ yyreduce:
     break;
 
   case 277:
-#line 1659 "src/frontend/parser.y"
+#line 1655 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_RESERVE, *(yyvsp[(3) - (4)].expr_list));
@@ -4406,7 +4406,7 @@ yyreduce:
     break;
 
   case 278:
-#line 1665 "src/frontend/parser.y"
+#line 1661 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_CLEAR, {(yyvsp[(3) - (4)].expr)});
@@ -4414,7 +4414,7 @@ yyreduce:
     break;
 
   case 279:
-#line 1670 "src/frontend/parser.y"
+#line 1666 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_TO_CSTR, {(yyvsp[(3) - (4)].expr)});
@@ -4422,7 +4422,7 @@ yyreduce:
     break;
 
   case 280:
-#line 1675 "src/frontend/parser.y"
+#line 1671 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_FROM_CSTR, {(yyvsp[(3) - (4)].expr)});
@@ -4430,7 +4430,7 @@ yyreduce:
     break;
 
   case 281:
-#line 1680 "src/frontend/parser.y"
+#line 1676 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_PANIC, {(yyvsp[(3) - (4)].expr)});
@@ -4438,7 +4438,7 @@ yyreduce:
     break;
 
   case 282:
-#line 1685 "src/frontend/parser.y"
+#line 1681 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_FREE, {(yyvsp[(3) - (4)].expr)});
@@ -4446,7 +4446,7 @@ yyreduce:
     break;
 
   case 283:
-#line 1690 "src/frontend/parser.y"
+#line 1686 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_COPY, {(yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr)});
@@ -4454,7 +4454,7 @@ yyreduce:
     break;
 
   case 284:
-#line 1695 "src/frontend/parser.y"
+#line 1691 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_ENUM_NAME, {(yyvsp[(3) - (4)].expr)});
@@ -4462,7 +4462,7 @@ yyreduce:
     break;
 
   case 285:
-#line 1700 "src/frontend/parser.y"
+#line 1696 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_MIN, {(yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr)});
@@ -4470,7 +4470,7 @@ yyreduce:
     break;
 
   case 286:
-#line 1705 "src/frontend/parser.y"
+#line 1701 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_MAX, {(yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr)});
@@ -4478,7 +4478,7 @@ yyreduce:
     break;
 
   case 287:
-#line 1710 "src/frontend/parser.y"
+#line 1706 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_ABS, {(yyvsp[(3) - (4)].expr)});
@@ -4486,7 +4486,7 @@ yyreduce:
     break;
 
   case 288:
-#line 1715 "src/frontend/parser.y"
+#line 1711 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_SWAP, {(yyvsp[(3) - (6)].expr), (yyvsp[(5) - (6)].expr)});
@@ -4494,7 +4494,7 @@ yyreduce:
     break;
 
   case 289:
-#line 1720 "src/frontend/parser.y"
+#line 1716 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new BuiltinCallExpr(r, TOK_KW_CLAMP, {(yyvsp[(3) - (8)].expr), (yyvsp[(5) - (8)].expr), (yyvsp[(7) - (8)].expr)});
@@ -4502,17 +4502,17 @@ yyreduce:
     break;
 
   case 290:
-#line 1727 "src/frontend/parser.y"
+#line 1723 "src/frontend/parser.y"
     { (yyval.expr_list) = nullptr; ;}
     break;
 
   case 291:
-#line 1728 "src/frontend/parser.y"
+#line 1724 "src/frontend/parser.y"
     { (yyval.expr_list) = (yyvsp[(1) - (1)].expr_list); ;}
     break;
 
   case 292:
-#line 1733 "src/frontend/parser.y"
+#line 1729 "src/frontend/parser.y"
     {
             (yyval.expr_list) = new std::vector<Expr*>();
             (yyval.expr_list)->push_back((yyvsp[(1) - (1)].expr));
@@ -4520,7 +4520,7 @@ yyreduce:
     break;
 
   case 293:
-#line 1738 "src/frontend/parser.y"
+#line 1734 "src/frontend/parser.y"
     {
             (yyval.expr_list) = new std::vector<Expr*>();
             (yyval.expr_list)->push_back((yyvsp[(1) - (1)].expr));
@@ -4528,7 +4528,7 @@ yyreduce:
     break;
 
   case 294:
-#line 1743 "src/frontend/parser.y"
+#line 1739 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].expr_list)->push_back((yyvsp[(3) - (3)].expr));
             (yyval.expr_list) = (yyvsp[(1) - (3)].expr_list);
@@ -4536,7 +4536,7 @@ yyreduce:
     break;
 
   case 295:
-#line 1748 "src/frontend/parser.y"
+#line 1744 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].expr_list)->push_back((yyvsp[(3) - (3)].expr));
             (yyval.expr_list) = (yyvsp[(1) - (3)].expr_list);
@@ -4544,7 +4544,7 @@ yyreduce:
     break;
 
   case 296:
-#line 1757 "src/frontend/parser.y"
+#line 1753 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new StructLitExpr(r, *(yyvsp[(1) - (4)].str), *(yyvsp[(3) - (4)].field_init_list), nullptr);
@@ -4554,7 +4554,7 @@ yyreduce:
     break;
 
   case 297:
-#line 1765 "src/frontend/parser.y"
+#line 1761 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new StructLitExpr(r, *(yyvsp[(1) - (5)].str), {}, (yyvsp[(4) - (5)].expr));
@@ -4563,7 +4563,7 @@ yyreduce:
     break;
 
   case 298:
-#line 1771 "src/frontend/parser.y"
+#line 1767 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new StructLitExpr(r, *(yyvsp[(1) - (7)].str), *(yyvsp[(6) - (7)].field_init_list), (yyvsp[(4) - (7)].expr));
@@ -4573,19 +4573,19 @@ yyreduce:
     break;
 
   case 299:
-#line 1780 "src/frontend/parser.y"
+#line 1776 "src/frontend/parser.y"
     { (yyval.field_init_list) = new std::vector<FieldInit>(); ;}
     break;
 
   case 300:
-#line 1782 "src/frontend/parser.y"
+#line 1778 "src/frontend/parser.y"
     {
             (yyval.field_init_list) = (yyvsp[(1) - (1)].field_init_list);
         ;}
     break;
 
   case 301:
-#line 1789 "src/frontend/parser.y"
+#line 1785 "src/frontend/parser.y"
     {
             (yyval.field_init_list) = new std::vector<FieldInit>();
             (yyval.field_init_list)->push_back(*(yyvsp[(1) - (1)].field_init));
@@ -4594,7 +4594,7 @@ yyreduce:
     break;
 
   case 302:
-#line 1795 "src/frontend/parser.y"
+#line 1791 "src/frontend/parser.y"
     {
             (yyvsp[(1) - (3)].field_init_list)->push_back(*(yyvsp[(3) - (3)].field_init));
             delete (yyvsp[(3) - (3)].field_init);
@@ -4603,14 +4603,14 @@ yyreduce:
     break;
 
   case 303:
-#line 1801 "src/frontend/parser.y"
+#line 1797 "src/frontend/parser.y"
     {
             (yyval.field_init_list) = (yyvsp[(1) - (2)].field_init_list);
         ;}
     break;
 
   case 304:
-#line 1808 "src/frontend/parser.y"
+#line 1804 "src/frontend/parser.y"
     {
             (yyval.field_init) = new FieldInit();
             (yyval.field_init)->name = *(yyvsp[(1) - (3)].str);
@@ -4621,7 +4621,7 @@ yyreduce:
     break;
 
   case 305:
-#line 1816 "src/frontend/parser.y"
+#line 1812 "src/frontend/parser.y"
     {
             (yyval.field_init) = new FieldInit();
             (yyval.field_init)->name = *(yyvsp[(1) - (3)].str);
@@ -4632,7 +4632,7 @@ yyreduce:
     break;
 
   case 306:
-#line 1827 "src/frontend/parser.y"
+#line 1823 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new CastExpr(r, (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr), false);
@@ -4640,7 +4640,7 @@ yyreduce:
     break;
 
   case 307:
-#line 1832 "src/frontend/parser.y"
+#line 1828 "src/frontend/parser.y"
     {
             SourceRange r = to_sourcerange((yyloc), filename);
             (yyval.expr) = new CastExpr(r, (yyvsp[(3) - (5)].type), (yyvsp[(5) - (5)].expr), true);
@@ -4869,7 +4869,7 @@ yyreturn:
 }
 
 
-#line 1838 "src/frontend/parser.y"
+#line 1834 "src/frontend/parser.y"
 
 
 void yyerror(YYLTYPE* loc, yyscan_t scanner, ErrorReporter* err,

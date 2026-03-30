@@ -262,7 +262,7 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 43 "src/frontend/parser.y"
+#line 39 "src/frontend/parser.y"
 {
     /* ZedLang::Token omitted — contains std::string, illegal in C union */
     ZedLang::Decl*   decl;
