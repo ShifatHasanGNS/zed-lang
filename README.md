@@ -6,6 +6,11 @@ Pointer dereference operator: `.*` (Zig-style).
 
 ---
 
+> [!NOTE]
+> Input-related documentation has not been added yet.
+
+---
+
 ## Table of Contents
 
 1. [Comments](#comments)
