@@ -558,7 +558,10 @@ public:
     Kind kind() const override { return ARRAY_INIT; }
 };
 
-// BuiltinCallExpr — append, len, cap, reserve, delete_dyn, to_cstr, from_cstr
+// BuiltinCallExpr —
+// append, len, cap, reserve,
+// read, read_all, read_bytes, write,
+// delete_dyn, to_cstr, from_cstr
 class BuiltinCallExpr : public Expr {
 public:
     int builtin_tok;            // TOK_KW_APPEND, TOK_KW_LEN, ...

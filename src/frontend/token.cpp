@@ -49,6 +49,10 @@ std::string_view token_kind_name(int k) {
         case TOK_KW_CAP:           return "'cap'";
         case TOK_KW_APPEND:        return "'append'";
         case TOK_KW_RESERVE:       return "'reserve'";
+        case TOK_KW_READ:          return "'read'";
+        case TOK_KW_READ_ALL:      return "'read_all'";
+        case TOK_KW_READ_BYTES:    return "'read_bytes'";
+        case TOK_KW_WRITE:         return "'write'";
         case TOK_KW_CLEAR:         return "'clear'";
         case TOK_KW_TO_CSTR:       return "'to_cstr'";
         case TOK_KW_FROM_CSTR:     return "'from_cstr'";
@@ -138,65 +142,69 @@ std::string_view Token::kind_name() const {
 int keyword_lookup(std::string_view s) {
     static const std::unordered_map<std::string_view, int> table = {
         // Declaration keywords
-        { "proc",         TOK_KW_PROC      },
-        { "struct",       TOK_KW_STRUCT    },
-        { "union",        TOK_KW_UNION     },
-        { "enum",         TOK_KW_ENUM      },
+        { "proc",         TOK_KW_PROC        },
+        { "struct",       TOK_KW_STRUCT      },
+        { "union",        TOK_KW_UNION       },
+        { "enum",         TOK_KW_ENUM        },
         // Control-flow keywords
-        { "if",           TOK_KW_IF        },
-        { "else",         TOK_KW_ELSE      },
-        { "for",          TOK_KW_FOR       },
-        { "in",           TOK_KW_IN        },
-        { "step",         TOK_KW_STEP      },
-        { "break",        TOK_KW_BREAK     },
-        { "continue",     TOK_KW_CONTINUE  },
-        { "return",       TOK_KW_RETURN    },
-        { "defer",        TOK_KW_DEFER     },
+        { "if",           TOK_KW_IF          },
+        { "else",         TOK_KW_ELSE        },
+        { "for",          TOK_KW_FOR         },
+        { "in",           TOK_KW_IN          },
+        { "step",         TOK_KW_STEP        },
+        { "break",        TOK_KW_BREAK       },
+        { "continue",     TOK_KW_CONTINUE    },
+        { "return",       TOK_KW_RETURN      },
+        { "defer",        TOK_KW_DEFER       },
         // match / when
-        { "match",        TOK_KW_MATCH     },
-        { "case",         TOK_KW_CASE      },
-        { "when",         TOK_KW_WHEN      },
+        { "match",        TOK_KW_MATCH       },
+        { "case",         TOK_KW_CASE        },
+        { "when",         TOK_KW_WHEN        },
         // Value keywords
-        { "nil",          TOK_KW_NIL       },
-        { "true",         TOK_KW_TRUE      },
-        { "false",        TOK_KW_FALSE     },
+        { "nil",          TOK_KW_NIL         },
+        { "true",         TOK_KW_TRUE        },
+        { "false",        TOK_KW_FALSE       },
         // Type / expression keywords
-        { "string",       TOK_KW_STRING    },
-        { "dynamic",      TOK_KW_DYNAMIC   },
-        { "variant",      TOK_KW_VARIANT   },
-        { "cast",         TOK_KW_CAST      },
-        { "sizeof",       TOK_KW_SIZEOF    },
-        { "alignof",      TOK_KW_ALIGNOF   },
-        { "typeid",       TOK_KW_TYPEID    },
+        { "string",       TOK_KW_STRING      },
+        { "dynamic",      TOK_KW_DYNAMIC     },
+        { "variant",      TOK_KW_VARIANT     },
+        { "cast",         TOK_KW_CAST        },
+        { "sizeof",       TOK_KW_SIZEOF      },
+        { "alignof",      TOK_KW_ALIGNOF     },
+        { "typeid",       TOK_KW_TYPEID      },
         // Builtin-call keywords
-        { "len",          TOK_KW_LEN       },
-        { "cap",          TOK_KW_CAP       },
-        { "append",       TOK_KW_APPEND    },
-        { "reserve",      TOK_KW_RESERVE   },
-        { "clear",        TOK_KW_CLEAR     },
-        { "to_cstr",      TOK_KW_TO_CSTR   },
-        { "from_cstr",    TOK_KW_FROM_CSTR },
-        { "or_return",    TOK_KW_OR_RETURN },
+        { "len",          TOK_KW_LEN         },
+        { "cap",          TOK_KW_CAP         },
+        { "append",       TOK_KW_APPEND      },
+        { "reserve",      TOK_KW_RESERVE     },
+        { "read",         TOK_KW_READ        },
+        { "read_all",     TOK_KW_READ_ALL    },
+        { "read_bytes",   TOK_KW_READ_BYTES  },
+        { "write",        TOK_KW_WRITE       },
+        { "clear",        TOK_KW_CLEAR       },
+        { "to_cstr",      TOK_KW_TO_CSTR     },
+        { "from_cstr",    TOK_KW_FROM_CSTR   },
+        { "or_return",    TOK_KW_OR_RETURN   },
         // New builtins
-        { "panic",        TOK_KW_PANIC     },
-        { "free",         TOK_KW_FREE      },
-        { "copy",         TOK_KW_COPY      },
-        { "enum_name",    TOK_KW_ENUM_NAME },
+        { "panic",        TOK_KW_PANIC       },
+        { "free",         TOK_KW_FREE        },
+        { "copy",         TOK_KW_COPY        },
+        { "enum_name",    TOK_KW_ENUM_NAME   },
         // Feature batch 2
-        { "bit_cast",     TOK_KW_BIT_CAST  },
-        { "min",          TOK_KW_MIN       },
-        { "max",          TOK_KW_MAX       },
-        { "abs",          TOK_KW_ABS       },
-        { "swap",         TOK_KW_SWAP      },
-        { "clamp",        TOK_KW_CLAMP     },
-        { "or_else",      TOK_KW_OR_ELSE   },
+        { "bit_cast",     TOK_KW_BIT_CAST    },
+        { "min",          TOK_KW_MIN         },
+        { "max",          TOK_KW_MAX         },
+        { "abs",          TOK_KW_ABS         },
+        { "swap",         TOK_KW_SWAP        },
+        { "clamp",        TOK_KW_CLAMP       },
+        { "or_else",      TOK_KW_OR_ELSE     },
         // Import keywords
-        { "cimport",      TOK_KW_CIMPORT   },
-        { "import",       TOK_KW_IMPORT    },
+        { "cimport",      TOK_KW_CIMPORT     },
+        { "import",       TOK_KW_IMPORT      },
         // Readable keyword aliases for logical operators
-        { "and",          TOK_AND          },
-        { "or",           TOK_OR           },
-        { "not",          TOK_NOT          },
+        { "and",          TOK_AND            },
+        { "or",           TOK_OR             },
+        { "not",          TOK_NOT            },
     };
     auto it = table.find(s);
     return (it != table.end()) ? it->second : TOK_IDENT;

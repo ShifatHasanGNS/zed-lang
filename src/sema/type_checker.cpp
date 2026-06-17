@@ -1178,12 +1178,16 @@ TypeRef TypeChecker::check_builtin_call(BuiltinCallExpr* e) {
                         "'append' first argument must be a pointer to a dynamic array");
             }
             return ar.ty_void();
-        case TOK_KW_LEN:       return ar.ty_u64();
-        case TOK_KW_CAP:       return ar.ty_u64();
-        case TOK_KW_RESERVE:   return ar.ty_void();
-        case TOK_KW_CLEAR:     return ar.ty_void();
-        case TOK_KW_TO_CSTR:   return ar.ty_cstr();
-        case TOK_KW_FROM_CSTR: return ar.ty_string();
+        case TOK_KW_LEN:         return ar.ty_u64();
+        case TOK_KW_CAP:         return ar.ty_u64();
+        case TOK_KW_RESERVE:     return ar.ty_void();
+        case TOK_KW_READ:        return ar.ty_string();
+        case TOK_KW_READ_ALL:    return ar.make_dyn_array(ar.ty_u8());
+        case TOK_KW_READ_BYTES:  return ar.ty_u64();
+        case TOK_KW_WRITE:       return ar.ty_u64();
+        case TOK_KW_CLEAR:       return ar.ty_void();
+        case TOK_KW_TO_CSTR:     return ar.ty_cstr();
+        case TOK_KW_FROM_CSTR:   return ar.ty_string();
         case TOK_KW_PANIC:
             // panic(msg: cstr) → noreturn; we return void for type purposes
             return ar.ty_void();

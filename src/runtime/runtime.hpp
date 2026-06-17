@@ -1,8 +1,8 @@
 // Runtime type definitions for generated C++ code
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdbool>
+#include <cstdint>
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
@@ -78,4 +78,82 @@ inline int64_t _zed_slice_copy(Slice dst, Slice src) {
     size_t n = dst.len < src.len ? dst.len : src.len;
     if (n > 0) ::memcpy(dst.ptr, src.ptr, n);
     return static_cast<int64_t>(n);
+}
+
+/* =================== */
+/*    Input Runtime    */
+/* =================== */
+
+inline std::string _zed_read_string(FILE* fp = stdin, const char* prompt = "") {
+    if (prompt && *prompt) {
+        std::fputs(prompt, stdout);
+        std::fflush(stdout);
+    }
+
+    std::string s;
+
+    if (fp == stdin) {
+        std::getline(std::cin, s);
+    } else {
+        char buf[4096] = {};
+
+        if (std::fgets(buf, sizeof(buf), fp)) {
+            s = buf;
+
+            if (!s.empty() && s.back() == '\n') {
+                s.pop_back();
+            }
+        }
+    }
+
+    return s;
+}
+
+inline std::vector<uint8_t> _zed_read_all(FILE* fp) {
+    std::vector<uint8_t> data;
+
+    if (!fp)
+        return data;
+
+    long start = std::ftell(fp);
+    std::fseek(fp, 0, SEEK_END);
+    long end = std::ftell(fp);
+    std::fseek(fp, start, SEEK_SET);
+
+    if (end <= start)
+        return data;
+
+    size_t size = static_cast<size_t>(end - start);
+    data.resize(size);
+    std::fread(data.data(), 1, size, fp);
+
+    return data;
+}
+
+inline size_t _zed_read_bytes(FILE* fp, uint8_t* dst, size_t count) {
+    return std::fread(dst, 1, count, fp);
+}
+
+inline size_t _zed_write( FILE* fp, const std::vector<uint8_t>& data) {
+    return std::fwrite(data.data(), 1, data.size(), fp);
+}
+
+inline size_t _zed_write(FILE* fp, const std::string& s) {
+    return std::fwrite(s.data(), 1, s.size(), fp);
+}
+
+inline size_t _zed_write(FILE* fp, Slice s) {
+    return std::fwrite(s.ptr, 1, s.len, fp);
+}
+
+inline size_t _zed_write(const std::vector<uint8_t>& data) {
+    return _zed_write(stdout, data);
+}
+
+inline size_t _zed_write(const std::string& s) {
+    return _zed_write(stdout, s);
+}
+
+inline size_t _zed_write(Slice s) {
+    return _zed_write(stdout, s);
 }

@@ -125,6 +125,10 @@ inline static SourceRange to_sourcerange(YYLTYPE loc, const char* filename) {
 %token TOK_KW_CAP        "cap"
 %token TOK_KW_APPEND     "append"
 %token TOK_KW_RESERVE    "reserve"
+%token TOK_KW_READ       "read"
+%token TOK_KW_READ_ALL   "read_all"
+%token TOK_KW_READ_BYTES "read_bytes"
+%token TOK_KW_WRITE      "write"
 %token TOK_KW_CLEAR      "clear"
 %token TOK_KW_TO_CSTR    "to_cstr"
 %token TOK_KW_FROM_CSTR  "from_cstr"
@@ -492,6 +496,10 @@ kw_ident
     | TOK_KW_CAP        { $$ = new std::string("cap");        }
     | TOK_KW_APPEND     { $$ = new std::string("append");     }
     | TOK_KW_RESERVE    { $$ = new std::string("reserve");    }
+    | TOK_KW_READ       { $$ = new std::string("read");       }
+    | TOK_KW_READ_ALL   { $$ = new std::string("read_all");   }
+    | TOK_KW_READ_BYTES { $$ = new std::string("read_bytes"); }
+    | TOK_KW_WRITE      { $$ = new std::string("write");      }
     | TOK_KW_CLEAR      { $$ = new std::string("clear");      }
     | TOK_KW_TO_CSTR    { $$ = new std::string("to_cstr");    }
     | TOK_KW_FROM_CSTR  { $$ = new std::string("from_cstr");  }
@@ -1655,6 +1663,34 @@ builtin_call_expr
         {
             SourceRange r = to_sourcerange(@$, filename);
             $$ = new BuiltinCallExpr(r, TOK_KW_RESERVE, *$3);
+            delete $3;
+        }
+    | TOK_KW_READ TOK_LPAREN TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_READ, {});
+        }
+    | TOK_KW_READ TOK_LPAREN arg_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_READ, *$3);
+            delete $3;
+        }
+    | TOK_KW_READ_ALL TOK_LPAREN expr TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_READ_ALL, {$3});
+        }
+    | TOK_KW_READ_BYTES TOK_LPAREN arg_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_READ_BYTES, *$3);
+            delete $3;
+        }
+    | TOK_KW_WRITE TOK_LPAREN arg_list TOK_RPAREN
+        {
+            SourceRange r = to_sourcerange(@$, filename);
+            $$ = new BuiltinCallExpr(r, TOK_KW_WRITE, *$3);
             delete $3;
         }
     | TOK_KW_CLEAR TOK_LPAREN expr TOK_RPAREN
